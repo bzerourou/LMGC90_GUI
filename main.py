@@ -3,7 +3,7 @@ import sys
 
 
 
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar
 from pylmgc90 import pre
 
 
@@ -14,6 +14,13 @@ class LMGCUniversalGUI(QMainWindow):
         super().__init__()
         self.setWindowTitle('LMGC90_GUI v0.1')
         self.setGeometry(100, 100, 800, 600)
+        # Barre de menu 
+        menu_bar = QMenuBar(self)
+        self.setMenuBar(menu_bar)
+        file_menu= menu_bar.addMenu("Fichier")
+        file_menu.addAction("Nouveau Projet")
+        file_menu.addAction("Ouvrir Projet")
+        file_menu.addAction("Sauvegarder Projet")
 
 
 if __name__ == "__main__" :
