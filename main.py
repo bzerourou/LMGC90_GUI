@@ -82,6 +82,18 @@ class LMGCUniversalGUI(QMainWindow):
         vis_tab.setLayout(vis_layout)
         self.tabs.addTab(vis_tab, "Table de visibilité")
 
+        #rendu graphique
+        render_tabs = QTabWidget()
+        splitter.addWidget(render_tabs)
+        render_tab = QWidget()
+        render_layout = QVBoxLayout()
+        render_tab.setLayout(render_layout)
+        render_tabs.addTab(render_tab,"Rendu graphique")
+
+        #ajuster    
+        splitter.setSizes([100,50])
+
+
     def newProject(self):
         self.current_project_dir = None
     
