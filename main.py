@@ -3,7 +3,7 @@ import sys
 
 
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -49,8 +49,14 @@ class LMGCUniversalGUI(QMainWindow):
         self.model_tree.setHeaderLabels(["Nom/étape", "Type", "Détails"])
         self.model_tree.setColumnWidth(0, 200)
         dock.setWidget(self.model_tree)
+       
+        #tab des propriétés 
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        self.setCentralWidget(splitter)
+        #onglets principaux
+        self.tabs = QTabWidget()
+        splitter.addWidget(self.tabs)
 
-        
     def newProject(self):
         self.current_project_dir = None
     
