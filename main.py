@@ -3,7 +3,7 @@ import sys
 
 
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
 
@@ -25,7 +25,15 @@ class LMGCUniversalGUI(QMainWindow):
         # barre d'outils 
         project_toolbar = QToolBar("Actions projet")
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, project_toolbar)
-        
+        new_btn = QPushButton("Nouveau")
+        new_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
+        new_btn.clicked.connect(self.newProject)
+        project_toolbar.addWidget(new_btn)
+
+    def newProject(self):
+        self.current_project_dir = None
+
+
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
