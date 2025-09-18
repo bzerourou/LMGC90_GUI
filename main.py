@@ -4,6 +4,7 @@ import sys
 
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton
+from PyQt6.QtWidgets import QFileDialog
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
 
@@ -29,10 +30,17 @@ class LMGCUniversalGUI(QMainWindow):
         new_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
         new_btn.clicked.connect(self.newProject)
         project_toolbar.addWidget(new_btn)
-
+        open_btn = QPushButton("Ouvrir")
+        open_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DirOpenIcon))
+        open_btn.clicked.connect(self.openProject)
+        project_toolbar.addWidget(open_btn)
     def newProject(self):
         self.current_project_dir = None
-
+    
+    def openProject(self):
+        dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir un projet", "")
+        if dir_path:
+            self.current_project_dir = dir_path
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
