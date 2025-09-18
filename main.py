@@ -98,6 +98,12 @@ class LMGCUniversalGUI(QMainWindow):
         #ajuster    
         splitter.setSizes([300,50])
 
+        # conteneurs LMGC90
+        self.bodies = pre.avatars()
+        self.matrials = pre.materials()
+        self.models = pre.models()
+        self.contact_laws = pre.see_tables()
+        self.visibilities_table = pre.tact_behavs()
 
     def newProject(self):
         self.current_project_dir = None
