@@ -87,11 +87,16 @@ class LMGCUniversalGUI(QMainWindow):
         splitter.addWidget(render_tabs)
         render_tab = QWidget()
         render_layout = QVBoxLayout()
+        #les boutons
+        vis_btn = QPushButton("visualisation LMGC90")
+        render_layout.addWidget(vis_btn)
+        paraview_btn = QPushButton("exporter vers Paraview")
+        render_layout.addWidget(paraview_btn)
         render_tab.setLayout(render_layout)
-        render_tabs.addTab(render_tab,"Rendu graphique")
+        render_tabs.addTab(render_tab,"rendu graphique")
 
         #ajuster    
-        splitter.setSizes([100,50])
+        splitter.setSizes([300,50])
 
 
     def newProject(self):
