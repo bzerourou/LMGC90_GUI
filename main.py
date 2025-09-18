@@ -4,7 +4,7 @@ import sys
 
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
 
@@ -56,6 +56,11 @@ class LMGCUniversalGUI(QMainWindow):
         #onglets principaux
         self.tabs = QTabWidget()
         splitter.addWidget(self.tabs)
+        # matériau tab
+        mat_tab = QWidget()
+        mat_layout = QVBoxLayout()
+        mat_tab.setLayout(mat_layout)
+        self.tabs.addTab(mat_tab, "Matériaux")
 
     def newProject(self):
         self.current_project_dir = None
