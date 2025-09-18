@@ -60,7 +60,13 @@ class LMGCUniversalGUI(QMainWindow):
         mat_tab = QWidget()
         mat_layout = QVBoxLayout()
         mat_tab.setLayout(mat_layout)
-        self.tabs.addTab(mat_tab, "Matériaux")
+        self.tabs.addTab(mat_tab, "Matériau")
+        #modèle tab
+        model_tab = QWidget()
+        model_layout = QVBoxLayout()
+        mat_tab.setLayout(model_layout)
+        self.tabs.addTab(model_tab, "Modèle")
+
 
     def newProject(self):
         self.current_project_dir = None
