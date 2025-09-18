@@ -66,7 +66,16 @@ class LMGCUniversalGUI(QMainWindow):
         model_layout = QVBoxLayout()
         mat_tab.setLayout(model_layout)
         self.tabs.addTab(model_tab, "Modèle")
-
+        #avatar tab
+        avatar_tab = QWidget()
+        avatar_layout = QVBoxLayout()
+        mat_tab.setLayout(avatar_layout)
+        self.tabs.addTab(avatar_tab, "Avatar")
+        #contact law tab
+        contact_tab = QWidget()
+        contact_layout = QVBoxLayout()
+        mat_tab.setLayout(contact_layout)
+        self.tabs.addTab(contact_tab, "Lois de contact")
 
     def newProject(self):
         self.current_project_dir = None
