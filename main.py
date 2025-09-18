@@ -3,7 +3,7 @@ import sys
 
 
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -42,6 +42,15 @@ class LMGCUniversalGUI(QMainWindow):
         save_btn.clicked.connect(self.saveProject)
         project_toolbar.addWidget(save_btn)
     
+        #arbre de création 
+        dock = QDockWidget("étapes de création ", self)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+        self.model_tree = QTreeWidget()
+        self.model_tree.setHeaderLabels(["Nom/étape", "Type", "Détails"])
+        self.model_tree.setColumnWidth(0, 200)
+        dock.setWidget(self.model_tree)
+
+        
     def newProject(self):
         self.current_project_dir = None
     
