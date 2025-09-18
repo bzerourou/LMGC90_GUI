@@ -4,7 +4,7 @@ import sys
 
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton
-from PyQt6.QtWidgets import QFileDialog
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
 
@@ -26,14 +26,22 @@ class LMGCUniversalGUI(QMainWindow):
         # barre d'outils 
         project_toolbar = QToolBar("Actions projet")
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, project_toolbar)
+        #new
         new_btn = QPushButton("Nouveau")
         new_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
         new_btn.clicked.connect(self.newProject)
         project_toolbar.addWidget(new_btn)
+        #open
         open_btn = QPushButton("Ouvrir")
         open_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DirOpenIcon))
         open_btn.clicked.connect(self.openProject)
         project_toolbar.addWidget(open_btn)
+        #save
+        save_btn = QPushButton("Sauvegarder")
+        save_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon))
+        save_btn.clicked.connect(self.saveProject)
+        project_toolbar.addWidget(save_btn)
+    
     def newProject(self):
         self.current_project_dir = None
     
@@ -41,6 +49,22 @@ class LMGCUniversalGUI(QMainWindow):
         dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir un projet", "")
         if dir_path:
             self.current_project_dir = dir_path
+    def saveProject(self):
+        if self.current_project_dir is None:
+            self.saveAsProject()
+        else:
+            self.doSave(self.current_project_dir)
+
+    def saveAsProject(self):
+            dir_path = QFileDialog.getExistingDirectory(self,"Sauvegarder le projet dans","")
+            if dir_path:
+                self.current_project_dir = dir_path
+                self.doSave(dir_path)
+    def doSave(self):
+        try:
+            QMessageBox.information(self, "Succès", f"Projet sauvegardé")
+        except Exception as e :
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde" )
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
