@@ -20,9 +20,9 @@ class LMGCUniversalGUI(QMainWindow):
         menu_bar = QMenuBar(self)
         self.setMenuBar(menu_bar)
         file_menu= menu_bar.addMenu("Fichier")
-        file_menu.addAction("Nouveau Projet")
-        file_menu.addAction("Ouvrir Projet")
-        file_menu.addAction("Sauvegarder Projet")
+        file_menu.addAction("Nouveau Projet").triggered.connect(self.newProject)
+        file_menu.addAction("Ouvrir Projet").triggered.connect(self.openProject)
+        file_menu.addAction("Sauvegarder Projet").triggered.connect(self.saveProject)
         file_menu.addAction("Quitter").triggered.connect(self.exit)
         # barre d'outils 
         project_toolbar = QToolBar("Actions projet")
