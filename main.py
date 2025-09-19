@@ -23,6 +23,7 @@ class LMGCUniversalGUI(QMainWindow):
         file_menu.addAction("Nouveau Projet")
         file_menu.addAction("Ouvrir Projet")
         file_menu.addAction("Sauvegarder Projet")
+        file_menu.addAction("Quitter").triggered.connect(self.exit)
         # barre d'outils 
         project_toolbar = QToolBar("Actions projet")
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, project_toolbar)
@@ -104,9 +105,17 @@ class LMGCUniversalGUI(QMainWindow):
         self.models = pre.models()
         self.contact_laws = pre.see_tables()
         self.visibilities_table = pre.tact_behavs()
+        self.current_project_dir = None
 
     def newProject(self):
         self.current_project_dir = None
+         # conteneurs LMGC90
+        self.bodies = pre.avatars()
+        self.matrials = pre.materials()
+        self.models = pre.models()
+        self.contact_laws = pre.see_tables()
+        self.visibilities_table = pre.tact_behavs()
+        
     
     def openProject(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir un projet", "")
@@ -128,6 +137,8 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.information(self, "Succès", f"Projet sauvegardé")
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde" )
+    def exit(self):
+        sys.exit()
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
