@@ -73,7 +73,7 @@ class LMGCUniversalGUI(QMainWindow):
         mat_layout.addWidget(self.mat_type)
         mat_layout.addWidget(QLabel("Densité:"))
         mat_layout.addWidget(self.mat_density)
-        mat_layout.addWidget(QLabel("Properties:"))
+        mat_layout.addWidget(QLabel("Propriétés (ex. young=1e9, poisson=0.3):"))
         mat_layout.addWidget(self.mat_properties)
         create_mat_btn = QPushButton("Créer matériau")
         create_mat_btn.clicked.connect(self.creatMaterial)
@@ -81,6 +81,27 @@ class LMGCUniversalGUI(QMainWindow):
         #modèle tab
         model_tab = QWidget()
         model_layout = QVBoxLayout()
+        self.model_name = QLineEdit("RIGID")
+        self.model_physics = QComboBox()
+        self.model_physics.addItems(["Rigid"])  #"MECAx", "THERx", "POROx", 
+        self.model_element = QLineEdit("Rxx2D")
+        self.model_dimension = QComboBox()
+        self.model_dimension.addItems(["2", "3"])
+        #self.model_dimension.currentTextChanged.connect(self.update_avatar_types)
+        self.model_options = QLineEdit("")
+        model_layout.addWidget(QLabel("Nom du Modèle:"))
+        model_layout.addWidget(self.model_name)
+        model_layout.addWidget(QLabel("Physics:"))
+        model_layout.addWidget(self.model_physics)
+        model_layout.addWidget(QLabel("Element:"))
+        model_layout.addWidget(self.model_element)
+        model_layout.addWidget(QLabel("Dimension:"))
+        model_layout.addWidget(self.model_dimension)
+        model_layout.addWidget(QLabel("Options (ex. kinematic='small', formulation='UpdtL'):"))
+        model_layout.addWidget(self.model_options)
+        create_model_btn = QPushButton("Créer modèle")
+        create_model_btn.clicked.connect(self.create_model)
+        model_layout.addWidget(create_model_btn)
         model_tab.setLayout(model_layout)
         self.tabs.addTab(model_tab, "Modèle")
         #avatar tab
@@ -158,6 +179,9 @@ class LMGCUniversalGUI(QMainWindow):
 
     def creatMaterial(self):
         print("matériau créer")
+
+    def create_model(self):
+        print("modèle créer")
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
