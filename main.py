@@ -3,7 +3,7 @@ import sys
 
 
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -60,8 +60,24 @@ class LMGCUniversalGUI(QMainWindow):
         # matériau tab
         mat_tab = QWidget()
         mat_layout = QVBoxLayout()
+        self.mat_name = QLineEdit("TDURx")
+        self.mat_type = QComboBox()
+        self.mat_type.addItems(["RIGID"])
+        self.mat_density = QLineEdit("1000.")
+        self.mat_properties = QLineEdit("")
         mat_tab.setLayout(mat_layout)
         self.tabs.addTab(mat_tab, "Matériau")
+        mat_layout.addWidget(QLabel("Nom matériau:"))
+        mat_layout.addWidget(self.mat_name)
+        mat_layout.addWidget(QLabel("Type:"))
+        mat_layout.addWidget(self.mat_type)
+        mat_layout.addWidget(QLabel("Densité:"))
+        mat_layout.addWidget(self.mat_density)
+        mat_layout.addWidget(QLabel("Properties:"))
+        mat_layout.addWidget(self.mat_properties)
+        create_mat_btn = QPushButton("Créer matériau")
+        create_mat_btn.clicked.connect(self.creatMaterial)
+        mat_layout.addWidget(create_mat_btn)
         #modèle tab
         model_tab = QWidget()
         model_layout = QVBoxLayout()
@@ -139,6 +155,9 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde" )
     def exit(self):
         sys.exit()
+
+    def creatMaterial(self):
+        print("matériau créer")
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
