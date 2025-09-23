@@ -92,7 +92,7 @@ class LMGCUniversalGUI(QMainWindow):
         model_layout = QVBoxLayout()
         self.model_name = QLineEdit("RIGID")
         self.model_physics = QComboBox()
-        self.model_physics.addItems(["Rigid"])  #"MECAx", "THERx", "POROx", 
+        self.model_physics.addItems(["MECAx"])  #"THERx", "POROx", 
         self.model_element = QLineEdit("Rxx2D")
         self.model_dimension = QComboBox()
         self.model_dimension.addItems(["2", "3"])
@@ -194,8 +194,18 @@ class LMGCUniversalGUI(QMainWindow):
         print("ici la mise à jour de l'arbre de création")
 
     def create_model(self):
-        print("modèle créer")
-
+        try : 
+            properties = eval("dict(" + self.model_options.text() +")") if self.model_options.text() else {}
+            mod = pre.model(name= self.model_name, 
+                            physic=self.model_physics.currentText(),
+                            element=self.model_element.text(),
+                            dimension=int(self.model_dimension.currentText()),
+                            **properties)
+            self.models.addModel(mod)
+            self.update_model_tree()
+            QMessageBox.information(self,"Succès", f"Création du modèle")
+        except Exception as e : 
+            QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du modèle")
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
