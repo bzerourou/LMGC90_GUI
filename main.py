@@ -14,6 +14,14 @@ from pylmgc90 import pre
 class LMGCUniversalGUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        # conteneurs LMGC90
+        self.bodies = pre.avatars()
+        self.materials = pre.materials()
+        self.models = pre.models()
+        self.contact_laws = pre.see_tables()
+        self.visibilities_table = pre.tact_behavs()
+        self.current_project_dir = None
+
         self.setWindowTitle('LMGC90_GUI v0.1')
         self.setGeometry(100, 100, 800, 600)
         # Barre de menu 
@@ -24,6 +32,7 @@ class LMGCUniversalGUI(QMainWindow):
         file_menu.addAction("Ouvrir Projet").triggered.connect(self.openProject)
         file_menu.addAction("Sauvegarder Projet").triggered.connect(self.saveProject)
         file_menu.addAction("Quitter").triggered.connect(self.exit)
+        
         # barre d'outils 
         project_toolbar = QToolBar("Actions projet")
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, project_toolbar)
@@ -76,7 +85,7 @@ class LMGCUniversalGUI(QMainWindow):
         mat_layout.addWidget(QLabel("Propriétés (ex. young=1e9, poisson=0.3):"))
         mat_layout.addWidget(self.mat_properties)
         create_mat_btn = QPushButton("Créer matériau")
-        create_mat_btn.clicked.connect(self.creatMaterial)
+        create_mat_btn.clicked.connect(self.create_Material)
         mat_layout.addWidget(create_mat_btn)
         #modèle tab
         model_tab = QWidget()
@@ -136,13 +145,7 @@ class LMGCUniversalGUI(QMainWindow):
         #ajuster    
         splitter.setSizes([300,50])
 
-        # conteneurs LMGC90
-        self.bodies = pre.avatars()
-        self.matrials = pre.materials()
-        self.models = pre.models()
-        self.contact_laws = pre.see_tables()
-        self.visibilities_table = pre.tact_behavs()
-        self.current_project_dir = None
+        
 
     def newProject(self):
         self.current_project_dir = None
@@ -177,8 +180,18 @@ class LMGCUniversalGUI(QMainWindow):
     def exit(self):
         sys.exit()
 
-    def creatMaterial(self):
-        print("matériau créer")
+    def create_Material(self):
+        try : 
+            properties = eval("dict(" + self.mat_properties.text()+")") if self.mat_properties.text() else {}
+            mat = pre.material(name=self.mat_name.text(), materialType=self.mat_type.currentText(), density = float(self.mat_density.text()), **properties)
+            self.materials.addMaterial(mat)
+            self.update_model_tree()
+            QMessageBox.information(self,"Succès",f"Matériau créer")
+        
+        except Exception as e: 
+            QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du matériau")
+    def update_model_tree(self):
+        print("ici la mise à jour de l'arbre de création")
 
     def create_model(self):
         print("modèle créer")
