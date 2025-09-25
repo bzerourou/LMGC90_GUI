@@ -116,6 +116,57 @@ class LMGCUniversalGUI(QMainWindow):
         #avatar tab
         avatar_tab = QWidget()
         avatar_layout = QVBoxLayout()
+        self.avatar_type = QComboBox()
+        self.avatar_types_2d = ["rigidDisk",]# "rigidPolygon", "rigidPlan", "rigidJonc"]
+        self.avatar_types_3d = ["rigidSphere", "rigidPolyhedron", "rigidCylinder", "rigidPlan"]
+        self.avatar_type.addItems(self.avatar_types_2d)
+        # Widgets pour propriétés
+        self.avatar_radius_label = QLabel("Rayon (disk/sphere/polygon/jonc/cylinder):")
+        self.avatar_radius = QLineEdit("0.1")
+        self.avatar_center_label = QLabel("Centre (ex. 0.0,0.0 ou 0.0,0.0,0.0):")
+        self.avatar_center = QLineEdit("0.0,0.0")
+        #self.avatar_nb_vertices_label = QLabel("Nombre de sommets (polygon):")
+        #self.avatar_nb_vertices = QLineEdit("6")
+        #self.avatar_coor_label = QLabel("Coordonnées plan (ex. 0.0,0.0 ou 0.0,0.0,0.0):")
+        #self.avatar_coor = QLineEdit("0.0,0.0")
+        #self.avatar_dimension_label = QLabel("Dimension plan (ex. 1.0,0.0 ou 1.0,0.0,0.0):")
+        #self.avatar_dimension = QLineEdit("1.0,0.0")
+        #self.avatar_vertices_label = QLabel("Vertices polyèdre (ex. [[0,0,0],[1,0,0],[0,1,0]]):")
+        #self.avatar_vertices = QLineEdit("[[0,0,0],[1,0,0],[0,1,0]]")
+        #self.avatar_faces_label = QLabel("Faces polyèdre (ex. [[0,1,2]]):")
+        #self.avatar_faces = QLineEdit("[[0,1,2]]")
+        #self.avatar_height_label = QLabel("Hauteur (cylinder):")
+        #self.avatar_height = QLineEdit("1.0")
+        #self.avatar_axis_label = QLabel("Axe (cylinder, ex. 0.0,0.0,1.0):")
+        #self.avatar_axis = QLineEdit("0.0,0.0,1.0")
+        self.avatar_color_label = QLabel("Couleur:")
+        self.avatar_color = QLineEdit("BLUE")
+        
+        avatar_layout.addWidget(QLabel("Type d'Avatar:"))
+        avatar_layout.addWidget(self.avatar_type)
+        avatar_layout.addWidget(self.avatar_radius_label)
+        avatar_layout.addWidget(self.avatar_radius)
+        avatar_layout.addWidget(self.avatar_center_label)
+        avatar_layout.addWidget(self.avatar_center)
+        #avatar_layout.addWidget(self.avatar_nb_vertices_label)
+        #avatar_layout.addWidget(self.avatar_nb_vertices)
+        #avatar_layout.addWidget(self.avatar_coor_label)
+        #avatar_layout.addWidget(self.avatar_coor)
+        #avatar_layout.addWidget(self.avatar_dimension_label)
+        #avatar_layout.addWidget(self.avatar_dimension)
+        #avatar_layout.addWidget(self.avatar_vertices_label)
+        #avatar_layout.addWidget(self.avatar_vertices)
+        #avatar_layout.addWidget(self.avatar_faces_label)
+        #avatar_layout.addWidget(self.avatar_faces)
+        #avatar_layout.addWidget(self.avatar_height_label)
+        #avatar_layout.addWidget(self.avatar_height)
+        #avatar_layout.addWidget(self.avatar_axis_label)
+        #avatar_layout.addWidget(self.avatar_axis)
+        avatar_layout.addWidget(self.avatar_color_label)
+        avatar_layout.addWidget(self.avatar_color)
+        create_avatar_btn = QPushButton("Créer Avatar")
+        create_avatar_btn.clicked.connect(self.create_avatar)
+        avatar_layout.addWidget(create_avatar_btn)
         avatar_tab.setLayout(avatar_layout)
         self.tabs.addTab(avatar_tab, "Avatar")
         #contact law tab
@@ -206,6 +257,27 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.information(self,"Succès", f"Création du modèle")
         except Exception as e : 
             QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du modèle")
+    def create_avatar(self):
+        try : 
+            
+            avatar_type = self.avatar_type.currentText()
+            color = self.avatar_color.text()
+            if  avatar_type == "rigidDisk":
+                center = [float(x) for x in self.avatar_center.text().split(",")]
+                body = pre.rigidDisk(
+                    r=float(self.avatar_radius.text()),
+                    center = center,
+                    model=self.models[1],
+                    material=self.materials[1],
+                    color=color
+                )
+            self.bodies.addAvatar(body)
+            self.update_model_tree()
+        except Exception as e :
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de l'avatar")
+        print("créer un avatar")
+
+
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
