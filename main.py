@@ -21,7 +21,9 @@ class LMGCUniversalGUI(QMainWindow):
         self.contact_laws = pre.see_tables()
         self.visibilities_table = pre.tact_behavs()
         self.current_project_dir = None
+        self._init_ui()
 
+    def _init_ui(self):
         self.setWindowTitle('LMGC90_GUI v0.1')
         self.setGeometry(100, 100, 800, 600)
         # Barre de menu 
@@ -127,10 +129,8 @@ class LMGCUniversalGUI(QMainWindow):
         self.avatar_center = QLineEdit("0.0,0.0")
         self.avatar_material_label = QLabel("matériau:")
         self.avatar_material = QComboBox()
-        self.avatar_material.addItems(self.materials)
         self.avatar_model_label = QLabel("modèle:")
         self.avatar_model = QComboBox()
-        self.avatar_model.addItems(self.models)
         #self.avatar_dimension_label = QLabel("Dimension plan (ex. 1.0,0.0 ou 1.0,0.0,0.0):")
         #self.avatar_dimension = QLineEdit("1.0,0.0")
         #self.avatar_vertices_label = QLabel("Vertices polyèdre (ex. [[0,0,0],[1,0,0],[0,1,0]]):")
