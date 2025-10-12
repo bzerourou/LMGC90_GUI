@@ -246,6 +246,7 @@ class LMGCUniversalGUI(QMainWindow):
         render_layout = QVBoxLayout()
         #les boutons
         vis_btn = QPushButton("visualisation LMGC90")
+        vis_btn.clicked.connect(self.try_lmgc_visualization)
         render_layout.addWidget(vis_btn)
         paraview_btn = QPushButton("exporter vers Paraview")
         render_layout.addWidget(paraview_btn)
@@ -411,6 +412,15 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.information(self,"Succès",f"table de visibilté crée!")
         except Exception as e:
             QMessageBox.critical(self,"Erreur",f"erreur lors de la création de la table de visibilité :  {str(e)}")
+
+    def try_lmgc_visualization(self):
+        try :
+            from pylmgc90 import pre
+            pre.visuAvatars(self.bodies)
+            QMessageBox.information(self, "Succès", "Visualisation LMGC90 lancée (fenêtre externe).")
+        except Exception as e:
+            QMessageBox.critical(self,"Erreur",f"erreur lors de la visualisation :  {str(e)}")
+
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
