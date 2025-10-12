@@ -1,4 +1,6 @@
 
+
+
 import sys
 
 
@@ -17,11 +19,15 @@ class LMGCUniversalGUI(QMainWindow):
         # conteneurs LMGC90
         self.bodies = pre.avatars()
         self.materials = pre.materials()
+        self.material_objects = []  # Liste pour objets pre.material
         self.models = pre.models()
+        self.model_objects = []  # Liste pour objets pre.model
         self.contact_laws = pre.see_tables()
         self.visibilities_table = pre.tact_behavs()
         self.current_project_dir = None
         self._init_ui()
+        self.update_selections()
+       
 
     def _init_ui(self):
         self.setWindowTitle('LMGC90_GUI v0.1')
@@ -30,9 +36,9 @@ class LMGCUniversalGUI(QMainWindow):
         menu_bar = QMenuBar(self)
         self.setMenuBar(menu_bar)
         file_menu= menu_bar.addMenu("Fichier")
-        file_menu.addAction("Nouveau Projet").triggered.connect(self.newProject)
-        file_menu.addAction("Ouvrir Projet").triggered.connect(self.openProject)
-        file_menu.addAction("Sauvegarder Projet").triggered.connect(self.saveProject)
+        file_menu.addAction("Nouveau Projet").triggered.connect(self.new_project)
+        file_menu.addAction("Ouvrir Projet").triggered.connect(self.open_project)
+        file_menu.addAction("Sauvegarder Projet").triggered.connect(self.save_project)
         file_menu.addAction("Quitter").triggered.connect(self.exit)
         
         # barre d'outils 
@@ -41,17 +47,17 @@ class LMGCUniversalGUI(QMainWindow):
         #new
         new_btn = QPushButton("Nouveau")
         new_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
-        new_btn.clicked.connect(self.newProject)
+        new_btn.clicked.connect(self.new_project)
         project_toolbar.addWidget(new_btn)
         #open
         open_btn = QPushButton("Ouvrir")
         open_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DirOpenIcon))
-        open_btn.clicked.connect(self.openProject)
+        open_btn.clicked.connect(self.open_project)
         project_toolbar.addWidget(open_btn)
         #save
         save_btn = QPushButton("Sauvegarder")
         save_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon))
-        save_btn.clicked.connect(self.saveProject)
+        save_btn.clicked.connect(self.save_project)
         project_toolbar.addWidget(save_btn)
     
         #arbre de création 
@@ -87,12 +93,12 @@ class LMGCUniversalGUI(QMainWindow):
         mat_layout.addWidget(QLabel("Propriétés (ex. young=1e9, poisson=0.3):"))
         mat_layout.addWidget(self.mat_properties)
         create_mat_btn = QPushButton("Créer matériau")
-        create_mat_btn.clicked.connect(self.create_Material)
+        create_mat_btn.clicked.connect(self.create_material)
         mat_layout.addWidget(create_mat_btn)
         #modèle tab
         model_tab = QWidget()
         model_layout = QVBoxLayout()
-        self.model_name = QLineEdit("RIGID")
+        self.model_name = QLineEdit("rigid")
         self.model_physics = QComboBox()
         self.model_physics.addItems(["MECAx"])  #"THERx", "POROx", 
         self.model_element = QLineEdit("Rxx2D")
@@ -139,10 +145,10 @@ class LMGCUniversalGUI(QMainWindow):
         #self.avatar_faces = QLineEdit("[[0,1,2]]")
         #self.avatar_height_label = QLabel("Hauteur (cylinder):")
         #self.avatar_height = QLineEdit("1.0")
-        #self.avatar_axis_label = QLabel("Axe (cylinder, ex. 0.0,0.0,1.0):")
-        #self.avatar_axis = QLineEdit("0.0,0.0,1.0")
+        self.avatar_properties_label = QLabel("Options  :")
+        self.avatar_properties = QLineEdit("")
         self.avatar_color_label = QLabel("Couleur:")
-        self.avatar_color = QLineEdit("BLUE")
+        self.avatar_color = QLineEdit("BLUEx")
         
         avatar_layout.addWidget(QLabel("Type d'Avatar:"))
         avatar_layout.addWidget(self.avatar_type)
@@ -162,8 +168,8 @@ class LMGCUniversalGUI(QMainWindow):
         #avatar_layout.addWidget(self.avatar_faces)
         #avatar_layout.addWidget(self.avatar_height_label)
         #avatar_layout.addWidget(self.avatar_height)
-        #avatar_layout.addWidget(self.avatar_axis_label)
-        #avatar_layout.addWidget(self.avatar_axis)
+        avatar_layout.addWidget(self.avatar_properties_label)        
+        avatar_layout.addWidget(self.avatar_properties)
         avatar_layout.addWidget(self.avatar_color_label)
         avatar_layout.addWidget(self.avatar_color)
         create_avatar_btn = QPushButton("Créer Avatar")
@@ -200,32 +206,32 @@ class LMGCUniversalGUI(QMainWindow):
 
         
 
-    def newProject(self):
+    def new_project(self):
         self.current_project_dir = None
          # conteneurs LMGC90
         self.bodies = pre.avatars()
-        self.matrials = pre.materials()
+        self.materials = pre.materials()
         self.models = pre.models()
         self.contact_laws = pre.see_tables()
         self.visibilities_table = pre.tact_behavs()
         
     
-    def openProject(self):
+    def open_project(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir un projet", "")
         if dir_path:
             self.current_project_dir = dir_path
-    def saveProject(self):
+    def save_project(self):
         if self.current_project_dir is None:
-            self.saveAsProject()
+            self.save_as_project()
         else:
             self.doSave(self.current_project_dir)
 
-    def saveAsProject(self):
+    def save_as_project(self):
             dir_path = QFileDialog.getExistingDirectory(self,"Sauvegarder le projet dans","")
             if dir_path:
                 self.current_project_dir = dir_path
                 self.doSave(dir_path)
-    def doSave(self):
+    def do_save(self):
         try:
             QMessageBox.information(self, "Succès", f"Projet sauvegardé")
         except Exception as e :
@@ -233,52 +239,86 @@ class LMGCUniversalGUI(QMainWindow):
     def exit(self):
         sys.exit()
 
-    def create_Material(self):
+    def create_material(self):
         try : 
             properties = eval("dict(" + self.mat_properties.text()+")") if self.mat_properties.text() else {}
-            mat = pre.material(name=self.mat_name.text(), materialType=self.mat_type.currentText(), density = float(self.mat_density.text()), **properties)
+            mat = pre.material(name=self.mat_name.text(), 
+                               materialType=self.mat_type.currentText(), 
+                               density = float(self.mat_density.text()), 
+                               **properties)
             self.materials.addMaterial(mat)
+            self.material_objects.append(mat)
             self.update_model_tree()
+            self.update_selections()
             QMessageBox.information(self,"Succès",f"Matériau créer")
-        
+            print(self.materials)
         except Exception as e: 
-            QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du matériau")
+            QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du matériau : {str(e)}")
     def update_model_tree(self):
         print("ici la mise à jour de l'arbre de création")
 
     def create_model(self):
         try : 
             properties = eval("dict(" + self.model_options.text() +")") if self.model_options.text() else {}
-            mod = pre.model(name= self.model_name, 
-                            physic=self.model_physics.currentText(),
+            mod = pre.model(name= self.model_name.text(), 
+                            physics=self.model_physics.currentText(),
                             element=self.model_element.text(),
                             dimension=int(self.model_dimension.currentText()),
                             **properties)
             self.models.addModel(mod)
+            self.model_objects.append(mod)
             self.update_model_tree()
-            QMessageBox.information(self,"Succès", f"Création du modèle")
+            self.update_selections()
+            QMessageBox.information(self,"Succès", f"Création du modèle : ")
         except Exception as e : 
-            QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du modèle")
+            QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du modèle : {str(e)}")
+    
+    def update_selections(self):
+        """Met à jour les ComboBox avec les matériaux et modèles disponibles."""
+    # Update Material ComboBox
+        self.avatar_material.clear()
+        if self.material_objects:
+            for mat in self.material_objects :
+                self.avatar_material.addItem(mat.nom)  # Add material name
+            self.avatar_material.setCurrentIndex(0)  # Select first material by default
+        else:
+            self.avatar_material.addItem("Aucun matériau disponible")
+            self.avatar_material.setEnabled(False)  # Disable if no materials
+
+        # Update Model ComboBox
+        self.avatar_model.clear()
+        if self.model_objects:        
+            for mod in self.model_objects:
+                self.avatar_model.addItem(mod.nom)  # Add model name
+            self.avatar_model.setCurrentIndex(0)  # Select first model by default
+        else:
+            self.avatar_model.addItem("Aucun modèle disponible")
+            self.avatar_model.setEnabled(False)  # Disable if no models
+
+        # Enable combo boxes if items are available
+        self.avatar_material.setEnabled(bool(self.material_objects))
+        self.avatar_model.setEnabled(bool(self.model_objects))
     def create_avatar(self):
         try : 
-            
+            properties = eval("dict(" + self.avatar_properties.text() + ")") if self.avatar_properties.text() else {}
             avatar_type = self.avatar_type.currentText()
-            color = self.avatar_color.text()
             if  avatar_type == "rigidDisk":
                 center = [float(x) for x in self.avatar_center.text().split(",")]
                 body = pre.rigidDisk(
                     r=float(self.avatar_radius.text()),
                     center = center,
-                    model=self.models[1],
-                    material=self.materials[1],
-                    color=color
+                    material=self.material_objects[self.avatar_material.currentIndex()],
+                    model=self.model_objects[self.avatar_model.currentIndex()],
+                    color=self.avatar_color.text(),
+                    **properties
+                    
                 )
             self.bodies.addAvatar(body)
             self.update_model_tree()
+           
         except Exception as e :
-            QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de l'avatar")
-        print("créer un avatar")
-
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de l'avatar : {str(e)}")
+        
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
