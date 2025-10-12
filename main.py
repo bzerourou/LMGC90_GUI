@@ -178,10 +178,22 @@ class LMGCUniversalGUI(QMainWindow):
         avatar_tab.setLayout(avatar_layout)
         self.tabs.addTab(avatar_tab, "Avatar")
         #contact law tab
+        # Onglet Lois de Contact
         contact_tab = QWidget()
         contact_layout = QVBoxLayout()
+        self.contact_type = QComboBox()
+        self.contact_type.addItems(["FRICTION", "COHESION", "IQS_CLB", "PLANx", "GAP_SGR_CLB", "COUPLED_DOF", "RST_CLB"])
+        self.contact_properties = QLineEdit("mu=0.3")
+        contact_layout.addWidget(QLabel("Type de Loi:"))
+        contact_layout.addWidget(self.contact_type)
+        contact_layout.addWidget(QLabel("Propriétés (ex. mu=0.3, cn=1e6, ct=1e6):"))
+        contact_layout.addWidget(self.contact_properties)
+        create_contact_btn = QPushButton("Créer Loi de Contact")
+        create_contact_btn.clicked.connect(self.create_contact_law)
+        contact_layout.addWidget(create_contact_btn)
         contact_tab.setLayout(contact_layout)
-        self.tabs.addTab(contact_tab, "Lois de contact")
+        self.tabs.addTab(contact_tab, "Lois de Contact")
+
         #Table de visibilité tab
         vis_tab = QWidget()
         vis_layout = QVBoxLayout()
@@ -319,7 +331,8 @@ class LMGCUniversalGUI(QMainWindow):
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de l'avatar : {str(e)}")
         
-
+    def create_contact_law(self):
+        print("button law cliqued")
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
