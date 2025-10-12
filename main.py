@@ -178,7 +178,6 @@ class LMGCUniversalGUI(QMainWindow):
         avatar_tab.setLayout(avatar_layout)
         self.tabs.addTab(avatar_tab, "Avatar")
         #contact law tab
-        # Onglet Lois de Contact
         contact_tab = QWidget()
         contact_layout = QVBoxLayout()
         self.contact_name_lable  = QLabel("nom :")
@@ -202,8 +201,42 @@ class LMGCUniversalGUI(QMainWindow):
         #Table de visibilité tab
         vis_tab = QWidget()
         vis_layout = QVBoxLayout()
+        self.vis_corps_candidat = QComboBox()
+        self.vis_corps_candidat.addItem("RBDY2")
+        self.vis_corps_antagoniste =QComboBox()
+        self.vis_corps_antagoniste.addItem("RBDY2")
+        self.candidat_color = QLineEdit("BLUEx")
+        self.vis_candidat= QComboBox()
+        self.vis_candidat.addItem("DISKx")
+
+        self.vis_antagoniste = QComboBox()
+        self.vis_antagoniste.addItem("DISKx")
+        self.antagoniste_color = QLineEdit("VERTx")
+        self.behav = QComboBox()
+        self.vis_alert = QLineEdit("0.1")
+
+        vis_layout.addWidget(QLabel("Corps candidat :"))
+        vis_layout.addWidget(self.vis_corps_candidat)
+        vis_layout.addWidget(QLabel("candidat :"))
+        vis_layout.addWidget(self.vis_candidat)        
+        vis_layout.addWidget(QLabel("candidat coleur :"))
+        vis_layout.addWidget(self.candidat_color)        
+        vis_layout.addWidget(QLabel("Corps antagoniste :"))
+        vis_layout.addWidget(self.vis_corps_antagoniste)
+        vis_layout.addWidget(QLabel("antagoniste :"))
+        vis_layout.addWidget(self.vis_antagoniste)        
+        vis_layout.addWidget(QLabel("antagoniste coleur :"))
+        vis_layout.addWidget(self.antagoniste_color) 
+        vis_layout.addWidget(QLabel("loi de contact  :"))       
+        vis_layout.addWidget(self.behav)
+        vis_layout.addWidget(QLabel("distance d'alerte  :")) 
+        vis_layout.addWidget(self.vis_alert)       
+
+        create_vis_btn = QPushButton("Ajouter à la Table de Visibilité")
+        create_vis_btn.clicked.connect(self.add_visibility_rule)
+        vis_layout.addWidget(create_vis_btn)
         vis_tab.setLayout(vis_layout)
-        self.tabs.addTab(vis_tab, "Table de visibilité")
+        self.tabs.addTab(vis_tab, "Tableau de Visibilité")
 
         #rendu graphique
         render_tabs = QTabWidget()
@@ -315,6 +348,8 @@ class LMGCUniversalGUI(QMainWindow):
         # Enable combo boxes if items are available
         self.avatar_material.setEnabled(bool(self.material_objects))
         self.avatar_model.setEnabled(bool(self.model_objects))
+    
+    
     def create_avatar(self):
         try : 
             properties = eval("dict(" + self.avatar_properties.text() + ")") if self.avatar_properties.text() else {}
@@ -350,7 +385,8 @@ class LMGCUniversalGUI(QMainWindow):
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de la loi : {str(e)}")
 
-
+    def add_visibility_rule(self):
+        print("button visi cliqued!")
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
