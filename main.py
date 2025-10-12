@@ -23,6 +23,7 @@ class LMGCUniversalGUI(QMainWindow):
         self.models = pre.models()
         self.model_objects = []  # Liste pour objets pre.model
         self.contact_laws = pre.tact_behavs()
+        self.contact_laws_objects =[]
         self.visibilities_table = pre.see_tables()
         self.current_project_dir = None
         self._init_ui()
@@ -345,10 +346,19 @@ class LMGCUniversalGUI(QMainWindow):
             self.avatar_model.addItem("Aucun modèle disponible")
             self.avatar_model.setEnabled(False)  # Disable if no models
 
-        # Enable combo boxes if items are available
+        #Update law Combobox
+        self.behav.clear()
+        if self.contact_laws_objects :
+            for law in self.contact_laws_objects:
+                self.behav.addItem(law.nom)
+            self.behav.setCurrentIndex(0)
+        else:
+            self.behav.addItem("Aucune loi de contact disponible")
+            self.behav.setEnabled(False)
+           # Enable combo boxes if items are available
         self.avatar_material.setEnabled(bool(self.material_objects))
-        self.avatar_model.setEnabled(bool(self.model_objects))
-    
+        self.avatar_model.setEnabled(bool(self.model_objects))    
+        self.behav.setEnabled(bool(self.contact_laws_objects))
     
     def create_avatar(self):
         try : 
@@ -380,13 +390,27 @@ class LMGCUniversalGUI(QMainWindow):
                                 **properties
             )
             self.contact_laws.addBehav(law)
+            self.contact_laws_objects.append(law)
             self.update_model_tree()
+            self.update_selections()
             QMessageBox.information(self, "Succès", f"Loi de contact crée!")
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de la loi : {str(e)}")
 
     def add_visibility_rule(self):
-        print("button visi cliqued!")
+        try: 
+            see_table = pre.see_table(CorpsCandidat=self.vis_corps_candidat.currentText(),
+                                      candidat=self.vis_candidat.currentText(),
+                                      colorCandidat=self.candidat_color.text(),
+                                      CorpsAntagoniste=self.vis_corps_antagoniste.currentText(),
+                                      antagoniste=self.vis_antagoniste.currentText(),
+                                      colorAntagoniste=self.antagoniste_color.text(),
+                                      behav=self.contact_laws_objects[self.behav.currentIndex()],
+                                      alert=self.vis_alert.text())
+            self.visibilities_table.addSeeTable(see_table)
+            QMessageBox.information(self,"Succès",f"table de visibilté crée!")
+        except Exception as e:
+            QMessageBox.critical(self,"Erreur",f"erreur lors de la création de la table de visibilité :  {str(e)}")
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
