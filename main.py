@@ -22,8 +22,8 @@ class LMGCUniversalGUI(QMainWindow):
         self.material_objects = []  # Liste pour objets pre.material
         self.models = pre.models()
         self.model_objects = []  # Liste pour objets pre.model
-        self.contact_laws = pre.see_tables()
-        self.visibilities_table = pre.tact_behavs()
+        self.contact_laws = pre.tact_behavs()
+        self.visibilities_table = pre.see_tables()
         self.current_project_dir = None
         self._init_ui()
         self.update_selections()
@@ -181,12 +181,17 @@ class LMGCUniversalGUI(QMainWindow):
         # Onglet Lois de Contact
         contact_tab = QWidget()
         contact_layout = QVBoxLayout()
+        self.contact_name_lable  = QLabel("nom :")
+        self.contact_name  = QLineEdit("iqsc0")
+        contact_layout.addWidget(self.contact_name_lable)
+        contact_layout.addWidget(self.contact_name)
         self.contact_type = QComboBox()
         self.contact_type.addItems(["FRICTION", "COHESION", "IQS_CLB", "PLANx", "GAP_SGR_CLB", "COUPLED_DOF", "RST_CLB"])
-        self.contact_properties = QLineEdit("mu=0.3")
+        self.contact_type.setCurrentIndex(2)
+        self.contact_properties = QLineEdit("fric=0.3")
         contact_layout.addWidget(QLabel("Type de Loi:"))
         contact_layout.addWidget(self.contact_type)
-        contact_layout.addWidget(QLabel("Propriétés (ex. mu=0.3, cn=1e6, ct=1e6):"))
+        contact_layout.addWidget(QLabel("Propriétés (ex. fric=0.3, cn=1e6, ct=1e6):"))
         contact_layout.addWidget(self.contact_properties)
         create_contact_btn = QPushButton("Créer Loi de Contact")
         create_contact_btn.clicked.connect(self.create_contact_law)
@@ -327,12 +332,25 @@ class LMGCUniversalGUI(QMainWindow):
                 )
             self.bodies.addAvatar(body)
             self.update_model_tree()
-           
+
+            QMessageBox.information(self, "Succès", f" Avatar {avatar_type} créer !")
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de l'avatar : {str(e)}")
         
     def create_contact_law(self):
-        print("button law cliqued")
+        try :   
+            properties = eval("dict(" + self.contact_properties.text() + ")" ) if self.contact_properties.text() else {}
+            law  = pre.tact_behav(name = self.contact_name.text(),
+                                law = self.contact_type.currentText(),
+                                **properties
+            )
+            self.contact_laws.addBehav(law)
+            self.update_model_tree()
+            QMessageBox.information(self, "Succès", f"Loi de contact crée!")
+        except Exception as e :
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de la loi : {str(e)}")
+
+
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
     window = LMGCUniversalGUI()
