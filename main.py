@@ -1,6 +1,6 @@
 
 import sys, os
-import subprocess
+import subprocess, json
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
@@ -310,7 +310,19 @@ class LMGCUniversalGUI(QMainWindow):
         dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir un projet", "")
         if dir_path:
             self.current_project_dir = dir_path
-            
+            json_path  = os.path.join(dir_path, "project.json")
+            if os.path.exists(json_path) :
+                try : 
+                    with open(json_path,  'r') as f : 
+                        state = json.load(f)
+                    self._deserialize_state(state)
+                    self.update_model_tree()
+                    QMessageBox.information(self, "Succès", f"Projet ouvert depuis {dir_path}")
+                except Exception as e : 
+                    QMessageBox.critical(self, "Erreur ", f" Erreur lors du chargement : {str(e)} ")
+            else :
+                QMessageBox.critical(self, "Erreur ", f"Aucun fichier project.json trouvé")
+    
     def save_project(self):
         if self.current_project_dir is None:
             self.save_as_project()
@@ -329,6 +341,10 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde" )
     def exit(self):
         sys.exit()
+
+    def _deserialize_state(self, state ) : 
+        print("ici c'est la deserialisation ")
+
 
     def create_material(self):
         try : 
