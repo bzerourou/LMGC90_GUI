@@ -1,5 +1,6 @@
 
 import sys, os
+import subprocess
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
@@ -437,8 +438,8 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.critical(self,"Erreur",f"erreur lors de la visualisation :  {str(e)}")
     def generate_python_script(self):
         try:
-            script_path = os.path.join(self.current_project_dir or ".", "sample_gen.py")
-            with open(script_path, 'w', encoding="utf-8") as f:
+            self.script_path = os.path.join(self.current_project_dir or ".", "sample_gen.py")
+            with open(self.script_path, 'w', encoding="utf-8") as f:
                 f.write("from pylmgc90 import pre\nimport os\n\n")
                 f.write("# Conteneurs\n")
                 f.write("materials = pre.materials()\n")
@@ -489,7 +490,39 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.critical(self,"Erreur",f"erreur lors de la génération du script: {str(e)}")
         
     def execute_python_script(self):
-        print("exécuter le script généré")
+        try : 
+            #chemin par défaut
+            default_path = self.current_project_dir if self.current_project_dir else os.getcwd()
+            if self.script_path and os.path.exists(self.script_path) :
+                default_file = self.script_path
+            else :
+                default_file = os.path.join(default_path, "sample_gen.py")
+                file_path, _ = QFileDialog.getOpenFileName(
+                self, "Sélectionnez le script python à exécuter", default_file, "Python file (*.py)"
+            ) 
+
+            if not file_path :
+                QMessageBox.critical(self, "Erreur", "Aucun fichier sélectionné pour l'exécution ")
+                return
+            if not os.path.exists(file_path):
+                QMessageBox.critical(self, "Erreur ",f"Le fichier {file_path} n'existe pas ")
+                return 
+            
+            #exécuter le script 
+            result = subprocess.run(
+                ['python', file_path],
+                capture_output= True,
+                text=True,
+                            check=True
+            )
+            #afficher la sortie 
+            output = result.stdout.strip()
+            if output :
+                QMessageBox.information(self, "Succès", f"script exécuté :\n {output} ") 
+            else : 
+                QMessageBox.information(self, "Succès", f"script exécuté (aucune sortie)")    
+        except Exception as e : 
+            QMessageBox.critical(self, "Erreur", f"Erreur inattendue : {str(e)}")
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
