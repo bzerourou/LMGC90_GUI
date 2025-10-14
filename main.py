@@ -148,14 +148,6 @@ class LMGCUniversalGUI(QMainWindow):
         self.avatar_material = QComboBox()
         self.avatar_model_label = QLabel("modèle:")
         self.avatar_model = QComboBox()
-        #self.avatar_dimension_label = QLabel("Dimension plan (ex. 1.0,0.0 ou 1.0,0.0,0.0):")
-        #self.avatar_dimension = QLineEdit("1.0,0.0")
-        #self.avatar_vertices_label = QLabel("Vertices polyèdre (ex. [[0,0,0],[1,0,0],[0,1,0]]):")
-        #self.avatar_vertices = QLineEdit("[[0,0,0],[1,0,0],[0,1,0]]")
-        #self.avatar_faces_label = QLabel("Faces polyèdre (ex. [[0,1,2]]):")
-        #self.avatar_faces = QLineEdit("[[0,1,2]]")
-        #self.avatar_height_label = QLabel("Hauteur (cylinder):")
-        #self.avatar_height = QLineEdit("1.0")
         self.avatar_properties_label = QLabel("Options  :")
         self.avatar_properties = QLineEdit("")
         self.avatar_color_label = QLabel("Couleur:")
@@ -171,14 +163,6 @@ class LMGCUniversalGUI(QMainWindow):
         avatar_layout.addWidget(self.avatar_material)
         avatar_layout.addWidget(self.avatar_model_label)
         avatar_layout.addWidget(self.avatar_model)
-        #avatar_layout.addWidget(self.avatar_dimension_label)
-        #avatar_layout.addWidget(self.avatar_dimension)
-        #avatar_layout.addWidget(self.avatar_vertices_label)
-        #avatar_layout.addWidget(self.avatar_vertices)
-        #avatar_layout.addWidget(self.avatar_faces_label)
-        #avatar_layout.addWidget(self.avatar_faces)
-        #avatar_layout.addWidget(self.avatar_height_label)
-        #avatar_layout.addWidget(self.avatar_height)
         avatar_layout.addWidget(self.avatar_properties_label)        
         avatar_layout.addWidget(self.avatar_properties)
         avatar_layout.addWidget(self.avatar_color_label)
@@ -269,19 +253,64 @@ class LMGCUniversalGUI(QMainWindow):
         
 
     def new_project(self):
+        self.dim = 2
         self.current_project_dir = None
          # conteneurs LMGC90
         self.bodies = pre.avatars()
+        self.bodies_objects = []
         self.materials = pre.materials()
+        self.material_objects = []
         self.models = pre.models()
-        self.contact_laws = pre.see_tables()
-        self.visibilities_table = pre.tact_behavs()
+        self.model_objects =[]
+        self.contact_laws = pre.tact_behavs()
+        self.contact_laws_objects = []
+        self.visibilities_table = pre.see_tables()
+        #matériau
+        self.mat_name.setText("TDURx")
+        self.mat_type.setCurrentText("RIGID")
+        self.mat_density.setText("1000.")
+        self.mat_properties.setText("")
+        #modèle
+        self.model_name.setText("rigid")
+        self.model_physics.setCurrentText("MECAx")
+        self.model_element.setText("Rxx2D")
+        self.model_dimension.setCurrentText("2")
+        self.model_options.setText("")
+        self.avatar_type.blockSignals(True)
+        #avatar
+        self.avatar_type.setCurrentText("rigidDisk")
+        self.avatar_type.blockSignals(False)
+        self.avatar_radius.setText("0.1")
+        self.avatar_center.setText("0.0,0.0")
+        self.avatar_color.setText("BLUEx")
+        self.avatar_properties.setText("")
+
+        #law
+        self.contact_name.setText("iqsc0")
+        self.contact_type.setCurrentText("IQS_CLB")
+        self.contact_properties.setText("fric=0.3")
+        # see_table
+        self.vis_corps_candidat.setCurrentText("RBDY2")
+        self.vis_corps_antagoniste.setCurrentText("RBDY2")
+        self.candidat_color.setText("BLUEx")
+        self.vis_candidat.setCurrentText("DISKx")
+        self.vis_antagoniste.setCurrentText("DISKx")
+        self.antagoniste_color.setText("VERTx")
+        self.vis_alert.setText("0.1")
+
+        self._initializing = True
+        #self.update_avatar_fields(self.avatar_type.currentText())
+        self._initializing = False
+        self.update_model_tree()
+        self.update_selections()
+        QMessageBox.information(self, "Succès", f"Nouveau projet crée (vide)")
         
     
     def open_project(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir un projet", "")
         if dir_path:
             self.current_project_dir = dir_path
+            
     def save_project(self):
         if self.current_project_dir is None:
             self.save_as_project()
@@ -497,9 +526,11 @@ class LMGCUniversalGUI(QMainWindow):
                 default_file = self.script_path
             else :
                 default_file = os.path.join(default_path, "sample_gen.py")
-                file_path, _ = QFileDialog.getOpenFileName(
+
+
+            file_path, _ = QFileDialog.getOpenFileName(
                 self, "Sélectionnez le script python à exécuter", default_file, "Python file (*.py)"
-            ) 
+            )    
 
             if not file_path :
                 QMessageBox.critical(self, "Erreur", "Aucun fichier sélectionné pour l'exécution ")
