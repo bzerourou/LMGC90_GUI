@@ -1,9 +1,5 @@
 
-
-
-import sys
-
-
+import sys, os
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
@@ -17,7 +13,9 @@ class LMGCUniversalGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         # conteneurs LMGC90
+        self.dim = 2
         self.bodies = pre.avatars()
+        self.bodies_objects = []
         self.materials = pre.materials()
         self.material_objects = []  # Liste pour objets pre.material
         self.models = pre.models()
@@ -60,7 +58,18 @@ class LMGCUniversalGUI(QMainWindow):
         save_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DriveHDIcon))
         save_btn.clicked.connect(self.save_project)
         project_toolbar.addWidget(save_btn)
-    
+        # Barre d'outils actions
+        action_toolbar = QToolBar("Actions")
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, action_toolbar)
+        generate_script_btn = QPushButton("Générer Script Python")
+        generate_script_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileDialogDetailedView))
+        generate_script_btn.clicked.connect(self.generate_python_script)
+        action_toolbar.addWidget(generate_script_btn)
+        execute_script_btn = QPushButton("Exécuter Script Python")
+        execute_script_btn.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_MediaPlay))
+        execute_script_btn.clicked.connect(self.execute_python_script)
+        action_toolbar.addWidget(execute_script_btn)
+
         #arbre de création 
         dock = QDockWidget("étapes de création ", self)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
@@ -363,13 +372,19 @@ class LMGCUniversalGUI(QMainWindow):
     
     def create_avatar(self):
         try : 
+            import numpy as np
             properties = eval("dict(" + self.avatar_properties.text() + ")") if self.avatar_properties.text() else {}
             avatar_type = self.avatar_type.currentText()
             if  avatar_type == "rigidDisk":
-                center = [float(x) for x in self.avatar_center.text().split(",")]
+                text  = self.avatar_center.text().split(",")
+                x = float(text[0])
+                y = float(text[1])
+                self.center = [x,y]
+                print(self.center)
+
                 body = pre.rigidDisk(
                     r=float(self.avatar_radius.text()),
-                    center = center,
+                    center = self.center ,
                     material=self.material_objects[self.avatar_material.currentIndex()],
                     model=self.model_objects[self.avatar_model.currentIndex()],
                     color=self.avatar_color.text(),
@@ -377,6 +392,7 @@ class LMGCUniversalGUI(QMainWindow):
                     
                 )
             self.bodies.addAvatar(body)
+            self.bodies_objects.append(body)
             self.update_model_tree()
 
             QMessageBox.information(self, "Succès", f" Avatar {avatar_type} créer !")
@@ -415,11 +431,65 @@ class LMGCUniversalGUI(QMainWindow):
 
     def try_lmgc_visualization(self):
         try :
-            from pylmgc90 import pre
             pre.visuAvatars(self.bodies)
             QMessageBox.information(self, "Succès", "Visualisation LMGC90 lancée (fenêtre externe).")
         except Exception as e:
             QMessageBox.critical(self,"Erreur",f"erreur lors de la visualisation :  {str(e)}")
+    def generate_python_script(self):
+        try:
+            script_path = os.path.join(self.current_project_dir or ".", "sample_gen.py")
+            with open(script_path, 'w', encoding="utf-8") as f:
+                f.write("from pylmgc90 import pre\nimport os\n\n")
+                f.write("# Conteneurs\n")
+                f.write("materials = pre.materials()\n")
+                f.write("models = pre.models()\n")
+                f.write("bodies = pre.avatars()\n")
+                f.write("tacts = pre.tact_behavs()\n")
+                f.write("svs = pre.see_tables()\n\n")   
+                f.write(f"dim = {self.dim}\n")                 
+                f.write("# Matériaux\n")
+
+                for mat in self.material_objects:
+                    f.write(f"mat = pre.material(name='{mat.nom}', materialType = '{mat.materialType}', density={mat.density})")
+                    f.write("\n")
+                    f.write("materials.addMaterial(mat)\n")
+                
+                f.write("\n# Modèles\n")
+                for mod in self.model_objects:
+                    f.write(f"mod = pre.model(name='{mod.nom}', physics = '{mod.physics}', element='{mod.element}', dimension={self.dim})")
+                    f.write("\n")
+                    f.write("models.addModel(mod)\n")
+                
+                f.write("\n# Avatars / Bodies\n")
+                for body in self.bodies_objects:
+                    f.write(f"body=pre.rigidDisk(r={body.bulks[0].avrd}, center={self.center}, model=mod, material=mat, color='{body.contactors[0].color}')")
+                    print(body.nodes[1].coor)
+                    f.write("\n")                
+                    f.write("bodies.addAvatar(body)\n")
+                
+                f.write("\n# Lois de Contact\n")
+                for law in self.contact_laws_objects:
+                    f.write(f"law = pre.tact_behav(name='{law.nom}', law='{law.law}', fric={law.fric})")
+                    f.write("\n")                    
+                    f.write("tacts.addBehav(law)\n")
+                
+                f.write("\n# Tableau de Visibilité\n")
+                for rule in self.visibilities_table:
+                    f.write(f"rule = pre.see_table(CorpsCandidat='{rule.CorpsCandidat}', candidat='{rule.candidat}', colorCandidat='{rule.colorCandidat}',CorpsAntagoniste='{rule.CorpsAntagoniste}', antagoniste='{rule.antagoniste}', colorAntagoniste='{rule.colorAntagoniste}', behav=law, alert={rule.alert})")
+                    f.write("\n")                    
+                    f.write("svs.addSeeTable(rule)")
+                
+                f.write("\n\n")
+
+                f.write("post = pre.postpro_commands()")
+
+                f.write(f"\npre.writeDatbox(dim , materials, models, bodies, tacts, svs, post=post)\n")
+            QMessageBox.information(self, "Succès", "Génération du script")
+        except Exception as e:
+            QMessageBox.critical(self,"Erreur",f"erreur lors de la génération du script: {str(e)}")
+        
+    def execute_python_script(self):
+        print("exécuter le script généré")
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
