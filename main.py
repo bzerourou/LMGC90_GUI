@@ -327,16 +327,18 @@ class LMGCUniversalGUI(QMainWindow):
         if self.current_project_dir is None:
             self.save_as_project()
         else:
-            self.doSave(self.current_project_dir)
+            self.do_save(self.current_project_dir)
 
     def save_as_project(self):
             dir_path = QFileDialog.getExistingDirectory(self,"Sauvegarder le projet dans","")
             if dir_path:
                 self.current_project_dir = dir_path
-                self.doSave(dir_path)
-    def do_save(self):
+                self.do_save(dir_path)
+    def do_save(self, dir_path):
         try:
-            QMessageBox.information(self, "Succès", f"Projet sauvegardé")
+            os.makedirs(dir_path, exist_ok=True)
+            state = self._serialize_state()
+            QMessageBox.information(self, "Succès", f"Projet sauvegardé dans {dir_path}")
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde" )
     def exit(self):
@@ -344,7 +346,8 @@ class LMGCUniversalGUI(QMainWindow):
 
     def _deserialize_state(self, state ) : 
         print("ici c'est la deserialisation ")
-
+    def _serialize_state(self):
+        print("ici c'est la serialisation")
 
     def create_material(self):
         try : 
