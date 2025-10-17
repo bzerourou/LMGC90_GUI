@@ -1,6 +1,7 @@
 
 import sys, os
 import subprocess, json
+import pdb
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
@@ -24,6 +25,7 @@ class LMGCUniversalGUI(QMainWindow):
         self.contact_laws = pre.tact_behavs()
         self.contact_laws_objects =[]
         self.visibilities_table = pre.see_tables()
+        self.visibilities_table_objects = []
         self.current_project_dir = None
         self._init_ui()
         self.update_selections()
@@ -338,16 +340,83 @@ class LMGCUniversalGUI(QMainWindow):
         try:
             os.makedirs(dir_path, exist_ok=True)
             state = self._serialize_state()
+            print(state)
+            json_path = os.path.join(dir_path, 'project.json')
+            with open(json_path, 'w') as f : 
+                json.dump(state, f , indent=4)
+            
             QMessageBox.information(self, "Succès", f"Projet sauvegardé dans {dir_path}")
         except Exception as e :
-            QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde" )
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la sauvegarde : {str(e)}" )
     def exit(self):
         sys.exit()
 
     def _deserialize_state(self, state ) : 
         print("ici c'est la deserialisation ")
     def _serialize_state(self):
-        print("ici c'est la serialisation")
+        #matériau
+        materials_list =[]
+        for mat in self.material_objects : 
+            mat_dict = {
+                'name' : mat.nom, 
+                'type' : mat.materialType, 
+                'density' : mat.density if hasattr(mat, 'density') else None,
+                
+            }
+            materials_list.append(mat_dict)
+        
+        #modèles
+        models_list = [{'name': mod.nom, 
+                        'physics': mod.physics, 
+                        'element': mod.element, 
+                        'dimension': mod.dimension, 
+                        'options': mod.options if hasattr(mod, 'options') else {}
+                        } for mod in self.model_objects]
+        #avatar
+        bodies_list = []
+        for body in self.bodies_objects :
+            body_dict  = {
+                'type' : 'rigidDisk' if body.contactors[0].shape == 'DISKx' and body.dimension==2 else 'unknown',
+                
+                'color' : body.contactors[0].color if hasattr(body.contactors[0], 'color') else 'unknown'
+            }
+            if hasattr(body.contactors[0], 'byrd') :
+                body_dict['r'] = body.contactors[0].byrd
+            if hasattr(body.bulks[0].material, 'nom') :
+                body_dict['material'] = body.bulks[0].material.nom
+            if hasattr(body.bulks[0].model,'nom') :
+                body_dict['model'] = body.bulks[0].model.nom
+            bodies_list.append(body_dict)
+        
+        # contact 
+        contact_laws_list = [{
+            'name' :   law.nom,
+            'type' :   law.law,
+            'fric' : law.fric
+        } for law in self.contact_laws_objects]
+        
+
+        #table visibilité
+        see_table_list = []
+        for see_table in self.visibilities_table_objects :
+            see_table_dict = {
+                'corpsCandidat' : see_table.CorpsCandidat,
+                'candidat' : see_table.candidat,
+                'candidatColor' : see_table.colorCandidat,
+                'corpsAntagoniste' :see_table.CorpsAntagoniste,
+                'antagoniste' : see_table.antagoniste,
+                'antagonistColor' : see_table.colorAntagoniste ,
+                'contact name' : see_table.behav,
+                'distance' : see_table.alert         
+        }
+            see_table_list.append(see_table_dict)         
+        return {
+            'materials' : materials_list,
+            'models' : models_list,
+            'bodies' : bodies_list,
+            'contact_law' : contact_laws_list,
+            'visibility_table' : see_table_dict,
+        }
 
     def create_material(self):
         try : 
@@ -361,7 +430,6 @@ class LMGCUniversalGUI(QMainWindow):
             self.update_model_tree()
             self.update_selections()
             QMessageBox.information(self,"Succès",f"Matériau créer")
-            print(self.materials)
         except Exception as e: 
             QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du matériau : {str(e)}")
     def update_model_tree(self):
@@ -429,7 +497,6 @@ class LMGCUniversalGUI(QMainWindow):
                 x = float(text[0])
                 y = float(text[1])
                 self.center = [x,y]
-                print(self.center)
 
                 body = pre.rigidDisk(
                     r=float(self.avatar_radius.text()),
@@ -474,6 +541,7 @@ class LMGCUniversalGUI(QMainWindow):
                                       behav=self.contact_laws_objects[self.behav.currentIndex()],
                                       alert=self.vis_alert.text())
             self.visibilities_table.addSeeTable(see_table)
+            self.visibilities_table_objects.append(see_table)
             QMessageBox.information(self,"Succès",f"table de visibilté crée!")
         except Exception as e:
             QMessageBox.critical(self,"Erreur",f"erreur lors de la création de la table de visibilité :  {str(e)}")
@@ -512,7 +580,6 @@ class LMGCUniversalGUI(QMainWindow):
                 f.write("\n# Avatars / Bodies\n")
                 for body in self.bodies_objects:
                     f.write(f"body=pre.rigidDisk(r={body.bulks[0].avrd}, center={self.center}, model=mod, material=mat, color='{body.contactors[0].color}')")
-                    print(body.nodes[1].coor)
                     f.write("\n")                
                     f.write("bodies.addAvatar(body)\n")
                 
