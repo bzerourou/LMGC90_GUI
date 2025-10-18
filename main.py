@@ -352,7 +352,75 @@ class LMGCUniversalGUI(QMainWindow):
         sys.exit()
 
     def _deserialize_state(self, state ) : 
-        print("ici c'est la deserialisation ")
+        try : 
+            self._initializing = True
+            #matériau
+            # pour LMGC90
+            self.materials = pre.materials()
+            for mat_dict in state.get('materials', []) :
+                mat = pre.material(
+                    name = mat_dict['name'],
+                    materialType=mat_dict['type'],
+                    density = mat_dict['density']
+                )
+                self.materials.addMaterial(mat)
+                self.material_objects.append(mat)
+
+            #pour l'interface
+            self.mat_name.setText(mat_dict['name'])
+            #self.mat_type.setCurrentText(mat_dict['type'])
+            self.mat_density.setText(str(mat_dict['density']))
+            #modèle
+            #pour LMGC90
+            self.models = pre.models()
+            for mod_dict in state.get('models', []) :
+                mod = pre.model(
+                    name = mod_dict['name'],
+                    physics=mod_dict['physics'],
+                    element = mod_dict['element'],
+                    dimension= mod_dict['dimension'] 
+
+                )
+                self.models.addModel(mod)
+                self.model_objects.append(mod)
+                
+            #pour l'interface
+            self.model_name.setText(mod_dict['name'])
+            #self.model_physics.addItem(mod['physics'])
+            self.model_element.setText(mod_dict['element'])
+            #self.model_dimension.setText(str(mat_dict['density']))
+            self.model_options.setText((mod_dict['options']))
+
+            #avatar
+            #pour LMGC90
+            self.bodies = pre.avatars()
+            for body_dict in state.get('bodies', []) :
+                body = pre.rigidDisk(
+                    r = body_dict['r'],
+                    center=body_dict['coor'],
+                    model = mod,
+                    material= mat,
+                    color= body_dict['color']
+                )
+                #print(body_dict['coor'])
+                self.bodies.addAvatar(body)
+                self.bodies_objects.append(body)
+                self.avatar_material.addItem(body_dict['material'])
+                self.avatar_model.addItem(body_dict['model'])
+                self.update_selections()
+            #pour l'interface    
+            self.avatar_radius.setText(str(body_dict['r']))
+            self.avatar_center.setText(str(body_dict['coor']))
+            self.avatar_color.setText(body_dict['color'])
+            
+            #loi de contact 
+
+            # table de visibilité 
+
+            QMessageBox.information(self, 'Succès', 'chargement du fichier json réussi')
+        except Exception as e : 
+            QMessageBox.critical(self, 'Erreur', f'Erreur lors du chargement du fichier json : {str(e)}')
+
     def _serialize_state(self):
         #matériau
         materials_list =[]
@@ -370,7 +438,7 @@ class LMGCUniversalGUI(QMainWindow):
                         'physics': mod.physics, 
                         'element': mod.element, 
                         'dimension': mod.dimension, 
-                        'options': mod.options if hasattr(mod, 'options') else {}
+                        'options': mod.options if hasattr(mod, 'options') else ""
                         } for mod in self.model_objects]
         #avatar
         bodies_list = []
@@ -382,6 +450,9 @@ class LMGCUniversalGUI(QMainWindow):
             }
             if hasattr(body.contactors[0], 'byrd') :
                 body_dict['r'] = body.contactors[0].byrd
+            if hasattr(body.contactors[0], 'shift') :
+                body_dict['coor'] = self.center
+
             if hasattr(body.bulks[0].material, 'nom') :
                 body_dict['material'] = body.bulks[0].material.nom
             if hasattr(body.bulks[0].model,'nom') :
