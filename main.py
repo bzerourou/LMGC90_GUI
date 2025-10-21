@@ -3,7 +3,7 @@ import sys, os
 import subprocess, json
 import pdb
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QTreeWidgetItem, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -16,6 +16,7 @@ class LMGCUniversalGUI(QMainWindow):
         super().__init__()
         # conteneurs LMGC90
         self.dim = 2
+        self.center = []
         self.bodies = pre.avatars()
         self.bodies_objects = []
         self.materials = pre.materials()
@@ -29,10 +30,11 @@ class LMGCUniversalGUI(QMainWindow):
         self.current_project_dir = None
         self._init_ui()
         self.update_selections()
+        self.update_model_tree()
        
 
     def _init_ui(self):
-        self.setWindowTitle('LMGC90_GUI v0.1')
+        self.setWindowTitle('LMGC90_GUI v0.1.0')
         self.setGeometry(100, 100, 800, 600)
         # Barre de menu 
         menu_bar = QMenuBar(self)
@@ -42,6 +44,8 @@ class LMGCUniversalGUI(QMainWindow):
         file_menu.addAction("Ouvrir Projet").triggered.connect(self.open_project)
         file_menu.addAction("Sauvegarder Projet").triggered.connect(self.save_project)
         file_menu.addAction("Quitter").triggered.connect(self.exit)
+        help_menu = menu_bar.addMenu("Help")
+        help_menu.addAction("A propos").triggered.connect(self.apropos)
         
         # barre d'outils 
         project_toolbar = QToolBar("Actions projet")
@@ -78,7 +82,7 @@ class LMGCUniversalGUI(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
         self.model_tree = QTreeWidget()
         self.model_tree.setHeaderLabels(["Nom/étape", "Type", "Détails"])
-        self.model_tree.setColumnWidth(0, 200)
+        self.model_tree.setColumnWidth(50, 100)
         dock.setWidget(self.model_tree)
        
         #tab des propriétés 
@@ -250,9 +254,7 @@ class LMGCUniversalGUI(QMainWindow):
         render_tabs.addTab(render_tab,"rendu graphique")
 
         #ajuster    
-        splitter.setSizes([300,50])
-
-        
+        splitter.setSizes([300,100])
 
     def new_project(self):
         self.dim = 2
@@ -544,8 +546,46 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.information(self,"Succès",f"Matériau créer")
         except Exception as e: 
             QMessageBox.critical(self,"Erreur", f"Erreur lors de la création du matériau : {str(e)}")
+   
+   
     def update_model_tree(self):
-        print("ici la mise à jour de l'arbre de création")
+        self.model_tree.clear()
+        root = QTreeWidgetItem(self.model_tree, ["Etapes de création du modèle", "",""])
+        root.setExpanded(True)
+        #pour matériau
+        mat_parent = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.materials)} créés"])
+        mat_parent.setData(0, Qt.ItemDataRole.UserRole, 0)
+        for mat in self.material_objects:
+            QTreeWidgetItem(mat_parent, [mat.nom, mat.materialType, str(mat.density)])
+
+        #pour modèle 
+        mod_parent = QTreeWidgetItem(root, ["Modèles", "", f"{len(self.models)} créés"])
+        mod_parent.setData(0, Qt.ItemDataRole.UserRole, 1)
+        for mod in self.model_objects:
+            QTreeWidgetItem(mod_parent, [mod.nom, mod.element, str(mod.dimension)])
+
+        #pour avatar
+        cont_parent = QTreeWidgetItem(root, ["Conteneurs", "", ""])
+        QTreeWidgetItem(cont_parent, ["Materials", "", f"{len(self.materials)} éléments"])
+        QTreeWidgetItem(cont_parent, ["Models", "", f"{len(self.models)} éléments"])
+        bodies_cont = QTreeWidgetItem(cont_parent, ["Avatars/Bodies", "", f"{len(self.bodies)} corps"])
+        bodies_cont.setData(0, Qt.ItemDataRole.UserRole, 2)
+        for body in self.bodies_objects:
+            details = []
+            details.append(f"rayon : {str(body.bulks[0].avrd)}" )
+            QTreeWidgetItem(bodies_cont, ["Corps", ", ".join(details)])
+        
+        #pour les lois
+        contact_parent = QTreeWidgetItem(root, ["Lois de Contact", "", f"{len(self.contact_laws)} créées"])
+        contact_parent.setData(0, Qt.ItemDataRole.UserRole, 3)
+        for law in self.contact_laws_objects:
+            QTreeWidgetItem(contact_parent, [law.nom, law.law])
+        
+        #pour la table de visibilté
+        vis_parent = QTreeWidgetItem(root, ["Tableau de Visibilité", "", f"{len(self.visibilities_table)} règles"])
+        vis_parent.setData(0, Qt.ItemDataRole.UserRole, 4)
+        for see_table in self.visibilities_table_objects:
+            QTreeWidgetItem(vis_parent, [f"detection", "Règle", f"Interaction: "])
 
     def create_model(self):
         try : 
@@ -752,6 +792,9 @@ class LMGCUniversalGUI(QMainWindow):
                 QMessageBox.information(self, "Succès", f"script exécuté (aucune sortie)")    
         except Exception as e : 
             QMessageBox.critical(self, "Erreur", f"Erreur inattendue : {str(e)}")
+
+    def apropos(self):
+        QMessageBox.information(self,"A propos", "LMGC90_GUI v0.1.0 developpé par B.Zerourou, email : bachir.zerourou@yahoo.fr")
 
 if __name__ == "__main__" :
     app = QApplication (sys.argv)
