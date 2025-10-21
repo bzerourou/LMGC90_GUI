@@ -410,13 +410,54 @@ class LMGCUniversalGUI(QMainWindow):
                 self.update_selections()
             #pour l'interface    
             self.avatar_radius.setText(str(body_dict['r']))
-            self.avatar_center.setText(str(body_dict['coor']))
+            self.avatar_center.setText(str(body_dict['coor']).replace('[','').replace(']',''))
             self.avatar_color.setText(body_dict['color'])
             
             #loi de contact 
+            #pour LMGC90
+            self.contact_laws = pre.tact_behavs()
+            for law_dict in state.get('contact_law', []) :
+                law= pre.tact_behav(
+                    name= law_dict['name'],
+                    law = law_dict['type'],
+                    fric = law_dict['fric']
+                )
+                self.contact_laws.addBehav(law)
+                self.contact_laws_objects.append(law)
+                    
+            #pour l'interface
+            self.contact_name.setText(law_dict['name'])
+            self.contact_properties.setText(str(law_dict['fric']))
 
             # table de visibilité 
+            #pour LMGC90
+            self.visibilities_table = pre.see_tables()
+            for see_table_dict in state.get('visibility_table', []) :
+                see_table = pre.see_table(
+                    CorpsCandidat=  see_table_dict['corpsCandidat'],
+                    #print(see_table_dict['corpsCandidat'])
+                    candidat=  see_table_dict['candidat'],
+                    #print(see_table_dict['candidat'])
+                    colorCandidat= see_table_dict['candidatColor'],
+                    #print(see_table_dict['candidatColor'])
+                    CorpsAntagoniste=  see_table_dict['corpsAntagoniste'],
+                    #print(see_table_dict['corpsAntagoniste'])
+                    antagoniste=  see_table_dict['antagoniste'],
+                    #print(see_table_dict['antagoniste'])
+                    colorAntagoniste= see_table_dict['antagonisteColor'],
+                    #print(see_table_dict['antagonisteColor'])
+                    behav= law,
+                    alert= see_table_dict['distance']
 
+                )
+                self.visibilities_table.addSeeTable(see_table)
+                self.visibilities_table_objects.append(see_table)
+                self.behav.addItem(see_table_dict['contact_name'])
+                self.update_selections()
+
+            #pour l'interface
+            #self.
+            
             QMessageBox.information(self, 'Succès', 'chargement du fichier json réussi')
         except Exception as e : 
             QMessageBox.critical(self, 'Erreur', f'Erreur lors du chargement du fichier json : {str(e)}')
@@ -476,8 +517,8 @@ class LMGCUniversalGUI(QMainWindow):
                 'candidatColor' : see_table.colorCandidat,
                 'corpsAntagoniste' :see_table.CorpsAntagoniste,
                 'antagoniste' : see_table.antagoniste,
-                'antagonistColor' : see_table.colorAntagoniste ,
-                'contact name' : see_table.behav,
+                'antagonisteColor' : see_table.colorAntagoniste ,
+                'contact_name' : see_table.behav,
                 'distance' : see_table.alert         
         }
             see_table_list.append(see_table_dict)         
@@ -486,7 +527,7 @@ class LMGCUniversalGUI(QMainWindow):
             'models' : models_list,
             'bodies' : bodies_list,
             'contact_law' : contact_laws_list,
-            'visibility_table' : see_table_dict,
+            'visibility_table' : see_table_list,
         }
 
     def create_material(self):
