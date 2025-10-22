@@ -249,7 +249,9 @@ class LMGCUniversalGUI(QMainWindow):
         vis_btn.clicked.connect(self.try_lmgc_visualization)
         render_layout.addWidget(vis_btn)
         paraview_btn = QPushButton("exporter vers Paraview")
+        paraview_btn.clicked.connect(self.open_paraview)
         render_layout.addWidget(paraview_btn)
+
         render_tab.setLayout(render_layout)
         render_tabs.addTab(render_tab,"rendu graphique")
 
@@ -367,7 +369,7 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.materials.addMaterial(mat)
                 self.material_objects.append(mat)
-
+                print(self.materials)
             #pour l'interface
             self.mat_name.setText(mat_dict['name'])
             #self.mat_type.setCurrentText(mat_dict['type'])
@@ -385,7 +387,7 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.models.addModel(mod)
                 self.model_objects.append(mod)
-                
+                print(self.models)
             #pour l'interface
             self.model_name.setText(mod_dict['name'])
             #self.model_physics.addItem(mod['physics'])
@@ -410,6 +412,7 @@ class LMGCUniversalGUI(QMainWindow):
                 self.avatar_material.addItem(body_dict['material'])
                 self.avatar_model.addItem(body_dict['model'])
                 self.update_selections()
+                print(self.bodies)
             #pour l'interface    
             self.avatar_radius.setText(str(body_dict['r']))
             self.avatar_center.setText(str(body_dict['coor']).replace('[','').replace(']',''))
@@ -426,7 +429,7 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.contact_laws.addBehav(law)
                 self.contact_laws_objects.append(law)
-                    
+                print(self.contact_laws) 
             #pour l'interface
             self.contact_name.setText(law_dict['name'])
             self.contact_properties.setText(str(law_dict['fric']))
@@ -456,7 +459,7 @@ class LMGCUniversalGUI(QMainWindow):
                 self.visibilities_table_objects.append(see_table)
                 self.behav.addItem(see_table_dict['contact_name'])
                 self.update_selections()
-
+                print(self.visibilities_table)
             #pour l'interface
             #self.
             
@@ -706,7 +709,8 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.critical(self,"Erreur",f"erreur lors de la visualisation :  {str(e)}")
     def generate_python_script(self):
         try:
-            self.script_path = os.path.join(self.current_project_dir or ".", "sample_gen.py")
+           
+            self.script_path = os.path.join(os.path.dirname(self.current_project_dir) or ".", "sample_gen.py")
             with open(self.script_path, 'w', encoding="utf-8") as f:
                 f.write("from pylmgc90 import pre\nimport os\n\n")
                 f.write("# Conteneurs\n")
@@ -793,6 +797,20 @@ class LMGCUniversalGUI(QMainWindow):
         except Exception as e : 
             QMessageBox.critical(self, "Erreur", f"Erreur inattendue : {str(e)}")
 
+    def open_paraview(self):
+        try:
+            datbox_path = 'DISPLAY/' if self.current_project_dir is None else os.path.join(self.current_project_dir, 'DISPLAY/')
+            if not os.path.exists(datbox_path):
+                QMessageBox.warning(self, "Erreur", f"Pas de fichiers de sortie pour affichage !")
+            import subprocess
+            pvd_file = os.path.join(datbox_path, 'DISPLAY/rigids.pvd')
+            if os.path.exists(pvd_file):
+                subprocess.run(['paraview', pvd_file])
+                QMessageBox.information(self, "Succès", "Paraview lancé.")
+            else:
+                QMessageBox.warning(self, "Avertissement", f"Fichier {pvd_file} non trouvé. Générez DISPLAY d'abord.")
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Erreur lors du lancement de Paraview : {str(e)}")
     def apropos(self):
         QMessageBox.information(self,"A propos", "LMGC90_GUI v0.1.0 developpé par B.Zerourou, email : bachir.zerourou@yahoo.fr")
 
