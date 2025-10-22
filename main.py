@@ -369,7 +369,6 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.materials.addMaterial(mat)
                 self.material_objects.append(mat)
-                print(self.materials)
             #pour l'interface
             self.mat_name.setText(mat_dict['name'])
             #self.mat_type.setCurrentText(mat_dict['type'])
@@ -387,7 +386,6 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.models.addModel(mod)
                 self.model_objects.append(mod)
-                print(self.models)
             #pour l'interface
             self.model_name.setText(mod_dict['name'])
             #self.model_physics.addItem(mod['physics'])
@@ -412,7 +410,6 @@ class LMGCUniversalGUI(QMainWindow):
                 self.avatar_material.addItem(body_dict['material'])
                 self.avatar_model.addItem(body_dict['model'])
                 self.update_selections()
-                print(self.bodies)
             #pour l'interface    
             self.avatar_radius.setText(str(body_dict['r']))
             self.avatar_center.setText(str(body_dict['coor']).replace('[','').replace(']',''))
@@ -429,7 +426,6 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.contact_laws.addBehav(law)
                 self.contact_laws_objects.append(law)
-                print(self.contact_laws) 
             #pour l'interface
             self.contact_name.setText(law_dict['name'])
             self.contact_properties.setText(str(law_dict['fric']))
@@ -459,7 +455,6 @@ class LMGCUniversalGUI(QMainWindow):
                 self.visibilities_table_objects.append(see_table)
                 self.behav.addItem(see_table_dict['contact_name'])
                 self.update_selections()
-                print(self.visibilities_table)
             #pour l'interface
             #self.
             
