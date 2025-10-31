@@ -39,6 +39,7 @@ class LMGCUniversalGUI(QMainWindow):
 
         self.operations = []
         self.current_project_dir = None
+        self.script_path = None
         self._init_ui()
         self.update_selections()
         self.update_model_tree()
