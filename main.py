@@ -771,6 +771,15 @@ class LMGCUniversalGUI(QMainWindow):
 
     def create_avatar(self):
         try : 
+
+            # --- Vérification préalable ---
+            if not self.material_objects:
+                QMessageBox.critical(self, "Erreur", "Veuillez d'abord créer au moins un matériau.")
+                return
+            if not self.model_objects:
+                QMessageBox.critical(self, "Erreur", "Veuillez d'abord créer au moins un modèle.")
+                return
+            
             import numpy as np
             properties = eval("dict(" + self.avatar_properties.text() + ")") if self.avatar_properties.text() else {}
             avatar_type = self.avatar_type.currentText()
@@ -817,6 +826,11 @@ class LMGCUniversalGUI(QMainWindow):
     
     def dof_force (self):
         try :
+
+            # --- Vérification préalable ---
+            if not self.bodies_objects:
+                QMessageBox.critical(self, "Erreur", "Veuillez d'abord créer au moins un avatar.")
+                return
             type_ = self.dof_avatar_force.currentText()
             body_index = self.dof_avatar_name.currentIndex()
             selected_body = self.bodies_objects[body_index]
@@ -883,8 +897,18 @@ class LMGCUniversalGUI(QMainWindow):
     
     def generate_python_script(self):
         try:
-           
-            self.script_path = os.path.join(os.path.dirname(self.current_project_dir) or ".", "sample_gen.py")
+            # --- Déterminer où écrire le script ---
+            if self.current_project_dir and os.path.isdir(self.current_project_dir):
+                base_dir = self.current_project_dir
+            else:
+                base_dir = os.getcwd()  # répertoire courant
+                QMessageBox.information(
+                    self, "Info",
+                    f"Projet vide → script généré dans le répertoire courant :\n{base_dir}"
+                )
+
+            self.script_path = os.path.join(base_dir, "sample_gen.py")
+
             with open(self.script_path, 'w', encoding="utf-8") as f:
                 f.write("from pylmgc90 import pre\nimport os\n")
                 f.write("import math\n")
@@ -943,10 +967,7 @@ class LMGCUniversalGUI(QMainWindow):
                     f.write(f"rule = pre.see_table(CorpsCandidat='{vis_d['corpsCandidat']}', candidat='{vis_d['candidat']}', colorCandidat='{vis_d['candidatColor']}', CorpsAntagoniste='{vis_d['corpsAntagoniste']}', antagoniste='{vis_d['antagoniste']}', colorAntagoniste='{vis_d['antagonisteColor']}', behav=laws['{vis_d['contact_name']}'], alert={vis_d['distance']})\n")
                     f.write("svs.addSeeTable(rule)\n")
                
-                
-                
                 f.write("\n\n")
-
                 f.write("post = pre.postpro_commands()")
 
                 f.write(f"\npre.writeDatbox(dim , materials, models, bodies, tacts, svs, post=post)\n")
