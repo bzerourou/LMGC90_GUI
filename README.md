@@ -5,5 +5,5 @@ This application is a PyQt6 graphical interface intended for those who want to d
 
 version 0.1.0 is only a feasibility study, it will be completely rewritten in the future.
 
-In this first version, you can create materials, models, **rigidDisk  avatars, and contact laws of the 'IQS_CLB' type with the coefficient of friction.
+In this first version, you can create materials, models, **rigidDisk**  avatars, and contact laws of the __'IQS_CLB'__ type with the coefficient of friction.
 
