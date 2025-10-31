@@ -2,6 +2,7 @@
 import sys, os
 import subprocess, json
 import pdb
+import math
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget, QTreeWidget, QTreeWidgetItem, QSplitter, QTabWidget, QLineEdit, QComboBox, QLabel
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget, QVBoxLayout
@@ -19,14 +20,24 @@ class LMGCUniversalGUI(QMainWindow):
         self.center = []
         self.bodies = pre.avatars()
         self.bodies_objects = []
+        self.avatar_creations= []
         self.materials = pre.materials()
         self.material_objects = []  # Liste pour objets pre.material
+        self.material_creations =[]
         self.models = pre.models()
         self.model_objects = []  # Liste pour objets pre.model
+        self.model_creations = []
         self.contact_laws = pre.tact_behavs()
         self.contact_laws_objects =[]
+        self.contact_creations = []
         self.visibilities_table = pre.see_tables()
         self.visibilities_table_objects = []
+        self.visibility_creations = []
+        self.mats_dict = {}      # {nom: objet material}
+        self.mods_dict = {}      # {nom: objet model}
+        self.bodies_list = []    # [body1, body2, ...] dans l'ordre
+
+        self.operations = []
         self.current_project_dir = None
         self._init_ui()
         self.update_selections()
@@ -178,6 +189,33 @@ class LMGCUniversalGUI(QMainWindow):
         avatar_layout.addWidget(create_avatar_btn)
         avatar_tab.setLayout(avatar_layout)
         self.tabs.addTab(avatar_tab, "Avatar")
+        
+        #avatar DOF tabs
+        dof_tab = QWidget()
+        dof_layout = QVBoxLayout()
+        self.dof_avatar_name_label = QLabel("nom d'avatar :")
+        self.dof_avatar_name = QComboBox()
+        self.dof_avatar_force_label = QLabel("type de conditions :")
+        self.dof_avatar_force = QComboBox()
+        self.dof_avatar_force.addItems(["rotate", "translate", "imposeDrivenDof", "imposeInitDof"])
+        self.dof_options_label = QLabel("Options :  coordonées de translation (exemple dx= , dy =) oubien paramètres de rotation (psi = , center = ) ")
+        self.dof_options = QLineEdit("dx = 0.0,  dy = 0.0")
+        #self.dof_rotation_label = QLabel("type de rotattion exemple angle d'Euler  : (psi = , center = ) ou bien (description = 'axis', alpha=, axis =, center = )")
+        #self.dof_rotation = QLineEdit("psi = -math.pi/2, center = body.nodes[1].coor")
+        dof_layout.addWidget(self.dof_avatar_name_label)
+        dof_layout.addWidget(self.dof_avatar_name)
+        dof_layout.addWidget(self.dof_avatar_force_label)
+        dof_layout.addWidget(self.dof_avatar_force)
+        dof_layout.addWidget(self.dof_options_label)
+        dof_layout.addWidget(self.dof_options)
+        #dof_layout.addWidget(self.dof_rotation_label)
+        #dof_layout.addWidget(self.dof_rotation)
+        create_dof_button = QPushButton("appliquer")
+        create_dof_button.clicked.connect(self.dof_force)
+        dof_layout.addWidget(create_dof_button)
+        dof_tab.setLayout(dof_layout)
+        self.tabs.addTab(dof_tab,"DOF d'un avatar")
+        
         #contact law tab
         contact_tab = QWidget()
         contact_layout = QVBoxLayout()
@@ -264,13 +302,20 @@ class LMGCUniversalGUI(QMainWindow):
          # conteneurs LMGC90
         self.bodies = pre.avatars()
         self.bodies_objects = []
+        self.avatar_creations = []
         self.materials = pre.materials()
         self.material_objects = []
+        self.material_creations = []
         self.models = pre.models()
         self.model_objects =[]
+        self.model_creations = []
         self.contact_laws = pre.tact_behavs()
         self.contact_laws_objects = []
+        self.contact_creations = []
         self.visibilities_table = pre.see_tables()
+        self.visibilities_table_objects = []
+        self.visibility_creations = []
+        self.dof_options = []
         #matériau
         self.mat_name.setText("TDURx")
         self.mat_type.setCurrentText("RIGID")
@@ -323,12 +368,13 @@ class LMGCUniversalGUI(QMainWindow):
                         state = json.load(f)
                     self._deserialize_state(state)
                     self.update_model_tree()
+                    self.update_selections()
                     QMessageBox.information(self, "Succès", f"Projet ouvert depuis {dir_path}")
                 except Exception as e : 
                     QMessageBox.critical(self, "Erreur ", f" Erreur lors du chargement : {str(e)} ")
             else :
                 QMessageBox.critical(self, "Erreur ", f"Aucun fichier project.json trouvé")
-    
+                
     def save_project(self):
         if self.current_project_dir is None:
             self.save_as_project()
@@ -361,6 +407,8 @@ class LMGCUniversalGUI(QMainWindow):
             #matériau
             # pour LMGC90
             self.materials = pre.materials()
+            self.material_objects = []
+            self.material_creations = []
             for mat_dict in state.get('materials', []) :
                 mat = pre.material(
                     name = mat_dict['name'],
@@ -369,6 +417,7 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.materials.addMaterial(mat)
                 self.material_objects.append(mat)
+                self.material_creations.append(mat_dict)
             #pour l'interface
             self.mat_name.setText(mat_dict['name'])
             #self.mat_type.setCurrentText(mat_dict['type'])
@@ -376,6 +425,8 @@ class LMGCUniversalGUI(QMainWindow):
             #modèle
             #pour LMGC90
             self.models = pre.models()
+            self.model_objects = []
+            self.model_creations = []
             for mod_dict in state.get('models', []) :
                 mod = pre.model(
                     name = mod_dict['name'],
@@ -386,6 +437,7 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.models.addModel(mod)
                 self.model_objects.append(mod)
+                self.model_creations.append(mod_dict)
             #pour l'interface
             self.model_name.setText(mod_dict['name'])
             #self.model_physics.addItem(mod['physics'])
@@ -396,17 +448,28 @@ class LMGCUniversalGUI(QMainWindow):
             #avatar
             #pour LMGC90
             self.bodies = pre.avatars()
+            self.bodies_objects = []
+            self.avatar_creations = []
             for body_dict in state.get('bodies', []) :
-                body = pre.rigidDisk(
-                    r = body_dict['r'],
-                    center=body_dict['coor'],
-                    model = mod,
-                    material= mat,
-                    color= body_dict['color']
+                mat = next((m for m in self.material_objects if m.nom == body_dict['material']), None)
+                mod = next((m for m in self.model_objects if m.nom == body_dict['model']), None)
+                if not mat or not mod:
+                    raise ValueError("Material or model not found for avatar")
+                if body_dict['type'] == "rigidDisk" :
+                    body = pre.rigidDisk(
+                        r = body_dict['r'],
+                        center=body_dict['coor'],
+                        model = mod,
+                        material= mat,
+                        color= body_dict['color']
                 )
+                else :  
+                    raise ValueError(f"Avatar non existant : {body_dict['type']}")
                 #print(body_dict['coor'])
                 self.bodies.addAvatar(body)
                 self.bodies_objects.append(body)
+                self.avatar_creations.append(body_dict)
+
                 self.avatar_material.addItem(body_dict['material'])
                 self.avatar_model.addItem(body_dict['model'])
                 self.update_selections()
@@ -418,6 +481,8 @@ class LMGCUniversalGUI(QMainWindow):
             #loi de contact 
             #pour LMGC90
             self.contact_laws = pre.tact_behavs()
+            self.contact_laws_objects = []
+            self.contact_creations = []
             for law_dict in state.get('contact_law', []) :
                 law= pre.tact_behav(
                     name= law_dict['name'],
@@ -426,6 +491,7 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.contact_laws.addBehav(law)
                 self.contact_laws_objects.append(law)
+                self.contact_creations.append(law_dict)
             #pour l'interface
             self.contact_name.setText(law_dict['name'])
             self.contact_properties.setText(str(law_dict['fric']))
@@ -433,6 +499,8 @@ class LMGCUniversalGUI(QMainWindow):
             # table de visibilité 
             #pour LMGC90
             self.visibilities_table = pre.see_tables()
+            self.visibilities_table_objects = []
+            self.visibility_creations = []
             for see_table_dict in state.get('visibility_table', []) :
                 see_table = pre.see_table(
                     CorpsCandidat=  see_table_dict['corpsCandidat'],
@@ -453,11 +521,26 @@ class LMGCUniversalGUI(QMainWindow):
                 )
                 self.visibilities_table.addSeeTable(see_table)
                 self.visibilities_table_objects.append(see_table)
+                self.visibility_creations.append(see_table_dict)
                 self.behav.addItem(see_table_dict['contact_name'])
-                self.update_selections()
-            #pour l'interface
-            #self.
-            
+                
+            #pour les CL et CI
+            self.operations = state.get('operations', [])
+            for op in self.operations:
+                body = self.bodies_objects[op['body_index']]
+                type_ = op['type']
+                params = op['params']
+                if type_ == 'rotate':
+                    body.rotate(**params)
+                elif type_ == 'translate':
+                    body.translate(**params)
+                elif type_ == 'imposeDrivenDof':
+                    body.imposeDrivenDof(**params)
+                elif type_ == 'imposeInitValue':
+                    body.imposeInitValue(**params)
+                
+            self.update_selections()
+
             QMessageBox.information(self, 'Succès', 'chargement du fichier json réussi')
         except Exception as e : 
             QMessageBox.critical(self, 'Erreur', f'Erreur lors du chargement du fichier json : {str(e)}')
@@ -500,7 +583,7 @@ class LMGCUniversalGUI(QMainWindow):
                 body_dict['model'] = body.bulks[0].model.nom
             bodies_list.append(body_dict)
         
-        # contact 
+       # contact 
         contact_laws_list = [{
             'name' :   law.nom,
             'type' :   law.law,
@@ -522,23 +605,47 @@ class LMGCUniversalGUI(QMainWindow):
                 'distance' : see_table.alert         
         }
             see_table_list.append(see_table_dict)         
+        
+        #CL et CI 
+        operations_list = []
+        for op_table in self.operations : 
+            op_dict = {
+                'body_index' : op_table['body_index'] ,
+                'type' : op_table['type'],
+                'params' : op_table['params'],
+                
+            }
+            operations_list.append(op_dict)
+
+        
         return {
             'materials' : materials_list,
             'models' : models_list,
             'bodies' : bodies_list,
             'contact_law' : contact_laws_list,
             'visibility_table' : see_table_list,
+            'operations' : operations_list, 
         }
 
     def create_material(self):
         try : 
             properties = eval("dict(" + self.mat_properties.text()+")") if self.mat_properties.text() else {}
-            mat = pre.material(name=self.mat_name.text(), 
-                               materialType=self.mat_type.currentText(), 
-                               density = float(self.mat_density.text()), 
+            name = self.mat_name.text()
+            type_ = self.mat_type.currentText()
+            density = float(self.mat_density.text())
+            mat = pre.material(name=name, 
+                               materialType=type_, 
+                               density = density, 
                                **properties)
             self.materials.addMaterial(mat)
             self.material_objects.append(mat)
+            self.material_creations.append({
+                'name': name,
+                'type': type_,
+                'density': density,
+                #'properties': properties
+            })
+            self.mats_dict[name] = mat
             self.update_model_tree()
             self.update_selections()
             QMessageBox.information(self,"Succès",f"Matériau créer")
@@ -588,13 +695,25 @@ class LMGCUniversalGUI(QMainWindow):
     def create_model(self):
         try : 
             properties = eval("dict(" + self.model_options.text() +")") if self.model_options.text() else {}
-            mod = pre.model(name= self.model_name.text(), 
-                            physics=self.model_physics.currentText(),
-                            element=self.model_element.text(),
-                            dimension=int(self.model_dimension.currentText()),
+            name = self.model_name.text()
+            physics = self.model_physics.currentText()
+            element = self.model_element.text()
+            dimension = int(self.model_dimension.currentText())
+            mod = pre.model(name= name, 
+                            physics=physics,
+                            element=element,
+                            dimension=dimension,
                             **properties)
             self.models.addModel(mod)
             self.model_objects.append(mod)
+            self.model_creations.append({
+                'name': name,
+                'physics': physics,
+                'element': element,
+                'dimension': dimension,
+                'properties': properties
+            })
+            self.mods_dict[name] = mod
             self.update_model_tree()
             self.update_selections()
             QMessageBox.information(self,"Succès", f"Création du modèle : ")
@@ -637,33 +756,92 @@ class LMGCUniversalGUI(QMainWindow):
         self.avatar_model.setEnabled(bool(self.model_objects))    
         self.behav.setEnabled(bool(self.contact_laws_objects))
     
+    
+        #pour avatar dof
+        self.dof_avatar_name.clear()
+        if self.bodies_objects :
+            for body in self.bodies_objects :
+                self.dof_avatar_name.addItem(str(body)) 
+            self.dof_avatar_name.setCurrentIndex(0)
+        else : 
+            self.dof_avatar_name.addItem("Aucun avatar disponible")
+            self.dof_avatar_name.setEnabled(False)
+        self.dof_avatar_name.setEnabled(bool(self.bodies_objects))    
+
+
     def create_avatar(self):
         try : 
             import numpy as np
             properties = eval("dict(" + self.avatar_properties.text() + ")") if self.avatar_properties.text() else {}
             avatar_type = self.avatar_type.currentText()
-            if  avatar_type == "rigidDisk":
-                text  = self.avatar_center.text().split(",")
-                x = float(text[0])
-                y = float(text[1])
-                self.center = [x,y]
+            text  = self.avatar_center.text().split(",")
+            mat = self.material_objects[self.avatar_material.currentIndex()]
+            mod= self.model_objects[self.avatar_model.currentIndex()]
+            x = float(text[0])
+            y = float(text[1])
+            self.center = [x,y]
+            color = self.avatar_color.text()
 
+            if  avatar_type == "rigidDisk" and self.dim ==2:
                 body = pre.rigidDisk(
-                    r=float(self.avatar_radius.text()),
+                    r= float(self.avatar_radius.text()),
                     center = self.center ,
-                    material=self.material_objects[self.avatar_material.currentIndex()],
-                    model=self.model_objects[self.avatar_model.currentIndex()],
-                    color=self.avatar_color.text(),
+                    material=mat,
+                    model=mod,
+                    color=color,
                     **properties
                     
                 )
+            else : 
+                raise ValueError(f"Avatar non existant : {avatar_type} ")
             self.bodies.addAvatar(body)
             self.bodies_objects.append(body)
+            self.bodies_list.append(body)
+            self.avatar_creations.append({
+                'type': avatar_type,
+                'r': float(self.avatar_radius.text()),
+                'center': self.center,
+                'material': mat.nom,
+                'model': mod.nom,
+                'color': color,
+                'properties': properties
+            }
+            )
             self.update_model_tree()
+            self.update_selections()
 
             QMessageBox.information(self, "Succès", f" Avatar {avatar_type} créer !")
         except Exception as e :
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la création de l'avatar : {str(e)}")
+        
+    
+    def dof_force (self):
+        try :
+            type_ = self.dof_avatar_force.currentText()
+            body_index = self.dof_avatar_name.currentIndex()
+            selected_body = self.bodies_objects[body_index]
+            params_str = self.dof_options.text()
+            params = eval("dict(" + params_str + ")") if params_str else {}
+           
+            if type_ == 'rotate':
+                selected_body.rotate(**params)
+            elif type_ == 'translate':
+                selected_body.translate(**params)
+            elif type_ == 'imposeDrivenDof':
+                selected_body.imposeDrivenDof(**params)
+            elif type_ == 'imposeInitValue':
+                selected_body.imposeInitValue(**params)
+            else:
+                raise ValueError(f"Unknown DOF type: {type_}")
+            self.operations.append({
+                'body_index': body_index,
+                'type': type_,
+                'params': params,
+            })
+            QMessageBox.information(self, "Succès", f"CL ou CI appliquée")
+        except Exception as e : 
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de l'application de la CL ou CI : {str(e)}")
+
         
     def create_contact_law(self):
         try :   
@@ -702,49 +880,70 @@ class LMGCUniversalGUI(QMainWindow):
             QMessageBox.information(self, "Succès", "Visualisation LMGC90 lancée (fenêtre externe).")
         except Exception as e:
             QMessageBox.critical(self,"Erreur",f"erreur lors de la visualisation :  {str(e)}")
+    
     def generate_python_script(self):
         try:
            
             self.script_path = os.path.join(os.path.dirname(self.current_project_dir) or ".", "sample_gen.py")
             with open(self.script_path, 'w', encoding="utf-8") as f:
-                f.write("from pylmgc90 import pre\nimport os\n\n")
+                f.write("from pylmgc90 import pre\nimport os\n")
+                f.write("import math\n")
                 f.write("# Conteneurs\n")
                 f.write("materials = pre.materials()\n")
                 f.write("models = pre.models()\n")
                 f.write("bodies = pre.avatars()\n")
                 f.write("tacts = pre.tact_behavs()\n")
                 f.write("svs = pre.see_tables()\n\n")   
-                f.write(f"dim = {self.dim}\n")                 
+                f.write(f"dim = {self.dim}\n") 
+                
+                # --- Matériaux ---  
                 f.write("# Matériaux\n")
-
-                for mat in self.material_objects:
-                    f.write(f"mat = pre.material(name='{mat.nom}', materialType = '{mat.materialType}', density={mat.density})")
-                    f.write("\n")
+                f.write("mats = {}\n")
+                for mat_d in self.material_creations:
+                    f.write(f"mat = pre.material(name='{mat_d['name']}', materialType='{mat_d['type']}', density={mat_d['density']})\n")
+                    f.write(f"mats['{mat_d['name']}'] = mat\n")
                     f.write("materials.addMaterial(mat)\n")
+
                 
-                f.write("\n# Modèles\n")
-                for mod in self.model_objects:
-                    f.write(f"mod = pre.model(name='{mod.nom}', physics = '{mod.physics}', element='{mod.element}', dimension={self.dim})")
-                    f.write("\n")
+                # --- modèles ---    
+                f.write("# Modèles\n")
+                f.write("mods = {}\n")
+                for mod_d in self.model_creations:
+                    f.write(f"mod = pre.model(name='{mod_d['name']}', physics='{mod_d['physics']}', element='{mod_d['element']}', dimension={mod_d['dimension']})\n")
+                    f.write(f"mods['{mod_d['name']}'] = mod\n")
                     f.write("models.addModel(mod)\n")
+                f.write("\n")
                 
+                # --- Avatars --- 
                 f.write("\n# Avatars / Bodies\n")
-                for body in self.bodies_objects:
-                    f.write(f"body=pre.rigidDisk(r={body.bulks[0].avrd}, center={self.center}, model=mod, material=mat, color='{body.contactors[0].color}')")
-                    f.write("\n")                
+                f.write("bodies_list = []\n")
+                for av_d in self.avatar_creations:
+                    f.write(f"body = pre.{av_d['type']}(r={av_d['r']}, center={repr(av_d['coor'])}, model=mods['{av_d['model']}'], material=mats['{av_d['material']}'], color='{av_d['color']}')\n")
                     f.write("bodies.addAvatar(body)\n")
-                
+                    f.write("bodies_list.append(body)\n")
+                f.write("\n")
+                # --- Conditions aux limites ---
+                f.write("\n# Boundary Conditions\n")
+                for op in self.operations:
+                    i = op['body_index']
+                    params_str = ", ".join(f"{k} = {repr(v)}" for k,v in op['params'].items())
+                    f.write(f"bodies_list[{i}].{op['type']}({params_str})\n")
+
+                # --- Lois de contact ---
                 f.write("\n# Lois de Contact\n")
-                for law in self.contact_laws_objects:
-                    f.write(f"law = pre.tact_behav(name='{law.nom}', law='{law.law}', fric={law.fric})")
-                    f.write("\n")                    
+                f.write("laws = {}\n")
+                for law_d in self.contact_creations:
+                    f.write(f"law = pre.tact_behav(name='{law_d['name']}', law='{law_d['type']}', fric = {repr(law_d['fric'])})\n")
+                    f.write(f"laws['{law_d['name']}'] = law\n")
                     f.write("tacts.addBehav(law)\n")
-                
+
+                # --- Visibilité ---
                 f.write("\n# Tableau de Visibilité\n")
-                for rule in self.visibilities_table:
-                    f.write(f"rule = pre.see_table(CorpsCandidat='{rule.CorpsCandidat}', candidat='{rule.candidat}', colorCandidat='{rule.colorCandidat}',CorpsAntagoniste='{rule.CorpsAntagoniste}', antagoniste='{rule.antagoniste}', colorAntagoniste='{rule.colorAntagoniste}', behav=law, alert={rule.alert})")
-                    f.write("\n")                    
-                    f.write("svs.addSeeTable(rule)")
+                for vis_d in self.visibility_creations:
+                    f.write(f"rule = pre.see_table(CorpsCandidat='{vis_d['corpsCandidat']}', candidat='{vis_d['candidat']}', colorCandidat='{vis_d['candidatColor']}', CorpsAntagoniste='{vis_d['corpsAntagoniste']}', antagoniste='{vis_d['antagoniste']}', colorAntagoniste='{vis_d['antagonisteColor']}', behav=laws['{vis_d['contact_name']}'], alert={vis_d['distance']})\n")
+                    f.write("svs.addSeeTable(rule)\n")
+               
+                
                 
                 f.write("\n\n")
 
@@ -755,6 +954,14 @@ class LMGCUniversalGUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self,"Erreur",f"erreur lors de la génération du script: {str(e)}")
         
+   
+    def _get_creation_props(self, obj, creation_list, key, value):
+        for item in creation_list:
+            if item.get(key) == (value if key != 'name' else getattr(obj, 'nom', None)):
+                props = item.get('properties', {})
+                return {k: v for k, v in props.items() if v is not None}
+        return {}
+   
     def execute_python_script(self):
         try : 
             #chemin par défaut
