@@ -1,9 +1,13 @@
 Graphical User Interface for LMGC90 with PyQt6.
 
 
-This application is a PyQt6 graphical interface intended for those who want to develop numerical models with  LMGC90 DEM code.
+This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with LMGC90 DEM code.
 
-version 0.1.0 is only a feasibility study, it will be completely rewritten in the future.
+version 0.1.0 is only for feasibility study, it will be completely rewritten in the future.
 
-In this first version, you can create materials, models, **rigidDisk**  avatars, and contact laws of the __'IQS_CLB'__ type with the coefficient of friction.
+In this first version,it is completely independant of the pylmgc90 library routines, you can create materials, models, **rigidDisk**  avatars,  and Coulomb friction contact laws with  __'IQS_CLB'__ type. 
+You can also apply boundary conditions for this avatars with **translate**, **rotate** and **imposeDrivenDof** functions.
+
+the interface can save and open project with json formated file, and can generate and execute model script.
+
 
