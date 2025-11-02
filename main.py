@@ -56,7 +56,7 @@ class LMGC90GUI(QMainWindow):
         self.script_path = None
 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.1 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.2 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -107,7 +107,7 @@ class LMGC90GUI(QMainWindow):
             ("Propriétés (ex: young=1e9) :", self.mat_props)
         ]:
             ml.addWidget(QLabel(label)); ml.addWidget(widget)
-        btn = QPushButton("Créer Matériau"); btn.clicked.connect(lambda: self.create_material()); ml.addWidget(btn)
+        btn = QPushButton("Créer matériau"); btn.clicked.connect(lambda: self.create_material()); ml.addWidget(btn)
         mat_tab.setLayout(ml); tabs.addTab(mat_tab, "Matériau")
 
         # --- Modèle ---
@@ -123,7 +123,7 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Opts:"), self.model_options,
                   ]:
             mml.addWidget(w)
-        create_mod_btn = QPushButton("Créer")
+        create_mod_btn = QPushButton("Créer modèle")
         create_mod_btn.clicked.connect(self.create_model)
         mml.addWidget(create_mod_btn)
         mod_tab.setLayout(mml)
@@ -149,7 +149,7 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Props:"), self.avatar_properties,
                   ]:
             al.addWidget(w)
-        create_av_btn = QPushButton("Créer")
+        create_av_btn = QPushButton("Créer avatar")
         create_av_btn.clicked.connect(self.create_avatar)
         al.addWidget(create_av_btn)
         av_tab.setLayout(al)
@@ -169,7 +169,7 @@ class LMGC90GUI(QMainWindow):
         dof_tab = QWidget()
         dl = QVBoxLayout()
         self.dof_avatar_name = QComboBox()
-        self.dof_avatar_force = QComboBox(); self.dof_avatar_force.addItems(["translate", "rotate", "imposeDrivenDof"])
+        self.dof_avatar_force = QComboBox(); self.dof_avatar_force.addItems(["translate", "rotate", "imposeDrivenDof", "imposeInitValue"])
         self.dof_options = QLineEdit("dx=0.0, dy=2.0")
         
         self.dof_avatar_force.currentTextChanged.connect(self.update_dof_options)
@@ -195,7 +195,7 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Props:"), self.contact_properties,
                   ]:
             cl.addWidget(w)
-        create_law_btn = QPushButton("Créer")
+        create_law_btn = QPushButton("Créer loi")
         create_law_btn.clicked.connect(lambda : self.create_contact_law())
         cl.addWidget(create_law_btn)
         contact_tab.setLayout(cl)
@@ -217,7 +217,7 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Loi:"), self.behav, QLabel("Alerte:"), self.vis_alert,
                   ]:
             vl.addWidget(w)
-        create_visi_btn = QPushButton("Ajouter")
+        create_visi_btn = QPushButton("Ajouter table de visibilité")
         create_visi_btn.clicked.connect(self.add_visibility_rule)
         vl.addWidget(create_visi_btn)
         vis_tab.setLayout(vl)
@@ -228,7 +228,7 @@ class LMGC90GUI(QMainWindow):
         splitter.addWidget(render_tabs)
         render_tab = QWidget()
         rl = QVBoxLayout()
-        lmgc_vis_btn = QPushButton("LMGC Visu")
+        lmgc_vis_btn = QPushButton("LMGC visualisation")
         lmgc_vis_btn.clicked.connect(self.visu_lmgc)
         rl.addWidget(lmgc_vis_btn)
         paraview_btn = QPushButton("ParaView")
@@ -306,8 +306,9 @@ class LMGC90GUI(QMainWindow):
     def update_dof_options(self, action) :
         forces = {
             "translate" : "dx=0.0 , dy=2.0",
-            "rotate" : "psi=-math.pi/2.0, center=[0.0, 0.0]",
-            "imposeDrivenDof" : "component=[1,2,3], dofty='vlocy'"
+            "rotate" : "psi=3.14159265/2.0, center=[0.0, 0.0]",
+            "imposeDrivenDof" : "component=[1,2,3], dofty='vlocy'",
+            "imposeInitValue" : "component= 1, value= 3.0"
         }
         self.dof_options.setText(forces.get(action, "dx=0.0, dy=2.0"))
         
@@ -683,7 +684,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.1\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.2\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
