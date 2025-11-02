@@ -15,3 +15,9 @@ You can also apply boundary conditions for this avatars with **translate**, **ro
 the interface can save and open project with json formated file, and can generate and execute model script.
 
 [Intro LMGC90_GUI](https://www.youtube.com/watch?v=Rn-ewPCuRuw)
+
+List of version : 
+-  0.1.0  : first version with `rigidDisk` avatar; 
+-  0.1.1  : add `rigidJonc` avatar;
+-  0.1.2 : add DOF function `imposeDrivenValue`;
+-  0.1.3 : add `rigidPolygon` avatar;
