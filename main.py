@@ -19,6 +19,8 @@ class LMGC90GUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.dim = 2
+        # Drapeau pour contrôler l'initialisation
+        self._initializing = True
         self._init_containers()
         self._init_ui()
         self.update_selections()
@@ -54,7 +56,7 @@ class LMGC90GUI(QMainWindow):
         self.script_path = None
 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.0 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.1 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -130,15 +132,19 @@ class LMGC90GUI(QMainWindow):
         # --- Avatar ---
         av_tab = QWidget()
         al = QVBoxLayout()
-        self.avatar_type = QComboBox(); self.avatar_type.addItems(["rigidDisk"])
-        self.avatar_radius = QLineEdit("0.1")
-        self.avatar_center = QLineEdit("0.0,0.0")
+        self.avatar_types_2d = ["rigidDisk", "rigidJonc"]
+        self.avatar_types_3d = ["rigidSphere"]
+        self.avatar_type = QComboBox()
+        self.avatar_radius_label = QLabel("Rayon");self.avatar_radius = QLineEdit("0.1")
+        self.avatar_axis_label = QLabel("Axes :");self.avatar_axis = QLineEdit(("axe1 = 2.0, axe2 = 0.05"))
+        self.avatar_center_label = QLabel("Centre:");self.avatar_center = QLineEdit("0.0,0.0")
         self.avatar_material = QComboBox()
         self.avatar_model = QComboBox()
         self.avatar_color = QLineEdit("BLUEx")
+
         self.avatar_properties = QLineEdit("")
-        for w in [QLabel("Type:"), self.avatar_type, QLabel("Rayon:"), self.avatar_radius,
-                  QLabel("Centre:"), self.avatar_center, QLabel("Mat:"), self.avatar_material,
+        for w in [QLabel("Type:"), self.avatar_type, self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis,
+                  self.avatar_center_label, self.avatar_center, QLabel("Mat:"), self.avatar_material,
                   QLabel("Mod:"), self.avatar_model, QLabel("Couleur:"), self.avatar_color,
                   QLabel("Props:"), self.avatar_properties,
                   ]:
@@ -149,12 +155,24 @@ class LMGC90GUI(QMainWindow):
         av_tab.setLayout(al)
         tabs.addTab(av_tab, "Avatar")
 
+        # Connecter le signal après la création des widgets, en bloquant les signaux
+        self.avatar_type.blockSignals(True)
+        self.update_avatar_types(self.model_dimension.currentText())
+        self.avatar_type.blockSignals(False)
+        self.avatar_type.currentTextChanged.connect(self.update_avatar_fields)
+
+        # Terminer l'initialisation
+        self._initializing = False
+        self.update_avatar_fields(self.avatar_type.currentText())
+
         # --- DOF ---
         dof_tab = QWidget()
         dl = QVBoxLayout()
         self.dof_avatar_name = QComboBox()
         self.dof_avatar_force = QComboBox(); self.dof_avatar_force.addItems(["translate", "rotate", "imposeDrivenDof"])
-        self.dof_options = QLineEdit("dx=1.0, dy=0.0")
+        self.dof_options = QLineEdit("dx=0.0, dy=2.0")
+        
+        self.dof_avatar_force.currentTextChanged.connect(self.update_dof_options)
         for w in [QLabel("Avatar:"), self.dof_avatar_name, QLabel("Action:"), self.dof_avatar_force,
                   QLabel("Params:"), self.dof_options,
                   ]:
@@ -164,6 +182,8 @@ class LMGC90GUI(QMainWindow):
         dl.addWidget(dof_btn)
         dof_tab.setLayout(dl)
         tabs.addTab(dof_tab, "DOF")
+        #initialisation du texte 
+        self.update_dof_options(self.dof_avatar_force.currentText())
 
         # --- Contact ---
         contact_tab = QWidget()
@@ -235,6 +255,62 @@ class LMGC90GUI(QMainWindow):
     def _add_to_tree(self, parent, name, type_, details=""):
         QTreeWidgetItem(parent, [name, type_, details])
 
+
+    def update_avatar_types(self, dimension):
+        self.avatar_type.blockSignals(True)
+        self.avatar_type.clear()
+        if dimension == "2":
+            self.avatar_type.addItems(self.avatar_types_2d)
+        else:
+            self.avatar_type.addItems(self.avatar_types_3d)
+        self.avatar_type.blockSignals(False)
+        if not self._initializing:
+            self.update_avatar_fields(self.avatar_type.currentText())
+
+    def update_avatar_fields(self, avatar_type): 
+         if self._initializing:
+            return
+         
+         # Liste des widgets à gérer
+         widgets = [
+            getattr(self, 'avatar_radius_label', None),
+            getattr(self, 'avatar_radius', None),
+            getattr(self, 'avatar_center_label', None),
+            getattr(self, 'avatar_center', None),
+            getattr(self, 'avatar_axis_label', None),
+            getattr(self, 'avatar_axis', None)
+        ]
+         
+         # Masquer tous les champs par défaut
+         for widget in widgets:
+            if widget is not None:
+                widget.setVisible(False)
+
+        # Afficher les champs pertinents
+         if avatar_type == "rigidDisk":
+            if hasattr(self, 'avatar_radius_label') and hasattr(self, 'avatar_radius'):
+                self.avatar_radius_label.setVisible(True)
+                self.avatar_radius.setVisible(True)
+                self.avatar_center_label.setVisible(True)
+                self.avatar_center.setVisible(True)
+                self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
+         if avatar_type == "rigidJonc" :
+            if hasattr(self, 'avatar_center_label') and hasattr(self, 'avatar_center'):
+                self.avatar_axis_label.setVisible(True)
+                self.avatar_axis.setVisible(True)              
+                self.avatar_center_label.setVisible(True)
+                self.avatar_center.setVisible(True)
+                self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
+                self.avatar_color.setText("VERTx")
+
+    def update_dof_options(self, action) :
+        forces = {
+            "translate" : "dx=0.0 , dy=2.0",
+            "rotate" : "psi=-math.pi/2.0, center=[0.0, 0.0]",
+            "imposeDrivenDof" : "component=[1,2,3], dofty='vlocy'"
+        }
+        self.dof_options.setText(forces.get(action, "dx=0.0, dy=2.0"))
+        
     # ========================================
     # PROJET
     # ========================================
@@ -284,6 +360,7 @@ class LMGC90GUI(QMainWindow):
     def do_save(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)
         state = self._serialize_state()
+        print(state)
         with open(os.path.join(dir_path, 'project.json'), 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=4)
         QMessageBox.information(self, "Succès", "Projet sauvegardé")
@@ -316,10 +393,14 @@ class LMGC90GUI(QMainWindow):
 
         # Avatars
         for av in state.get('avatars', []):
-            if not all(k in av for k in ['type', 'r', 'center', 'material', 'model', 'color']): continue
+            #if not all(k in av for k in ['type', ('r' or ('axe1' and 'axe2')), 'center', 'material', 'model', 'color']): continue
             mat = self.mats_dict.get(av['material']); mod = self.mods_dict.get(av['model'])
             if not mat or not mod: continue
-            body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
+            if av['type'] == "rigidDisk" and 'r' in av :
+                body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
+            elif av['type'] == "rigidJonc" and 'axe1' in av and 'axe2' in av:
+                body = pre.rigidJonc(axe1=av['axe1'], axe2=av['axe2'], center=av['center'], model=mod, material=mat, color=av['color'])
+            else : continue
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
             self.avatar_creations.append(av)
 
@@ -391,13 +472,36 @@ class LMGC90GUI(QMainWindow):
             props = self._safe_eval_dict(self.avatar_properties.text())
             mat = self.material_objects[self.avatar_material.currentIndex()]
             mod = self.model_objects[self.avatar_model.currentIndex()]
-            body = pre.rigidDisk(r=float(self.avatar_radius.text()), center=center, model=mod, material=mat,
+            
+            if self.avatar_type.currentText() == "rigidDisk" :
+                body = pre.rigidDisk(r=float(self.avatar_radius.text()), center=center, model=mod, material=mat,
                                     color=self.avatar_color.text(), **props)
+            
+            elif self.avatar_type.currentText() == "rigidJonc":
+                center = [float(x) for x in self.avatar_center.text().split(",")]
+                body = pre.rigidJonc(
+                    axe1=float(self.avatar_axis.text().split(',')[0].split('=')[1].strip()),
+                    axe2=float(self.avatar_axis.text().split(',')[1].split('=')[1].strip()),
+                    center=center,
+                    model=mod,
+                    material=mat,
+                    color=self.avatar_color.text(), **props
+                )
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
-            self.avatar_creations.append({
-                'type': 'rigidDisk', 'r': float(self.avatar_radius.text()), 'center': center,
-                'material': mat.nom, 'model': mod.nom, 'color': self.avatar_color.text()
-            })
+            body_dict= {
+                'type': 'rigidDisk' if isinstance(body.bulks[0], pre.rigid2d) and hasattr(body.contactors[0],'byrd') and body.dimension==2 else
+                        'rigidJonc' if isinstance(body.bulks[0], pre.rigid2d) and hasattr(body.contactors[0],'axes') and body.dimension==2 else 'unknown', 
+                'center': center,
+                'material': mat.nom, 
+                'model': mod.nom, 
+                'color': self.avatar_color.text()
+            }
+            if hasattr(body.contactors[0],'byrd') :
+                body_dict['r']= self.avatar_radius.text()
+            if hasattr(body.contactors[0],'axes') :
+                body_dict['axe1'] = self.avatar_axis.text().split(',')[0].split('=')[1].strip()
+                body_dict['axe2'] = self.avatar_axis.text().split(',')[1].split('=')[1].strip()
+            self.avatar_creations.append(body_dict)
             self.update_selections(); self.update_model_tree()
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Avatar : {e}")
@@ -412,7 +516,7 @@ class LMGC90GUI(QMainWindow):
             if action == "imposeDrivenDof" and ('component' not in params or 'dofty' not in params):
                 raise ValueError("imposeDrivenDof → component=[...], dofty='vlocy'")
             if action == "imposeInitDof" and ('component' not in params or 'dofty' not in params):
-                raise ValueError("imposeInitDof → component=[...], dofty='vlocx', vl=0.0")
+                raise ValueError("imposeInitDof → component=[...], dofty='vlocx', value=1.0")
             getattr(body, action)(**params)
             self.operations.append({'body_index': idx, 'type': action, 'params': params})
             self.update_model_tree()
@@ -465,6 +569,7 @@ class LMGC90GUI(QMainWindow):
         ]:
             combo.blockSignals(True); combo.clear(); combo.addItems(items); combo.setEnabled(enabled); combo.blockSignals(False)
 
+
     def update_model_tree(self):
         self.tree.clear()
         root = QTreeWidgetItem(["Modèle LMGC90", "", ""])
@@ -507,8 +612,12 @@ class LMGC90GUI(QMainWindow):
                 # Avatars
                 f.write("bodies_list = []\n")
                 for i, av in enumerate(self.avatar_creations):
-                    f.write(f"body{i} = pre.rigidDisk(r={av['r']}, center={av['center']}, ")
-                    f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+                    if av['type']  == 'rigidDisk' :
+                        f.write(f"body{i} = pre.rigidDisk(r={av['r']}, center={av['center']}, ")
+                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+                    if av['type']  == 'rigidJonc' :
+                        f.write(f"body{i} = pre.rigidJonc(axe1={av['axe1']}, axe2 = {av['axe2']},center={av['center']}, ")
+                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
                     f.write(f"bodies.addAvatar(body{i}); bodies_list.append(body{i})\n\n")
 
                 # DOF
@@ -574,7 +683,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.0\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.1\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
