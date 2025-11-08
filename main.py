@@ -5,6 +5,7 @@ import json
 import math
 import shutil
 from functools import partial
+import numpy as np
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
@@ -56,7 +57,7 @@ class LMGC90GUI(QMainWindow):
         self.script_path = None
 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.2 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.3 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -117,6 +118,7 @@ class LMGC90GUI(QMainWindow):
         self.model_physics = QComboBox(); self.model_physics.addItems(["MECAx"])
         self.model_element = QLineEdit("Rxx2D")
         self.model_dimension = QComboBox(); self.model_dimension.addItems(["2", "3"])
+        self.model_dimension.currentTextChanged.connect(self.model_dimension_changed)
         self.model_options = QLineEdit("")
         for w in [QLabel("Nom:"), self.model_name, QLabel("Phys:"), self.model_physics,
                   QLabel("Élément:"), self.model_element, QLabel("Dim:"), self.model_dimension,
@@ -138,11 +140,13 @@ class LMGC90GUI(QMainWindow):
         self.avatar_radius_label = QLabel("Rayon");self.avatar_radius = QLineEdit("0.1")
         self.avatar_axis_label = QLabel("Axes :");self.avatar_axis = QLineEdit(("axe1 = 2.0, axe2 = 0.05"))
         self.avatar_vertices_label = QLabel("Vertices : ")
-        self.avatar_vertices = QLineEdit("")
+        self.avatar_vertices = QLineEdit("[[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]]")
         self.avatar_nb_vertices_label  =  QLabel("Nombre de vertices : ")
         self.avatar_nb_vertices  = QLineEdit("5")
         self.avatar_gen_type = QLabel("Type de génération ")
-        self.avatar_gen = QLineEdit("regular")
+        self.avatar_gen = QComboBox()
+        self.avatar_gen.addItems(["regular", "full", "bevel"] )
+        self.avatar_gen.currentTextChanged.connect(self.update_polygon_fields)
         self.avatar_center_label = QLabel("Centre:");self.avatar_center = QLineEdit("0.0,0.0")
         self.avatar_material = QComboBox()
         self.avatar_model = QComboBox()
@@ -275,8 +279,8 @@ class LMGC90GUI(QMainWindow):
         else:
             self.avatar_type.addItems(self.avatar_types_3d)
         self.avatar_type.blockSignals(False)
-        if not self._initializing:
-            self.update_avatar_fields(self.avatar_type.currentText())
+        
+        self.update_avatar_fields(self.avatar_type.currentText())
 
     def update_avatar_fields(self, avatar_type): 
          if self._initializing:
@@ -325,7 +329,7 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_radius.setVisible(True)
                 self.avatar_gen_type.setVisible(True)
                 self.avatar_gen.setVisible(True)
-                if self.avatar_gen.text()== 'regular' : 
+                if self.avatar_gen.currentText()== 'regular' : 
                     self.avatar_nb_vertices_label.setVisible(True)
                     self.avatar_nb_vertices.setVisible(True)
                 else : 
@@ -345,6 +349,31 @@ class LMGC90GUI(QMainWindow):
             "imposeInitValue" : "component= 1, value= 3.0"
         }
         self.dof_options.setText(forces.get(action, "dx=0.0, dy=2.0"))
+
+    def model_dimension_changed(self, dim_text) :
+        self.dim = int(dim_text)              # garde la dimension globale
+        self.update_avatar_types(dim_text)    # remplissage du ComboBox des avatars
+        # ré-initialise le texte du centre selon la dimension
+        default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
+        self.avatar_center.setText(default_center)
+
+    def update_polygon_fields(self, gen_type):
+        if self.avatar_type.currentText() != "rigidPolygon":
+            return
+
+        # nb_vertices n’est utile que pour le mode *regular*
+        show_nb = (gen_type == "regular")
+        self.avatar_nb_vertices_label.setVisible(show_nb)
+        self.avatar_nb_vertices.setVisible(show_nb)
+
+        # le champ *vertices* (liste manuelle) n’est utile que pour *full* et *bevel*
+        show_vertices = (gen_type in ("full", "bevel"))
+        self.avatar_vertices_label.setVisible(show_vertices)
+        self.avatar_vertices.setVisible(show_vertices)
+
+        # valeur par défaut du nombre de vertices
+        if show_nb and not self.avatar_nb_vertices.text().strip():
+            self.avatar_nb_vertices.setText("5")
     # ========================================
     # PROJET
     # ========================================
@@ -434,9 +463,11 @@ class LMGC90GUI(QMainWindow):
                 body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
             elif av['type'] == "rigidJonc" and 'axe1' in av and 'axe2' in av:
                 body = pre.rigidJonc(axe1=av['axe1'], axe2=av['axe2'], center=av['center'], model=mod, material=mat, color=av['color'])
-            elif av['type'] == "rigidPolygon" : 
-                
-                body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=av['color'], generation_type= av['gen_type'], nb_vertices=int(av['nb_vertices']),radius=float(av['r']))
+            elif av['type'] == "rigidPolygon"   :
+                if  av['gen_type'] == "regular" :
+                    body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=av['color'], generation_type= av['gen_type'], nb_vertices=int(av['nb_vertices']),radius=float(av['r']))
+                else : 
+                    body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=av['color'], generation_type= av['gen_type'],vertices= np.array(av['vertices'], dtype=float) ,radius=float(av['r']))
             else : continue
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
             self.avatar_creations.append(av)
@@ -504,6 +535,7 @@ class LMGC90GUI(QMainWindow):
             return
         try:
             center = [float(x.strip()) for x in self.avatar_center.text().split(',')]
+            #vertices = [float(x) for x in self.avatar_vertices.text().split(",")]
             if len(center) != self.dim: raise ValueError(f"Attendu {self.dim} coordonnées")
             props = self._safe_eval_dict(self.avatar_properties.text())
             mat = self.material_objects[self.avatar_material.currentIndex()]
@@ -515,6 +547,7 @@ class LMGC90GUI(QMainWindow):
             
             elif self.avatar_type.currentText() == "rigidJonc":
                 center = [float(x) for x in self.avatar_center.text().split(",")]
+                
                 body = pre.rigidJonc(
                     axe1=float(self.avatar_axis.text().split(',')[0].split('=')[1].strip()),
                     axe2=float(self.avatar_axis.text().split(',')[1].split('=')[1].strip()),
@@ -525,15 +558,37 @@ class LMGC90GUI(QMainWindow):
                 )
             elif self.avatar_type.currentText() == "rigidPolygon": 
                 center = [float(x) for x in self.avatar_center.text().split(",")]
-                body = pre.rigidPolygon(
-                    model=mod,
-                    material = mat, 
-                    center = center,
-                    color=self.avatar_color.text(),
-                    generation_type=self.avatar_gen.text(),
-                    nb_vertices= int(self.avatar_nb_vertices.text()),
-                    radius= float(self.avatar_radius.text())               
-                )                    
+                
+                if self.avatar_gen.currentText() == 'regular' :
+                    body = pre.rigidPolygon(
+                        model=mod,
+                        material = mat, 
+                        center = center,
+                        color=self.avatar_color.text(),
+                        generation_type=self.avatar_gen.currentText(),
+                        nb_vertices= int(self.avatar_nb_vertices.text()),
+                        radius= float(self.avatar_radius.text())               
+                    )  
+                else : 
+                    import numpy as np
+                    raw = self.avatar_vertices.text().strip()
+                    print(raw)
+                    if not raw:
+                        raise ValueError("Champ vertices obligatoire pour le mode full/bevel")
+                    vertices_list = eval(raw, {"__builtins__": {}}, {})              # on accepte la même syntaxe que _safe_eval_dict
+                    #if not isinstance(vertices, list) or not all(isinstance(p, list) for p in vertices):
+                    #    raise ValueError("Vertices doit être une liste de listes [[x,y], …]")
+                    vertices = np.array(vertices_list, dtype=float)
+                    body = pre.rigidPolygon(
+                        model=mod,
+                        material = mat, 
+                        center = center,
+                        color=self.avatar_color.text(),
+                        generation_type=self.avatar_gen.currentText(),
+                        vertices= vertices,
+                        radius= float(self.avatar_radius.text())               
+                    )  
+
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
             body_dict= {
                 'type': 'rigidDisk' if isinstance(body.bulks[0], pre.rigid2d) and body.dimension==2 and body.contactors[0].shape=='DISKx' else
@@ -549,12 +604,20 @@ class LMGC90GUI(QMainWindow):
             if hasattr(body.contactors[0],'axes') :
                 body_dict['axe1'] = self.avatar_axis.text().split(',')[0].split('=')[1].strip()
                 body_dict['axe2'] = self.avatar_axis.text().split(',')[1].split('=')[1].strip()
-            if hasattr(body.contactors[0],'nb_vertices') :
+            if hasattr(body.contactors[0],'nb_vertices') and self.avatar_gen.currentText() == "regular":
                 body_dict['nb_vertices'] = self.avatar_nb_vertices.text()
                 #body_dict['theta'] = self.avatar_theta.text()
-                body_dict['gen_type'] = self.avatar_gen.text()
+                body_dict['gen_type'] = self.avatar_gen.currentText()
                 body_dict['r'] = self.avatar_radius.text()
+                print(body_dict['gen_type'])
+            if hasattr(body.contactors[0],'nb_vertices') and self.avatar_gen.currentText() == "full":
+                body_dict['vertices'] = vertices.tolist()
+                #body_dict['theta'] = self.avatar_theta.text()
+                body_dict['gen_type'] = self.avatar_gen.currentText()
+                body_dict['r'] = self.avatar_radius.text()
+                print(body_dict['gen_type'])
             self.avatar_creations.append(body_dict)
+            print(self.avatar_creations)
             self.update_selections(); self.update_model_tree()
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Avatar : {e}")
@@ -645,7 +708,8 @@ class LMGC90GUI(QMainWindow):
             base = self.current_project_dir or os.getcwd()
             path = os.path.join(base, "lmgc_sim.py")
             with open(path, 'w', encoding='utf-8') as f:
-                f.write("from pylmgc90 import pre\n\n")
+                f.write("from pylmgc90 import pre\n")
+                f.write("import numpy as np\n\n")
                 f.write("mats, mods, laws = {}, {}, {}\n")
                 f.write("materials = pre.materials(); models = pre.models(); bodies = pre.avatars()\n")
                 f.write("tacts = pre.tact_behavs(); svs = pre.see_tables()\n\n")
@@ -669,9 +733,13 @@ class LMGC90GUI(QMainWindow):
                     if av['type']  == 'rigidJonc' :
                         f.write(f"body{i} = pre.rigidJonc(axe1={av['axe1']}, axe2 = {av['axe2']},center={av['center']}, ")
                         f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'rigidPolygon' : 
+                    if av['type'] == 'rigidPolygon' and av['gen_type'] == 'regular' : 
                         f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', nb_vertices={av['nb_vertices']}, ")
                         f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+                    if av['type'] == 'rigidPolygon' and av['gen_type'] == 'full'  :
+                        f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', vertices=np.array({av['vertices']}), ")
+                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+                    
                     f.write(f"bodies.addAvatar(body{i}); bodies_list.append(body{i})\n\n")
 
                 # DOF
@@ -737,7 +805,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.2\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.3\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
