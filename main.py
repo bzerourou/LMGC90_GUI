@@ -57,7 +57,7 @@ class LMGC90GUI(QMainWindow):
         self.script_path = None
 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.4 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.6 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -145,7 +145,7 @@ class LMGC90GUI(QMainWindow):
         self.avatar_nb_vertices_label  =  QLabel("Nombre de vertices : ")
         self.avatar_nb_vertices  = QLineEdit("5")
         self.avatar_r_ovoid_label = QLabel("Rayon Ellipse : ")
-        self.avatar_r_ovoid = QLineEdit("ra = 4. , rb = 2.")
+        self.avatar_r_ovoid = QLineEdit("ra = 1. , rb = 0.5")
         self.avatar_gen_type = QLabel("Type de génération ")
         self.avatar_gen = QComboBox()
         self.avatar_gen.addItems(["regular", "full", "bevel"] )
@@ -156,9 +156,9 @@ class LMGC90GUI(QMainWindow):
         self.avatar_color = QLineEdit("BLUEx")
         # --- Champs pour walls ---
         self.wall_length_label = QLabel("Longueur :")
-        self.wall_length = QLineEdit("10.0")
+        self.wall_length = QLineEdit("2.0")
         self.wall_height_label = QLabel("Rayon :")
-        self.wall_height = QLineEdit("1.0")
+        self.wall_height = QLineEdit("0.15")
 
         self.avatar_properties = QLineEdit("")
         for w in [QLabel("Type:"), self.avatar_type, self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis, self.avatar_r_ovoid_label,self.avatar_r_ovoid,self.wall_length_label, self.wall_length,
@@ -403,23 +403,58 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_nb_vertices_label.setVisible(True)
                 self.avatar_nb_vertices.setVisible(True)
                 self.avatar_color.setText("CYANx")
-         if avatar_type in ["roughWall", "fineWall", "smoothWall", "granuloRoughWall"]:
-            self.avatar_radius_label.setVisible(False)
-            self.avatar_radius.setVisible(False)
-            self.avatar_center_label.setVisible(True)
-            self.avatar_center.setVisible(True)
-            self.avatar_center.setText("0.0,0.0")
-            self.wall_length_label.setVisible(True)
-            self.wall_length.setVisible(True)
-            self.wall_height_label.setVisible(True)
-            self.wall_height.setVisible(True)
-            self.avatar_nb_vertices_label.setVisible(True)
-            self.avatar_nb_vertices.setVisible(True)
-            if avatar_type == "smoothWall":
+         if avatar_type == "roughWall":
+                self.avatar_radius_label.setVisible(False)
+                self.avatar_radius.setVisible(False)
+                self.avatar_center_label.setVisible(True)
+                self.avatar_center.setVisible(True)
+                self.avatar_center.setText("0.0,0.0")
+                self.wall_length_label.setVisible(True)
+                self.wall_length.setVisible(True)
+                self.wall_height_label.setVisible(True)
+                self.wall_height.setVisible(True)
+                self.avatar_nb_vertices_label.setVisible(True)
+                self.avatar_nb_vertices.setVisible(True)
+         elif  avatar_type == "fineWall" : 
+                self.avatar_radius_label.setVisible(False)
+                self.avatar_radius.setVisible(False)
+                self.avatar_center_label.setVisible(True)
+                self.avatar_center.setVisible(True)
+                self.avatar_center.setText("0.0,0.0")
+                self.wall_length_label.setVisible(True)
+                self.wall_length.setVisible(True)
+                self.wall_height_label.setVisible(True)
+                self.wall_height.setVisible(True)
+                self.avatar_nb_vertices_label.setVisible(True)
+                self.avatar_nb_vertices.setVisible(True)
+         elif avatar_type == "smoothWall":
+                self.avatar_radius_label.setVisible(False)
+                self.avatar_radius.setVisible(False)
+                self.avatar_center_label.setVisible(True)
+                self.avatar_center.setVisible(True)
+                self.avatar_center.setText("0.0,0.0")
+                self.wall_length_label.setVisible(True)
+                self.wall_length.setVisible(True)
+                self.wall_height_label.setVisible(True)
+                self.wall_height.setVisible(True)
+                self.wall_height_label.setText("Hauteur : ")
+                self.avatar_nb_vertices_label.setVisible(True)
+                self.avatar_nb_vertices.setVisible(True)
                 self.avatar_nb_vertices_label.setText("nb polygones :  ")
-            else :
-                self.avatar_nb_vertices_label.setText("Vertices : ( >=3) ")
-                self.avatar_nb_vertices.setText("3")
+         elif avatar_type ==  "granuloRoughWall":
+                self.avatar_radius_label.setVisible(False)
+                self.avatar_radius.setVisible(False)
+                self.avatar_center_label.setVisible(True)
+                self.avatar_center.setVisible(True)
+                self.avatar_center.setText("0.0,0.0")
+                self.wall_length_label.setVisible(True)
+                self.wall_length.setVisible(True)
+                self.wall_height_label.setVisible(True)
+                self.wall_height.setVisible(True)
+                self.avatar_nb_vertices_label.setVisible(True)
+                self.avatar_nb_vertices.setVisible(True)
+                self.wall_height.setText("rmin= 0.1 , rmax=0.2")
+
 
     def update_dof_options(self, action) :
         forces = {
@@ -504,15 +539,43 @@ class LMGC90GUI(QMainWindow):
             for center in centers:
                 av_type = model_av['type']
                 props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
+                print(props)
                 props['center'] = center
 
                 if av_type == "rigidDisk":
                     body = pre.rigidDisk(r=props['r'], center=center, model=mod, material=mat, color=model_av['color'])
-                elif av_type == "rigidDiscreteDisk":
-                    body = pre.rigidDiscreteDisk(r=props['r'], center=center, model=mod, material=mat, color=model_av['color'])
-                elif av_type == "roughWall":
-                    body = pre.roughWall(length=props['length'], height=props['height'], center=center, model=mod, material=mat, color=model_av['color'])
-                # ... (ajouter les autres)
+                elif av_type == "rigidJonc" and 'axe1' in model_av and 'axe2' in model_av:
+                    body = pre.rigidJonc(axe1=model_av['axe1'], axe2=model_av['axe2'], center=center, model=mod, material=mat, color=model_av['color'])
+                elif av_type == "rigidPolygon"   :
+                    if  model_av['gen_type'] == "regular" :
+                        body = pre.rigidPolygon( model=mod, material=mat, center=center,color=model_av['color'], generation_type= model_av['gen_type'], nb_vertices=int(model_av['nb_vertices']),radius=float(model_av['r']))
+                    else : 
+                        body = pre.rigidPolygon( model=mod, material=mat, center=center,color=model_av['color'], generation_type= model_av['gen_type'],vertices= np.array(model_av['vertices'], dtype=float) ,radius=float(model_av['r']))
+                elif av_type == "rigidOvoidPolygon" :
+                    body = pre.rigidOvoidPolygon(ra=float(model_av['ra']), rb=float(model_av['rb']), nb_vertices= int(model_av['nb_vertices']), center=center, model=mod, material=mat, color=model_av['color'])
+                elif av_type == "rigidDiscreteDisk" :
+                    body = pre.rigidDiscreteDisk(r=float(props['r']), center=center, model=mod, material=mat, color=model_av['color'])
+                elif av_type == "roughWall" :
+                    body = pre.roughWall(l=props['l'], r=float(props['r']), center=center, model=mod, material=mat, color=model_av['color'])
+                
+                elif av_type == "fineWall" and 'l' in model_av and 'r' in model_av:
+                    body = pre.fineWall(
+                        l=float(model_av['l']), r=float(model_av['r']), center=center,
+                        model=mod, material=mat, color=model_av['color'],  nb_vertex= int(model_av['nb_vertex'])
+                        )
+
+                elif av_type == "smoothWall" and 'l' in model_av and 'h' in model_av:
+                    body = pre.smoothWall(
+                        l=float(model_av['l']), h=float(model_av['h']), center=model_av['center'],
+                        model=mod, material=mat, color=model_av['color'], nb_polyg= int(model_av['nb_polyg'])
+                        )
+
+                elif av_type == "granuloRoughWall" :
+                    body = pre.granuloRoughWall(
+                        l=float(model_av['l']), rmin=float(model_av['rmin']), rmax= float(model_av['rmax']),
+                        center=center, model=mod, material=mat, color=model_av['color'],
+                        nb_vertex= int(model_av['nb_vertex'])
+                    )
                 else:
                     continue
 
@@ -1092,7 +1155,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.4\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.6\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
