@@ -1,9 +1,10 @@
 Graphical User Interface for LMGC90 with PyQt6.
 
+![Capture d'écran](docs/inter_LMGC90_GUI.jpg)
 
-This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with LMGC90 DEM code.
+This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
 
-version 0.1.0 is only for feasibility study, it will be completely rewritten in the future.
+version 0.1.6 is only for feasibility study, it will be completely rewritten in the future.
 
 For use, you need to download PyQt6 and, of course, install LMGC90 on your machine.
 
@@ -14,7 +15,17 @@ You can also apply boundary conditions for this avatars with **translate**, **ro
 
 the interface can save and open project with json formated file, and can generate and execute model script.
 
+## Installation
+
+```bash
+git clone https://github.com/bzerourou/LMGC90_GUI.git
+cd LMGC90_GUI
+python main.py
+```
+
+This video is a short introduction to LMGC90_GUI
 [Intro LMGC90_GUI](https://www.youtube.com/watch?v=Rn-ewPCuRuw)
+[LMGC90_GUI v0.1.6](https://www.youtube.com/watch?v=BLUeqLHGNXc&feature=youtu.be)
 
 List of version : 
 -  0.1.0  : first version with `rigidDisk` avatar; 
@@ -23,4 +34,4 @@ List of version :
 -  0.1.3 : add `rigidPolygon` avatar and fix `rigidPolygon` generation type in QComboBox for `regular` qnd `full` values, numpy and math function can be used in QEditLine ;
 -  0.1.4 : add rigidOvoidPolygon and fix some bugs;
 -  0.1.5 : add `rigidDiscretDisk`, `roughWall`, `fineWall`, `smoothWall`, and `GranuloRoughWall` avatars;
- 
+-  0.1.6 : add parametric addition of avatars (circular, line, grid and spiral); 
