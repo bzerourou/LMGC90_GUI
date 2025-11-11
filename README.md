@@ -22,3 +22,5 @@ List of version :
 -  0.1.2 : add DOF function `imposeDrivenValue`;
 -  0.1.3 : add `rigidPolygon` avatar and fix `rigidPolygon` generation type in QComboBox for `regular` qnd `full` values, numpy and math function can be used in QEditLine ;
 -  0.1.4 : add rigidOvoidPolygon and fix some bugs;
+-  0.1.5 : add `rigidDiscretDisk`, `roughWall`, `fineWall`, `smoothWall`, and `GranuloRoughWall` avatars;
+ 
