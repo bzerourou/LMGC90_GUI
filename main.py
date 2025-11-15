@@ -56,8 +56,11 @@ class LMGC90GUI(QMainWindow):
         self.current_project_dir = None
         self.script_path = None
 
+        # --- Boucles ---
+        self.loop_creations = []  # Sauvegarde des boucles
+
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.6 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.7 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -332,41 +335,34 @@ class LMGC90GUI(QMainWindow):
          
          # Liste des widgets à gérer
          widgets = [
-            getattr(self, 'avatar_radius_label', None),
-            getattr(self, 'avatar_radius', None),
-            getattr(self, 'avatar_center_label', None),
-            getattr(self, 'avatar_center', None),
-            getattr(self, 'avatar_axis_label', None),
-            getattr(self, 'avatar_axis', None),
-            getattr(self, 'avatar_vertices_label', None),
-            getattr(self, 'avatar_vertices', None),
-            getattr(self, 'avatar_gen_type', None),
-            getattr(self, 'avatar_gen', None),
-            getattr(self,'avatar_nb_vertices_label', None),  
-            getattr(self,'avatar_nb_vertices', None),
-            getattr(self,'avatar_r_ovoid_label', None),
-            getattr(self,'avatar_r_ovoid', None),
-            getattr(self,'wall_length_label', None),
-            getattr(self,'wall_length', None),
-            getattr(self,'wall_height_label', None),
-            getattr(self,'wall_height', None),
-       
+            self.avatar_radius_label, self.avatar_radius,
+            self.avatar_center_label, self.avatar_center,
+            self.avatar_axis_label, self.avatar_axis,
+            self.avatar_vertices_label, self.avatar_vertices,
+            self.avatar_gen_type, self.avatar_gen,
+            self.avatar_nb_vertices_label, self.avatar_nb_vertices,
+            self.avatar_r_ovoid_label, self.avatar_r_ovoid,
+            self.wall_length_label, self.wall_length,
+            self.wall_height_label, self.wall_height,
         ]
          
          # Masquer tous les champs par défaut
          for widget in widgets:
             if widget is not None:
                 widget.setVisible(False)
+        # --- Valeurs par défaut ---
+         self.avatar_center.setText("0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0")
+         self.avatar_color.setText("BLUEx")
 
         # Afficher les champs pertinents
-         if avatar_type == "rigidDisk" or "rigidDiscreteDisk":
+         if avatar_type in ["rigidDisk", "rigidDiscreteDisk"]:
                 self.avatar_radius_label.setVisible(True)
                 self.avatar_radius.setVisible(True)
                 self.avatar_center_label.setVisible(True)
                 self.avatar_center.setVisible(True)
                 self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
-        
-         if avatar_type == "rigidJonc" :
+                self.avatar_color.setText("BLUEx")
+         elif avatar_type == "rigidJonc" :
                 self.avatar_radius_label.setVisible(False)
                 self.avatar_radius.setVisible(False)
                 self.avatar_axis_label.setVisible(True)
@@ -375,7 +371,7 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_center.setVisible(True)
                 self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
                 self.avatar_color.setText("VERTx")
-         if avatar_type == "rigidPolygon" :
+         elif avatar_type == "rigidPolygon" :
                 self.avatar_radius_label.setVisible(True)
                 self.avatar_radius.setVisible(True)
                 self.avatar_gen_type.setVisible(True)
@@ -383,6 +379,7 @@ class LMGC90GUI(QMainWindow):
                 if self.avatar_gen.currentText()== 'regular' : 
                     self.avatar_nb_vertices_label.setVisible(True)
                     self.avatar_nb_vertices.setVisible(True)
+                    self.avatar_nb_vertices_label.setText("Nombre de vertices (>=3)")
                 else : 
                     self.avatar_nb_vertices_label.setVisible(False)
                     self.avatar_nb_vertices.setVisible(False)
@@ -392,7 +389,7 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_color.setText("REDxx")
                 #self.avatar_gen.setText('Regular')
 
-         if avatar_type == "rigidOvoidPolygon" :
+         elif avatar_type == "rigidOvoidPolygon" :
                 self.avatar_radius_label.setVisible(False)
                 self.avatar_radius.setVisible(False)
                 self.avatar_center_label.setVisible(True)
@@ -403,58 +400,29 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_nb_vertices_label.setVisible(True)
                 self.avatar_nb_vertices.setVisible(True)
                 self.avatar_color.setText("CYANx")
-         if avatar_type == "roughWall":
-                self.avatar_radius_label.setVisible(False)
-                self.avatar_radius.setVisible(False)
+         elif avatar_type in ["roughWall", "fineWall", "smoothWall", "granuloRoughWall"]:
                 self.avatar_center_label.setVisible(True)
                 self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0")
                 self.wall_length_label.setVisible(True)
                 self.wall_length.setVisible(True)
                 self.wall_height_label.setVisible(True)
                 self.wall_height.setVisible(True)
                 self.avatar_nb_vertices_label.setVisible(True)
                 self.avatar_nb_vertices.setVisible(True)
-         elif  avatar_type == "fineWall" : 
-                self.avatar_radius_label.setVisible(False)
-                self.avatar_radius.setVisible(False)
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0")
-                self.wall_length_label.setVisible(True)
-                self.wall_length.setVisible(True)
-                self.wall_height_label.setVisible(True)
-                self.wall_height.setVisible(True)
-                self.avatar_nb_vertices_label.setVisible(True)
-                self.avatar_nb_vertices.setVisible(True)
-         elif avatar_type == "smoothWall":
-                self.avatar_radius_label.setVisible(False)
-                self.avatar_radius.setVisible(False)
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0")
-                self.wall_length_label.setVisible(True)
-                self.wall_length.setVisible(True)
-                self.wall_height_label.setVisible(True)
-                self.wall_height.setVisible(True)
-                self.wall_height_label.setText("Hauteur : ")
-                self.avatar_nb_vertices_label.setVisible(True)
-                self.avatar_nb_vertices.setVisible(True)
-                self.avatar_nb_vertices_label.setText("nb polygones :  ")
-         elif avatar_type ==  "granuloRoughWall":
-                self.avatar_radius_label.setVisible(False)
-                self.avatar_radius.setVisible(False)
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0")
-                self.wall_length_label.setVisible(True)
-                self.wall_length.setVisible(True)
-                self.wall_height_label.setVisible(True)
-                self.wall_height.setVisible(True)
-                self.avatar_nb_vertices_label.setVisible(True)
-                self.avatar_nb_vertices.setVisible(True)
-                self.wall_height.setText("rmin= 0.1 , rmax=0.2")
 
+                # --- Réinitialisation du texte selon le type ---
+                if avatar_type == "granuloRoughWall":
+                    self.wall_height_label.setText("Rayons (rmin, rmax) :")
+                    self.wall_height.setText("rmin = 0.1, rmax = 0.2")
+                elif avatar_type == "smoothWall":
+                    self.wall_height_label.setText("Hauteur (h) :")
+                    self.wall_height.setText("0.15")
+                else:  # roughWall, fineWall
+                    self.wall_height_label.setText("Rayon (r) :")
+                    self.wall_height.setText("0.1")
+
+                self.wall_length.setText("2.0")
+                self.avatar_nb_vertices.setText("5")
 
     def update_dof_options(self, action) :
         forces = {
@@ -490,6 +458,10 @@ class LMGC90GUI(QMainWindow):
         if show_nb and not self.avatar_nb_vertices.text().strip():
             self.avatar_nb_vertices.setText("5")
 
+    # ========================================
+    # BOUCLES
+    # ========================================
+    
     def create_loop(self):
         if not self.avatar_creations:
             QMessageBox.critical(self, "Erreur", "Créez d'abord un avatar modèle")
@@ -508,7 +480,7 @@ class LMGC90GUI(QMainWindow):
             offset_x = float(self.loop_offset_x.text())
             offset_y = float(self.loop_offset_y.text())
             spiral_factor = float(self.loop_spiral_factor.text())
-
+            # --- Générer centres ---
             centers = []
             if loop_type == "Cercle":
                 for i in range(n):
@@ -536,10 +508,11 @@ class LMGC90GUI(QMainWindow):
                     centers.append([x, y])
 
             # Créer les avatars
+            start_idx = len(self.avatar_creations)
             for center in centers:
                 av_type = model_av['type']
                 props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
-                print(props)
+                #print(props)
                 props['center'] = center
 
                 if av_type == "rigidDisk":
@@ -582,11 +555,23 @@ class LMGC90GUI(QMainWindow):
                 self.bodies.addAvatar(body)
                 self.bodies_objects.append(body)
                 self.bodies_list.append(body)
-
                 # Copier le dict et mettre à jour le centre
                 new_av = model_av.copy()
                 new_av['center'] = center
                 self.avatar_creations.append(new_av)
+            # --- Sauvegarder boucle ---
+            loop_data = {
+                'type': loop_type,
+                'model_avatar_index': model_idx,
+                'count': n,
+                'radius': radius,
+                'step': step,
+                'offset_x': offset_x,
+                'offset_y': offset_y,
+                'spiral_factor': spiral_factor,
+                'generated_avatar_indices': list(range(start_idx, len(self.avatar_creations)))
+            }
+            self.loop_creations.append(loop_data)
 
             self.update_selections()
             self.update_model_tree()
@@ -642,7 +627,7 @@ class LMGC90GUI(QMainWindow):
     def do_save(self, dir_path):
         os.makedirs(dir_path, exist_ok=True)
         state = self._serialize_state()
-        print(state)
+        #print(state)
         with open(os.path.join(dir_path, 'project.json'), 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=4)
         QMessageBox.information(self, "Succès", "Projet sauvegardé")
@@ -654,30 +639,36 @@ class LMGC90GUI(QMainWindow):
             'avatars': self.avatar_creations,
             'contact_laws': self.contact_creations,
             'visibility_rules': self.visibility_creations,
-            'operations': self.operations
+            'operations': self.operations,
+            'loops' : self.loop_creations
         }
 
     def _deserialize_state(self, state):
         self.new_project()  # Reset complet
-        # Matériaux
+        #----Matériaux
         for m in state.get('materials', []):
             if not all(k in m for k in ['name', 'type', 'density']): continue
             mat = pre.material(name=m['name'], materialType=m['type'], density=m['density'])
             self.materials.addMaterial(mat); self.material_objects.append(mat)
             self.material_creations.append(m); self.mats_dict[m['name']] = mat
 
-        # Modèles
+        #-----Modèles
         for m in state.get('models', []):
             if not all(k in m for k in ['name', 'physics', 'element', 'dimension']): continue
             mod = pre.model(name=m['name'], physics=m['physics'], element=m['element'], dimension=m['dimension'])
             self.models.addModel(mod); self.model_objects.append(mod)
             self.model_creations.append(m); self.mods_dict[m['name']] = mod
 
-        # Avatars
+        #-------Avatars
+        loop_indices = set()
+        for loop in state.get('loops', []):
+            loop_indices.update(loop.get('generated_avatar_indices',[]))
+        
         for av in state.get('avatars', []):
             #if not all(k in av for k in ['type', ('r' or ('axe1' and 'axe2')), 'center', 'material', 'model', 'color']): continue
             mat = self.mats_dict.get(av['material']); mod = self.mods_dict.get(av['model'])
             if not mat or not mod: continue
+            
             if av['type'] == "rigidDisk" and 'r' in av :
                 body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
             elif av['type'] == "rigidJonc" and 'axe1' in av and 'axe2' in av:
@@ -688,50 +679,120 @@ class LMGC90GUI(QMainWindow):
                 else : 
                     body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=av['color'], generation_type= av['gen_type'],vertices= np.array(av['vertices'], dtype=float) ,radius=float(av['r']))
             elif av['type'] == "rigidOvoidPolygon" :
-                body = pre.rigidOvoidPolygon(ra=av['ra'], rb=av['rb'], nb_vertices= int(av['nb_vertices']), center=av['center'], model=mod, material=mat, color=av['color'])
-
+                body = pre.rigidOvoidPolygon(ra=float(av['ra']), rb=float(av['rb']), nb_vertices= int(av['nb_vertices']), center=av['center'], model=mod, material=mat, color=av['color'])
             elif av['type'] == "rigidDiscreteDisk" and 'r' in av:
                 body = pre.rigidDiscreteDisk(
                     r=float(av['r']), center=av['center'],
-                    model=mod, material=mat, color=av['color']
-                    )
-            
+                    model=mod, material=mat, color=av['color'])
             elif av['type'] == "roughWall" and 'l' in av and 'r' in av:
                 body = pre.roughWall(
                     l=float(av['l']), r=float(av['r']), center=av['center'],
-                    model=mod, material=mat, color=av['color'], nb_vertex= int(av['nb_vertex'])
-                    )
-            
+                    model=mod, material=mat, color=av['color'], nb_vertex= int(av['nb_vertex']))
             elif av['type'] == "fineWall" and 'l' in av and 'r' in av:
                 body = pre.fineWall(
                     l=float(av['l']), r=float(av['r']), center=av['center'],
-                    model=mod, material=mat, color=av['color'],  nb_vertex= int(av['nb_vertex'])
-                    )
-
+                    model=mod, material=mat, color=av['color'],  nb_vertex= int(av['nb_vertex']))
             elif av['type'] == "smoothWall" and 'l' in av and 'h' in av:
                 body = pre.smoothWall(
                     l=float(av['l']), h=float(av['h']), center=av['center'],
-                    model=mod, material=mat, color=av['color'], nb_polyg= int(av['nb_polyg'])
-                    )
-
+                    model=mod, material=mat, color=av['color'], nb_polyg= int(av['nb_polyg']))
             elif av['type'] == "granuloRoughWall" :
                 body = pre.granuloRoughWall(
                     l=float(av['l']), rmin=float(av['rmin']), rmax= float(av['rmax']),
                     center=av['center'], model=mod, material=mat, color=av['color'],
-                    nb_vertex= int(av['nb_vertex'])
-                    )
+                    nb_vertex= int(av['nb_vertex']))
             else : continue
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
             self.avatar_creations.append(av)
 
-        # Lois
+        # --- Recréer les boucles ---
+        import math
+        self.loop_creations = state.get('loops', [])
+        for loop in self.loop_creations:
+            idx = loop['model_avatar_index']
+            if idx >= len(self.avatar_creations): continue
+            model_av = self.avatar_creations[idx]
+            mat = self.mats_dict.get(model_av['material'])
+            mod = self.mods_dict.get(model_av['model'])
+            if not mat or not mod: continue
+
+            n = loop['count']; r = loop['radius']; s = loop['step']
+            ox, oy = loop['offset_x'], loop['offset_y']
+            sf = loop['spiral_factor']
+
+            centers = []
+            if loop['type'] == "Cercle":
+                for i in range(n):
+                    a = 2 * math.pi * i / n
+                    centers.append([ox + r * math.cos(a), oy + r * math.sin(a)])
+            elif loop['type'] == "Grille":
+                side = int(math.ceil(math.sqrt(n)))
+                for i in range(n):
+                    centers.append([ox + (i % side) * s, oy + (i // side) * s])
+            elif loop['type'] == "Ligne":
+                for i in range(n):
+                    centers.append([ox + i * s, oy])
+            elif loop['type'] == "Spirale":
+                for i in range(n):
+                    a = 2 * math.pi * i / max(1, n//5)
+                    rr = r + i * sf
+                    centers.append([ox + rr * math.cos(a), oy + rr * math.sin(a)])
+
+            for center in centers:
+                av_type = model_av['type']
+                props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
+                props['center'] = center
+                body = None
+                if av_type == "rigidDisk":
+                    body = pre.rigidDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
+                
+                elif av_type == "rigidJonc" and 'axe1' in av and 'axe2' in av:
+                    body = pre.rigidJonc(axe1=model_av['axe1'], axe2=model_av['axe2'], center=av['center'], model=mod, material=mat, color=model_av['color'])
+                elif av_type == "rigidPolygon"   :
+                    if  av['gen_type'] == "regular" :
+                        body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=model_av['color'], generation_type= model_av['gen_type'], nb_vertices=int(model_av['nb_vertices']),radius=float(model_av['r']))
+                    else : 
+                        body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=model_av['color'], generation_type= model_av['gen_type'],vertices= np.array(model_av['vertices'], dtype=float) ,radius=float(model_av['r']))
+                elif av_type == "rigidDiscreteDisk":
+                    body = pre.rigidDiscreteDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
+                elif av_type == "roughWall" :
+                    body = pre.roughWall(l=props['l'], r=float(props['r']), center=center, model=mod, material=mat, color=model_av['color'])
+                elif av_type == "fineWall" and 'l' in model_av and 'r' in model_av:
+                    body = pre.fineWall(
+                        l=float(model_av['l']), r=float(model_av['r']), center=center,
+                        model=mod, material=mat, color=model_av['color'],  nb_vertex= int(model_av['nb_vertex'])
+                        )
+                elif av_type == "smoothWall" and 'l' in model_av and 'h' in model_av:
+                    body = pre.smoothWall(
+                        l=float(model_av['l']), h=float(model_av['h']), center=model_av['center'],
+                        model=mod, material=mat, color=model_av['color'], nb_polyg= int(model_av['nb_polyg'])
+                        )
+                elif av_type == "granuloRoughWall" :
+                    body = pre.granuloRoughWall(
+                        l=float(model_av['l']), rmin=float(model_av['rmin']), rmax= float(model_av['rmax']),
+                        center=center, model=mod, material=mat, color=model_av['color'],
+                        nb_vertex= int(model_av['nb_vertex'])
+                    )
+                else:
+                    continue
+                
+                
+                if body:
+                    self.bodies.addAvatar(body)
+                    self.bodies_objects.append(body)
+                    self.bodies_list.append(body)
+                    new_av = model_av.copy()
+                    new_av['center'] = center
+                    self.avatar_creations.append(new_av)
+        
+        #------ Lois
         for law in state.get('contact_laws', []):
             if not all(k in law for k in ['name', 'law', 'fric']): continue
             l = pre.tact_behav(name=law['name'], law=law['law'], fric=law['fric'])
             self.contact_laws.addBehav(l); self.contact_laws_objects.append(l)
             self.contact_creations.append(law)
 
-        # Visibilité
+        #------ Visibilité
         for rule in state.get('visibility_rules', []):
             law = next((l for l in self.contact_laws_objects if l.nom == rule['behav']), None)
             if not law: continue
@@ -824,7 +885,6 @@ class LMGC90GUI(QMainWindow):
                     )  
                 else : 
                     raw = self.avatar_vertices.text().strip()
-                    print(raw)
                     if not raw:
                         raise ValueError("Champ vertices obligatoire pour le mode full/bevel")
                     vertices_list = eval(raw, {"__builtins__": {}}, {})              # on accepte la même syntaxe que _safe_eval_dict
@@ -905,6 +965,7 @@ class LMGC90GUI(QMainWindow):
                 )
             
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
+            
             body_dict= {
                 'type': type,
                 'center': center,
@@ -912,45 +973,46 @@ class LMGC90GUI(QMainWindow):
                 'model': mod.nom, 
                 'color': self.avatar_color.text()
             }
-            if type ==  "rigidDisk" or "rigidDiscreteDisk":
+            if type in [ "rigidDisk","rigidDiscreteDisk"]:
                 body_dict['r']= self.avatar_radius.text()
-            if type ==  "rigidJonc" :
+            elif type ==  "rigidJonc" :
                 body_dict['axe1'] = self.avatar_axis.text().split(',')[0].split('=')[1].strip()
                 body_dict['axe2'] = self.avatar_axis.text().split(',')[1].split('=')[1].strip()
-            if type ==  "rigidPolygon"  and self.avatar_gen.currentText() == "regular":
+            elif type ==  "rigidPolygon"  and self.avatar_gen.currentText() == "regular":
                 body_dict['nb_vertices'] = self.avatar_nb_vertices.text()
                 #body_dict['theta'] = self.avatar_theta.text()
                 body_dict['gen_type'] = self.avatar_gen.currentText()
                 body_dict['r'] = self.avatar_radius.text()
-                print(body_dict['gen_type'])
-            if  type ==  "rigidPolygon" and self.avatar_gen.currentText() == "full":
+                #print(body_dict['gen_type'])
+            elif  type ==  "rigidPolygon" and self.avatar_gen.currentText() == "full":
                 body_dict['vertices'] = vertices.tolist()
                 #body_dict['theta'] = self.avatar_theta.text()
                 body_dict['gen_type'] = self.avatar_gen.currentText()
                 body_dict['r'] = self.avatar_radius.text()
-                print(body_dict['gen_type'])
-            if type == "rigidOvoidPolygon":
+                #print(body_dict['gen_type'])
+            elif type == "rigidOvoidPolygon":
                 body_dict['ra'] = self.avatar_r_ovoid.text().split(',')[0].split('=')[1].strip()
                 body_dict['rb'] = self.avatar_r_ovoid.text().split(',')[1].split('=')[1].strip()
                 body_dict['nb_vertices'] = self.avatar_nb_vertices.text()
-            if type == "fineWall" or "roughWall" :
+            elif type in ["fineWall" , "roughWall"] :
                 body_dict['l'] = self.wall_length.text()
                 body_dict['r'] = self.wall_height.text()
                 body_dict['nb_vertex'] = self.avatar_nb_vertices.text()
-            if type == "smoothWall" :
+            elif type == "smoothWall" :
                 body_dict['l'] = self.wall_length.text()
                 body_dict['h'] = self.wall_height.text()
                 body_dict['nb_polyg'] = self.avatar_nb_vertices.text()
-            if type =="granuloRoughWall"  :
+            elif type =="granuloRoughWall"  :
                 body_dict['l'] = self.wall_length.text()
                 body_dict['rmin']= self.wall_height.text().split(',')[0].split('=')[1].strip()
                 body_dict['rmax'] = self.wall_height.text().split(',')[1].split('=')[1].strip()
-                body_dict['nb_vertx'] = self.avatar_nb_vertices.text()
-
+                body_dict['nb_vertex'] = self.avatar_nb_vertices.text()
+            else : 
+                ValueError("Rigide non connue!")
 
             
             self.avatar_creations.append(body_dict)
-            print(self.avatar_creations)
+            print(body_dict)
             self.update_selections(); self.update_model_tree()
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Avatar : {e}")
@@ -1018,7 +1080,6 @@ class LMGC90GUI(QMainWindow):
         ]:
             combo.blockSignals(True); combo.clear(); combo.addItems(items); combo.setEnabled(enabled); combo.blockSignals(False)
 
-
     def update_model_tree(self):
         self.tree.clear()
         root = QTreeWidgetItem(["Modèle LMGC90", "", ""])
@@ -1035,8 +1096,41 @@ class LMGC90GUI(QMainWindow):
                 self._add_to_tree(parent, name, type(obj).__name__)
         self.tree.addTopLevelItem(root); root.setExpanded(True)
     # ========================================
-    # ACTIONS
+    # ACTIONS/GENERATION SCRIPT
     # ========================================
+    def _write_avatar_creation(self, f, i, av):
+        if av['type']  == 'rigidDisk' :
+                f.write(f"body{i} = pre.rigidDisk(r={av['r']}, center={av['center']}, ")
+                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+        elif av['type']  == 'rigidJonc' :
+                f.write(f"body{i} = pre.rigidJonc(axe1={av['axe1']}, axe2 = {av['axe2']},center={av['center']}, ")
+                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+        elif av['type'] == 'rigidPolygon' and av['gen_type'] == 'regular' : 
+                f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', nb_vertices={av['nb_vertices']}, ")
+                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+        elif av['type'] == 'rigidPolygon' and av['gen_type'] == 'full'  :
+                f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', vertices=np.array({av['vertices']}), ")
+                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+        elif av['type'] == 'rigidOvoidPolygon':
+                f.write(f"body{i} = pre.rigidOvoidPolygon(ra={av['ra']}, rb={av['rb']}, ")
+                f.write(f"nb_vertices={av['nb_vertices']}, center={av['center']}, ")
+                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+        elif av['type'] == 'rigidDiscreteDisk':
+                f.write(f"body{i} = pre.rigidDiscreteDisk(r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
+        elif av['type'] == 'roughWall':
+                f.write(f"body{i} = pre.roughWall(l={av['l']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_vertex= {av['nb_vertex']},color='{av['color']}')\n")
+        elif av['type'] == 'fineWall':
+                f.write(f"body{i} = pre.fineWall(l={av['l']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_vertex= {av['nb_vertex']}, color='{av['color']}')\n")
+        elif av['type'] == 'smoothWall':
+                f.write(f"body{i} = pre.smoothWall(l={av['l']}, h={av['h']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_polyg= {av['nb_polyg']},color='{av['color']}')\n")
+        elif av['type'] == "granuloRoughWall" :
+                f.write(f"body{i} = pre.granuloRoughWall(l={av['l']}, rmain={av['rmin']}, rmax = {av['rmax']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'],nb_vertex= {av['nb_vertex']}, color='{av['color']}',  nb_vertx= {float(av['nb_vertex'])}  )\n")     
+        else:
+                f.write(f"# Type {av['type']} non géré\n")
+                return
+        f.write(f"bodies.addAvatar(body{i}); bodies_list.append(body{i})\n\n")
+    
+    
     def generate_python_script(self):
         try:
             base = self.current_project_dir or os.getcwd()
@@ -1047,50 +1141,58 @@ class LMGC90GUI(QMainWindow):
                 f.write("mats, mods, laws = {}, {}, {}\n")
                 f.write("materials = pre.materials(); models = pre.models(); bodies = pre.avatars()\n")
                 f.write("tacts = pre.tact_behavs(); svs = pre.see_tables()\n\n")
+                f.write("bodies_list = []\n")
 
-                # Matériaux
+                #----- Matériaux
                 for m in self.material_creations:
                     f.write(f"mats['{m['name']}'] = pre.material(name='{m['name']}', materialType='{m['type']}', density={m['density']})\n")
                     f.write("materials.addMaterial(mats['" + m['name'] + "'])\n\n")
 
-                # Modèles
+                #----- Modèles
                 for m in self.model_creations:
                     f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', element='{m['element']}', dimension={m['dimension']})\n")
                     f.write("models.addModel(mods['" + m['name'] + "'])\n\n")
 
-                # Avatars
-                f.write("bodies_list = []\n")
+                #----- Avatars
+                #---- avatar individuel----
+                loop_indices = set()
+                for loop in self.loop_creations:
+                    loop_indices.update(loop.get('generated_avatar_indices', []))
                 for i, av in enumerate(self.avatar_creations):
-                    if av['type']  == 'rigidDisk' :
-                        f.write(f"body{i} = pre.rigidDisk(r={av['r']}, center={av['center']}, ")
-                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type']  == 'rigidJonc' :
-                        f.write(f"body{i} = pre.rigidJonc(axe1={av['axe1']}, axe2 = {av['axe2']},center={av['center']}, ")
-                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'rigidPolygon' and av['gen_type'] == 'regular' : 
-                        f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', nb_vertices={av['nb_vertices']}, ")
-                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'rigidPolygon' and av['gen_type'] == 'full'  :
-                        f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', vertices=np.array({av['vertices']}), ")
-                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'rigidOvoidPolygon':
-                        f.write(f"body{i} = pre.rigidOvoidPolygon(ra={av['ra']}, rb={av['rb']}, ")
-                        f.write(f"nb_vertices={av['nb_vertices']}, center={av['center']}, ")
-                        f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'rigidDiscreteDisk':
-                        f.write(f"body{i} = pre.rigidDiscreteDisk(r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'roughWall':
-                        f.write(f"body{i} = pre.roughWall(l={av['length']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'fineWall':
-                        f.write(f"body{i} = pre.fineWall(l={av['length']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'smoothWall':
-                        f.write(f"body{i} = pre.smoothWall(l={av['length']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == 'fine':
-                        f.write(f"body{i} = pre.fineWall(l={av['length']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-                    if av['type'] == "granuloRoughWall" :
-                        f.write(f"body{i} = pre.granuloRoughWall(l={av['length']}, rmain={av['rmin']}, rmax = {av['rmax']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}',  roughness= {float(av['roughness'])}  )\n")
-                    
-                    f.write(f"bodies.addAvatar(body{i}); bodies_list.append(body{i})\n\n")
+                    if i not in loop_indices:
+                        self._write_avatar_creation(f, i, av)
+
+                # --- Boucles ---
+                for idx, loop in enumerate(self.loop_creations):
+                    model_av = self.avatar_creations[loop['model_avatar_index']]
+                    mat_name, mod_name, color = model_av['material'], model_av['model'], model_av['color']
+                    f.write(f"\n# --- Boucle {idx}: {loop['type']} ({loop['count']} avatars) ---\n")
+                    f.write(f"centers_{idx} = []\n")
+                    if loop['type'] == "Cercle":
+                        f.write(f"for i in range({loop['count']}):\n")
+                        f.write(f"    a = 2 * math.pi * i / {loop['count']}\n")
+                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + {loop['radius']} * math.cos(a), {loop['offset_y']} + {loop['radius']} * math.sin(a)])\n")
+                    elif loop['type'] == "Grille":
+                        side = int(math.ceil(math.sqrt(loop['count'])))
+                        f.write(f"for i in range({loop['count']}):\n")
+                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + (i % {side}) * {loop['step']}, {loop['offset_y']} + (i // {side}) * {loop['step']}])\n")
+                    elif loop['type'] == "Ligne":
+                        f.write(f"for i in range({loop['count']}):\n")
+                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + i * {loop['step']}, {loop['offset_y']}])\n")
+                    elif loop['type'] == "Spirale":
+                        f.write(f"for i in range({loop['count']}):\n")
+                        f.write(f"    a = 2 * math.pi * i / max(1, {loop['count']}//5)\n")
+                        f.write(f"    r = {loop['radius']} + i * {loop['spiral_factor']}\n")
+                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + r * math.cos(a), {loop['offset_y']} + r * math.sin(a)])\n")
+
+                    f.write(f"\nfor center in centers_{idx}:\n")
+                    props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
+                    if model_av['type'] == 'rigidDisk':
+                        f.write(f"    body = pre.rigidDisk(r={props.get('r', 0.1)}, center=center, ")
+                    elif model_av['type'] == 'rigidDiscreteDisk':
+                        f.write(f"    body = pre.rigidDiscreteDisk(r={props.get('r', 0.1)}, center=center, ")
+                    f.write(f"model=mods['{mod_name}'], material=mats['{mat_name}'], color='{color}')\n")
+                    f.write(f"    bodies.addAvatar(body); bodies_list.append(body)\n")
 
                 # DOF
                 for op in self.operations:
@@ -1108,7 +1210,7 @@ class LMGC90GUI(QMainWindow):
                     f.write(f"behav=laws['{rule['behav']}'], alert={rule['alert']})\n")
                     f.write("svs.addSeeTable(svt)")
 
-                f.write("\npre.writeDatbox(2, materials, models, bodies, tacts, svs)\n")
+                f.write("\n\npre.writeDatbox(2, materials, models, bodies, tacts, svs)\n")
             self.script_path = path
             QMessageBox.information(self, "Succès", f"Script généré :\n{path}")
         except Exception as e:
