@@ -35,3 +35,4 @@ List of version :
 -  0.1.4 : add rigidOvoidPolygon and fix some bugs;
 -  0.1.5 : add `rigidDiscretDisk`, `roughWall`, `fineWall`, `smoothWall`, and `GranuloRoughWall` avatars;
 -  0.1.6 : add parametric addition of avatars (circular, line, grid and spiral); 
+-  0.1.7 : generate parametric avatars in loops, fix some bugs  ;
