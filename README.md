@@ -18,7 +18,7 @@ the interface can save and open project with json formated file, and can generat
 ## Installation
 
 ```bash
-git clone https://github.com/bzerourou/LMGC90_GUI.git
+git clone https://github.com/bzerourou/LMGC90_GUI2.git
 cd LMGC90_GUI
 python main.py
 ```
