@@ -9,7 +9,7 @@ import numpy as np
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
-    QTreeWidget, QTreeWidgetItem, QSplitter, QTabWidget, QLineEdit, QComboBox,
+    QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox,
     QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout
 )
 from PyQt6.QtCore import Qt
@@ -20,12 +20,14 @@ class LMGC90GUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.dim = 2
-        # Drapeau pour contrôler l'initialisation
+        self.current_selected = None
         self._initializing = True
         self._init_containers()
         self._init_ui()
         self.update_selections()
         self.update_model_tree()
+        self._initializing = False
+
 
     def _init_containers(self):
         # --- Conteneurs LMGC90 ---
@@ -60,7 +62,7 @@ class LMGC90GUI(QMainWindow):
         self.loop_creations = []  # Sauvegarde des boucles
 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.7 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.8 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -93,13 +95,15 @@ class LMGC90GUI(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Élément", "Type", "Détails"])
+        self.tree.itemClicked.connect(self.activate_tab)
         dock.setWidget(self.tree)
+        dock.setMinimumWidth(500)
 
         # --- Onglets ---
         splitter = QSplitter(Qt.Orientation.Vertical)
         self.setCentralWidget(splitter)
-        tabs = QTabWidget()
-        splitter.addWidget(tabs)
+        self.tabs = QTabWidget()
+        splitter.addWidget(self.tabs)
 
         # === Matériau ===
         mat_tab = QWidget()
@@ -111,9 +115,21 @@ class LMGC90GUI(QMainWindow):
             ("Propriétés (ex: young=1e9) :", self.mat_props)
         ]:
             ml.addWidget(QLabel(label)); ml.addWidget(widget)
-        btn = QPushButton("Créer matériau"); btn.clicked.connect(lambda: self.create_material()); ml.addWidget(btn)
-        mat_tab.setLayout(ml); tabs.addTab(mat_tab, "Matériau")
-
+        
+        btn_layout = QHBoxLayout()
+        create_btn = QPushButton("Créer")
+        modify_btn = QPushButton("Modifier")
+        delete_btn = QPushButton("Supprimer")
+        create_btn.clicked.connect(self.create_material)
+        modify_btn.clicked.connect(self.modify_selected)
+        delete_btn.clicked.connect(self.delete_selected)
+        for b in [create_btn, modify_btn, delete_btn]:
+            btn_layout.addWidget(b)
+        ml.addLayout(btn_layout)
+        mat_tab.setLayout(ml)
+        self.tabs.addTab(mat_tab, "Matériau")
+        self.mat_tab = mat_tab
+        
         # --- Modèle ---
         mod_tab = QWidget()
         mml = QVBoxLayout()
@@ -128,11 +144,19 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Opts:"), self.model_options,
                   ]:
             mml.addWidget(w)
-        create_mod_btn = QPushButton("Créer modèle")
+        btn_layout = QHBoxLayout()
+        create_mod_btn = QPushButton("Créer")
+        modify_mod_btn = QPushButton("Modifier")
+        delete_mod_btn = QPushButton("Supprimer")
         create_mod_btn.clicked.connect(self.create_model)
-        mml.addWidget(create_mod_btn)
+        modify_mod_btn.clicked.connect(self.modify_selected)
+        delete_mod_btn.clicked.connect(self.delete_selected)
+        for b in [create_mod_btn, modify_mod_btn, delete_mod_btn]:
+            btn_layout.addWidget(b)
+        mml.addLayout(btn_layout)
         mod_tab.setLayout(mml)
-        tabs.addTab(mod_tab, "Modèle")
+        self.tabs.addTab(mod_tab, "Modèle")
+        self.mod_tab = mod_tab
 
         # --- Avatar ---
         av_tab = QWidget()
@@ -171,11 +195,19 @@ class LMGC90GUI(QMainWindow):
                     QLabel("Props:"), self.avatar_properties,
                   ]:
             al.addWidget(w)
-        create_av_btn = QPushButton("Créer avatar")
+        btn_layout = QHBoxLayout()
+        create_av_btn = QPushButton("Créer")
+        modify_av_btn = QPushButton("Modifier")
+        delete_av_btn = QPushButton("Supprimer")
         create_av_btn.clicked.connect(self.create_avatar)
-        al.addWidget(create_av_btn)
+        modify_av_btn.clicked.connect(self.modify_selected)
+        delete_av_btn.clicked.connect(self.delete_selected)
+        for b in [create_av_btn, modify_av_btn, delete_av_btn]:
+            btn_layout.addWidget(b)
+        al.addLayout(btn_layout)
         av_tab.setLayout(al)
-        tabs.addTab(av_tab, "Avatar")
+        self.tabs.addTab(av_tab, "Avatar")
+        self.av_tab = av_tab
 
         # Connecter le signal après la création des widgets, en bloquant les signaux
         self.avatar_type.blockSignals(True)
@@ -190,10 +222,8 @@ class LMGC90GUI(QMainWindow):
         # avatars boucles ---
         loop_tab = QWidget()
         ll = QVBoxLayout()
-
         self.loop_type = QComboBox()
         self.loop_type.addItems(["Cercle", "Grille", "Ligne", "Spirale"])
-
         self.loop_avatar_type = QComboBox()
         self.loop_count = QLineEdit("10")
         self.loop_radius = QLineEdit("2.0")
@@ -218,9 +248,8 @@ class LMGC90GUI(QMainWindow):
         create_loop_btn = QPushButton("Créer boucle")
         create_loop_btn.clicked.connect(self.create_loop)
         ll.addWidget(create_loop_btn)
-
         loop_tab.setLayout(ll)
-        tabs.addTab(loop_tab, "Boucles")
+        self.tabs.addTab(loop_tab, "Boucles")
         
         # --- DOF ---
         dof_tab = QWidget()
@@ -238,12 +267,12 @@ class LMGC90GUI(QMainWindow):
         dof_btn.clicked.connect( self.dof_force)
         dl.addWidget(dof_btn)
         dof_tab.setLayout(dl)
-        tabs.addTab(dof_tab, "DOF")
+        self.tabs.addTab(dof_tab, "DOF")
         #initialisation du texte 
         self.update_dof_options(self.dof_avatar_force.currentText())
 
         # --- Contact ---
-        contact_tab = QWidget()
+        self.contact_tab = QWidget()
         cl = QVBoxLayout()
         self.contact_name = QLineEdit("iqsc0")
         self.contact_type = QComboBox(); self.contact_type.addItems(["IQS_CLB"])
@@ -252,11 +281,12 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Props:"), self.contact_properties,
                   ]:
             cl.addWidget(w)
-        create_law_btn = QPushButton("Créer loi")
-        create_law_btn.clicked.connect(lambda : self.create_contact_law())
-        cl.addWidget(create_law_btn)
-        contact_tab.setLayout(cl)
-        tabs.addTab(contact_tab, "Contact")
+        btns = QHBoxLayout()
+        for text, slot in [("Créer", self.create_contact_law), ("Modifier", self.modify_selected), ("Supprimer", self.delete_selected)]:
+            b = QPushButton(text); b.clicked.connect(slot); btns.addWidget(b)
+        cl.addLayout(btns)
+        self.contact_tab.setLayout(cl)
+        self.tabs.addTab(self.contact_tab, "Contact")
 
         # --- Visibilité ---
         vis_tab = QWidget()
@@ -274,11 +304,13 @@ class LMGC90GUI(QMainWindow):
                   QLabel("Loi:"), self.behav, QLabel("Alerte:"), self.vis_alert,
                   ]:
             vl.addWidget(w)
-        create_visi_btn = QPushButton("Ajouter table de visibilité")
-        create_visi_btn.clicked.connect(self.add_visibility_rule)
-        vl.addWidget(create_visi_btn)
+        btns = QHBoxLayout()
+        for text, slot in [("Ajouter", self.add_visibility_rule), ("Modifier", self.modify_selected), ("Supprimer", self.delete_selected)]:
+            b = QPushButton(text); b.clicked.connect(slot); btns.addWidget(b)
+        vl.addLayout(btns)
         vis_tab.setLayout(vl)
-        tabs.addTab(vis_tab, "Visibilité")
+        self.tabs.addTab(vis_tab, "Visibilité")
+        self.vis_tab =vis_tab
 
         # --- Rendu ---
         render_tabs = QTabWidget()
@@ -314,7 +346,7 @@ class LMGC90GUI(QMainWindow):
         except Exception as e:
             raise ValueError(f"Paramètres invalides : {e}")
 
-    def _add_to_tree(self, parent, name, type_, details=""):
+    def _add_to_tree(self, parent, name, type_, details="") -> QTreeWidget:
         QTreeWidgetItem(parent, [name, type_, details])
 
 
@@ -935,7 +967,7 @@ class LMGC90GUI(QMainWindow):
                 )        
 
             elif type == "fineWall":
-                body = pre.roughWall(
+                body = pre.fineWall(
                     l=float(self.wall_length.text()),
                     r=float(self.wall_height.text()),
                     center=center,
@@ -1080,21 +1112,246 @@ class LMGC90GUI(QMainWindow):
         ]:
             combo.blockSignals(True); combo.clear(); combo.addItems(items); combo.setEnabled(enabled); combo.blockSignals(False)
 
+    # ========================================
+    # INTERACTION ARBRE
+    # ========================================
+
     def update_model_tree(self):
         self.tree.clear()
         root = QTreeWidgetItem(["Modèle LMGC90", "", ""])
-        for title, items, key in [
-            ("Matériaux", self.material_objects, 'nom'),
-            ("Modèles", self.model_objects, 'nom'),
-            ("Avatars", self.bodies_objects, None),
-            ("Lois", self.contact_laws_objects, 'nom'),
-            ("Règles", self.visibilities_table_objects, None),
-        ]:
-            parent = QTreeWidgetItem(root, [title, "", f"{len(items)}"])
-            for obj in items:
-                name = getattr(obj, key, f"Objet {id(obj)}") if key else "Avatar"
-                self._add_to_tree(parent, name, type(obj).__name__)
+   
+        
+         # Matériaux
+        mat_node = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.material_objects)}"])
+        for i, mat in enumerate(self.material_objects):
+            item = QTreeWidgetItem([mat.nom, "Matériau", f"ρ={mat.density}"])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("material", i))
+            mat_node.addChild(item)
+
+        # Modèles
+        mod_node = QTreeWidgetItem(root, ["Modèles", "", f"{len(self.model_objects)}"])
+        for i, mod in enumerate(self.model_objects):
+            item = QTreeWidgetItem([mod.nom, "Modèle", f"{mod.element} dim={mod.dimension}"])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("model", i))
+            mod_node.addChild(item)
+
+        # Avatars (le plus critique)
+        av_node = QTreeWidgetItem(root, ["Avatars", "", f"{len(self.bodies_objects)}"])
+        for i, body in enumerate(self.bodies_objects):
+            av = self.avatar_creations[i]
+            color = body.contactors[0].color if body.contactors else "?????"
+            name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
+            item = QTreeWidgetItem([name, "Avatar", str(i)])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("avatar", i))
+            av_node.addChild(item)
+
+        # Lois de contact
+        law_node = QTreeWidgetItem(root, ["Lois de contact", "", f"{len(self.contact_laws_objects)}"])
+        for i, law in enumerate(self.contact_laws_objects):
+            item = QTreeWidgetItem([law.nom, "Loi", f"fric={law.fric}"])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("contact", i))
+            law_node.addChild(item)
+
+        # Visibilités
+        vis_node = QTreeWidgetItem(root, ["Tables de visibilité", "", f"{len(self.visibilities_table_objects)}"])
+        for i, st in enumerate(self.visibilities_table_objects):
+            txt = f"{st.candidat}({st.colorCandidat}) ↔ {st.antagoniste} → {st.behav}"
+            item = QTreeWidgetItem([txt, "Visibilité", ""])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("visibility", i))
+            vis_node.addChild(item)
+
         self.tree.addTopLevelItem(root); root.setExpanded(True)
+
+    def activate_tab(self, item, column): 
+        
+        if item.parent() is None: return
+        parent_text = item.parent().text(0)
+        name = item.text(0)
+        print(name)
+
+        if parent_text == "Matériaux":
+            mat = next((m for m in self.material_objects if m.nom == name), None)
+            if not mat: return
+            self.tabs.setCurrentWidget(self.mat_tab)
+            self.mat_name.setText(mat.nom)
+            self.mat_type.setCurrentText(mat.materialType)
+            self.mat_density.setText(str(mat.density))
+            self.current_selected = ("material", mat)
+
+        elif parent_text == "Modèles":
+            mod = next((m for m in self.model_objects if m.nom == name), None)
+            if not mod: return
+            self.tabs.setCurrentWidget(self.mod_tab)
+            self.model_name.setText(mod.nom)
+            self.model_physics.setCurrentText(mod.physics)
+            self.model_element.setText(mod.element)
+            self.model_dimension.setCurrentText(str(mod.dimension))
+            self.current_selected = ("model", mod)
+
+        elif parent_text == "Avatars":
+            try:
+                idx = self.bodies_objects.index(next(b for b in self.bodies_objects if str(b) == name or b.contactors[0].color in name))
+            except:
+                return
+            av = self.avatar_creations[idx]
+            self.tabs.setCurrentWidget(self.av_tab)
+            self.avatar_type.setCurrentText(av['type'])
+            self.update_avatar_fields(av['type'])
+            self.avatar_center.setText(",".join(map(str, av['center'])))
+            self.avatar_material.setCurrentText(av['material'])
+            self.avatar_model.setCurrentText(av['model'])
+            self.avatar_color.setText(av['color'])
+
+            if av['type'] in ["rigidDisk", "rigidDiscreteDisk"]:
+                self.avatar_radius.setText(av.get('r', '0.1'))
+            elif av['type'] == "rigidJonc":
+                self.avatar_axis.setText(f"axe1 = {av['axe1']}, axe2 = {av['axe2']}")
+            elif av['type'] == "rigidPolygon":
+                self.avatar_gen.setCurrentText(av['gen_type'])
+                self.avatar_radius.setText(av['r'])
+                if av['gen_type'] == "regular":
+                    self.avatar_nb_vertices.setText(av['nb_vertices'])
+                else:
+                    self.avatar_vertices.setText(str(av['vertices']))
+            elif av['type'] == "rigidOvoidPolygon":
+                self.avatar_r_ovoid.setText(f"ra = {av['ra']}, rb = {av['rb']}")
+                self.avatar_nb_vertices.setText(av['nb_vertices'])
+            elif av['type'] in ["roughWall", "fineWall", "smoothWall", "granuloRoughWall"]:
+                self.wall_length.setText(av['l'])
+                if av['type'] == "granuloRoughWall":
+                    self.wall_height.setText(f"rmin = {av['rmin']}, rmax = {av['rmax']}")
+                elif av['type'] == "smoothWall":
+                    self.wall_height.setText(av['h'])
+                else:
+                    self.wall_height.setText(av['r'])
+                self.avatar_nb_vertices.setText(av.get('nb_vertex', av.get('nb_polyg', '10')))
+            self.current_selected = ("avatar", idx)
+
+        elif parent_text == "Lois de contact":
+            law = next((l for l in self.contact_laws_objects if l.nom == name), None)
+            if not law: return
+            self.tabs.setCurrentWidget(self.contact_tab)
+            self.contact_name.setText(law.nom)
+            self.contact_type.setCurrentText(law.law)
+            self.contact_properties.setText(f"fric={law.fric}")
+            self.current_selected = ("contact", law)
+        
+        elif parent_text == "Tables de visibilité":
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if not data:
+                return
+            typ, idx = data
+            if typ != "visibility":
+                return
+            rule = self.visibility_creations[idx]
+            # Aller à l'onglet Visibilité
+            self.tabs.setCurrentWidget(self.vis_tab)
+
+            # Remplir tous les champs
+            self.vis_corps_candidat.setCurrentText(rule['CorpsCandidat'])
+            self.vis_candidat.setCurrentText(rule['candidat'])
+            self.candidat_color.setText(rule['colorCandidat'])
+
+            self.vis_corps_antagoniste.setCurrentText(rule['CorpsAntagoniste'])
+            self.vis_antagoniste.setCurrentText(rule['antagoniste'])
+            self.antagoniste_color.setText(rule['colorAntagoniste'])
+
+            # Trouver et sélectionner la bonne loi
+            for i, law in enumerate(self.contact_laws_objects):
+                if law.nom == rule['behav']:
+                    self.behav.setCurrentIndex(i)
+                    break
+            self.vis_alert.setText(str(rule['alert']))
+            # Important : on garde la référence pour Modifier/Supprimer
+            self.current_selected = ("visibility", idx)
+
+    def modify_selected(self):
+        if not self.current_selected:
+            QMessageBox.warning(self, "Sélection", "Sélectionnez un élément dans l'arbre")
+            return
+        typ, data = self.current_selected
+        try:
+            if typ == "material":
+                mat = data
+                mat.nom = self.mat_name.text()
+                mat.materialType = self.mat_type.currentText()
+                mat.density = float(self.mat_density.text())
+                idx = self.material_objects.index(mat)
+                self.material_creations[idx]['name'] = mat.nom
+                self.material_creations[idx]['density'] = mat.density
+                self.mats_dict[mat.nom] = mat
+            elif typ == "model":
+                mod = data
+                mod.nom = self.model_name.text()
+                mod.physics = self.model_physics.currentText()
+                mod.element = self.model_element.text()
+                mod.dimension = int(self.model_dimension.currentText())
+                idx = self.model_objects.index(mod)
+                self.model_creations[idx].update({"name": mod.nom, "physics": mod.physics,
+                                                  "element": mod.element, "dimension": mod.dimension})
+                self.mods_dict[mod.nom] = mod
+            elif typ == "avatar":
+                self.delete_selected()  # on supprime l'ancien
+                self.create_avatar()     # on recrée avec les nouvelles valeurs
+                return
+            elif typ == "contact":
+                law = data
+                law.nom = self.contact_name.text()
+                law.law = self.contact_type.currentText()
+                law.fric = float(self.contact_fric.text())
+                idx = self.contact_laws_objects.index(law)
+                self.contact_creations[idx].update({"name": law.nom, "law": law.law, "fric": law.fric})
+            elif typ == "visibility":
+                self.delete_selected()
+                self.add_visibility_rule()
+                return
+
+            self.update_model_tree()
+            self.update_selections()
+            QMessageBox.information(self, "Succès", "Modifié avec succès")
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", str(e))
+
+    def delete_selected(self):
+        if not self.current_selected:
+            QMessageBox.warning(self, "Aucun", "Sélectionnez un élément")
+            return
+        typ, obj = self.current_selected
+        reply = QMessageBox.question(self, "Confirmer", "Supprimer ?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes: return
+
+        if typ == "material":
+            self.materials.remove(obj)
+            self.material_objects.remove(obj)
+            self.material_creations = [m for m in self.material_creations if m['name'] != obj.nom]
+            self.mats_dict.pop(obj.nom, None)
+        elif typ == "model":
+            self.models.remove(obj)
+            self.model_objects.remove(obj)
+            self.model_creations = [m for m in self.model_creations if m['name'] != obj.nom]
+            self.mods_dict.pop(obj.nom, None)
+        elif typ == "avatar":
+            idx = obj
+            body = self.bodies_objects[idx]
+            self.bodies.remove(body)
+            self.bodies_objects.pop(idx)
+            self.bodies_list.pop(idx)
+            self.avatar_creations.pop(idx)
+        elif typ == "contact":
+            self.contact_laws.remove(obj)
+            self.contact_laws_objects.remove(obj)
+            self.contact_creations = [c for c in self.contact_creations if c['name'] != obj.nom]
+        elif typ == "visibility":
+                idx = obj
+                st = self.visibilities_table_objects[idx]
+                self.visibilities_table.removeSeeTable(st)
+                self.visibilities_table_objects.pop(idx)
+                self.visibility_creations.pop(idx)
+
+        self.update_selections()
+        self.update_model_tree()
+        self.current_selected = None
+        QMessageBox.information(self, "Succès", "Supprimé")
     # ========================================
     # ACTIONS/GENERATION SCRIPT
     # ========================================
@@ -1124,7 +1381,7 @@ class LMGC90GUI(QMainWindow):
         elif av['type'] == 'smoothWall':
                 f.write(f"body{i} = pre.smoothWall(l={av['l']}, h={av['h']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_polyg= {av['nb_polyg']},color='{av['color']}')\n")
         elif av['type'] == "granuloRoughWall" :
-                f.write(f"body{i} = pre.granuloRoughWall(l={av['l']}, rmain={av['rmin']}, rmax = {av['rmax']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'],nb_vertex= {av['nb_vertex']}, color='{av['color']}',  nb_vertx= {float(av['nb_vertex'])}  )\n")     
+                f.write(f"body{i} = pre.granuloRoughWall(l={av['l']}, rmin={av['rmin']}, rmax = {av['rmax']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'],nb_vertex= {av['nb_vertex']}, color='{av['color']}',  nb_vertx= {float(av['nb_vertex'])}  )\n")     
         else:
                 f.write(f"# Type {av['type']} non géré\n")
                 return
@@ -1142,17 +1399,14 @@ class LMGC90GUI(QMainWindow):
                 f.write("materials = pre.materials(); models = pre.models(); bodies = pre.avatars()\n")
                 f.write("tacts = pre.tact_behavs(); svs = pre.see_tables()\n\n")
                 f.write("bodies_list = []\n")
-
                 #----- Matériaux
                 for m in self.material_creations:
                     f.write(f"mats['{m['name']}'] = pre.material(name='{m['name']}', materialType='{m['type']}', density={m['density']})\n")
                     f.write("materials.addMaterial(mats['" + m['name'] + "'])\n\n")
-
                 #----- Modèles
                 for m in self.model_creations:
                     f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', element='{m['element']}', dimension={m['dimension']})\n")
                     f.write("models.addModel(mods['" + m['name'] + "'])\n\n")
-
                 #----- Avatars
                 #---- avatar individuel----
                 loop_indices = set()
@@ -1161,7 +1415,6 @@ class LMGC90GUI(QMainWindow):
                 for i, av in enumerate(self.avatar_creations):
                     if i not in loop_indices:
                         self._write_avatar_creation(f, i, av)
-
                 # --- Boucles ---
                 for idx, loop in enumerate(self.loop_creations):
                     model_av = self.avatar_creations[loop['model_avatar_index']]
@@ -1257,10 +1510,17 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90 GUI v0.1.6\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.1.8\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
 
+#######################################
+      #--------fonction main
+     ##################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    font = app.font()
+    font.setPointSize(13)
+    font.setFamily("Segoe UI")
+    app.setFont(font)
     win = LMGC90GUI()
     win.show()
     sys.exit(app.exec())
