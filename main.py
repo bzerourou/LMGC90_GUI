@@ -9,7 +9,7 @@ import numpy as np
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
-    QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox,
+    QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox,
     QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout
 )
 from PyQt6.QtCore import Qt
@@ -228,6 +228,7 @@ class LMGC90GUI(QMainWindow):
         self.loop_count = QLineEdit("10")
         self.loop_radius = QLineEdit("2.0")
         self.loop_step = QLineEdit("1.0")
+        self.loop_inv_axe = QCheckBox("inverser l'axe")
         self.loop_offset_x = QLineEdit("0.0")
         self.loop_offset_y = QLineEdit("0.0")
         self.loop_spiral_factor = QLineEdit("0.1")
@@ -238,13 +239,14 @@ class LMGC90GUI(QMainWindow):
             ("Nombre :", self.loop_count),
             ("Rayon / Pas :", self.loop_radius),
             ("Pas X/Y :", self.loop_step),
+            ("", self.loop_inv_axe),
             ("Offset X :", self.loop_offset_x),
             ("Offset Y :", self.loop_offset_y),
             ("Facteur spirale :", self.loop_spiral_factor),
         ]:
             ll.addWidget(QLabel(label))
             ll.addWidget(widget)
-
+   
         create_loop_btn = QPushButton("Créer boucle")
         create_loop_btn.clicked.connect(self.create_loop)
         ll.addWidget(create_loop_btn)
@@ -528,8 +530,12 @@ class LMGC90GUI(QMainWindow):
                     centers.append([x, y])
             elif loop_type == "Ligne":
                 for i in range(n):
-                    x = offset_x + i * step
-                    y = offset_y
+                    if self.loop_inv_axe.isChecked() :
+                        x = offset_x
+                        y = offset_y +i * step
+                    else: 
+                        x = offset_x + i * step
+                        y = offset_y
                     centers.append([x, y])
             elif loop_type == "Spirale":
                 for i in range(n):
@@ -548,7 +554,7 @@ class LMGC90GUI(QMainWindow):
                 props['center'] = center
 
                 if av_type == "rigidDisk":
-                    body = pre.rigidDisk(r=props['r'], center=center, model=mod, material=mat, color=model_av['color'])
+                    body = pre.rigidDisk(r=model_av['r'], center=center, model=mod, material=mat, color=model_av['color'])
                 elif av_type == "rigidJonc" and 'axe1' in model_av and 'axe2' in model_av:
                     body = pre.rigidJonc(axe1=model_av['axe1'], axe2=model_av['axe2'], center=center, model=mod, material=mat, color=model_av['color'])
                 elif av_type == "rigidPolygon"   :
@@ -1120,7 +1126,6 @@ class LMGC90GUI(QMainWindow):
         self.tree.clear()
         root = QTreeWidgetItem(["Modèle LMGC90", "", ""])
    
-        
          # Matériaux
         mat_node = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.material_objects)}"])
         for i, mat in enumerate(self.material_objects):
@@ -1189,19 +1194,25 @@ class LMGC90GUI(QMainWindow):
             self.current_selected = ("model", mod)
 
         elif parent_text == "Avatars":
-            try:
-                idx = self.bodies_objects.index(next(b for b in self.bodies_objects if str(b) == name or b.contactors[0].color in name))
-            except:
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if not data or data[0] != "avatar":
+                return
+            idx = data[1]  # ← C’est l’indice exact, garanti correct !
+            
+            if idx < 0 or idx >= len(self.avatar_creations):
                 return
             av = self.avatar_creations[idx]
             self.tabs.setCurrentWidget(self.av_tab)
+            # --- Mise à jour des champs ---
+            self.avatar_type.blockSignals(True)
             self.avatar_type.setCurrentText(av['type'])
+            self.avatar_type.blockSignals(False)
             self.update_avatar_fields(av['type'])
             self.avatar_center.setText(",".join(map(str, av['center'])))
             self.avatar_material.setCurrentText(av['material'])
             self.avatar_model.setCurrentText(av['model'])
             self.avatar_color.setText(av['color'])
-
+            # --- Champs spécifiques selon le type ---
             if av['type'] in ["rigidDisk", "rigidDiscreteDisk"]:
                 self.avatar_radius.setText(av.get('r', '0.1'))
             elif av['type'] == "rigidJonc":
@@ -1407,7 +1418,7 @@ class LMGC90GUI(QMainWindow):
                 for m in self.model_creations:
                     f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', element='{m['element']}', dimension={m['dimension']})\n")
                     f.write("models.addModel(mods['" + m['name'] + "'])\n\n")
-                #----- Avatars
+                ######### Avatars
                 #---- avatar individuel----
                 loop_indices = set()
                 for loop in self.loop_creations:
@@ -1440,10 +1451,25 @@ class LMGC90GUI(QMainWindow):
 
                     f.write(f"\nfor center in centers_{idx}:\n")
                     props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
+                    print(props)
                     if model_av['type'] == 'rigidDisk':
-                        f.write(f"    body = pre.rigidDisk(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.rigidDisk(r={props.get('r', 0.1)}, center={model_av['center']}) ")
+                    elif model_av['type'] == 'rigidJonc':
+                        f.write(f"    body = pre.rigidJonc(r={props.get('r', 0.1)}, center=center, ")
+                    elif model_av['type'] == 'rigidPolygon':
+                        f.write(f"    body = pre.rigidPolygon(r={props.get('r', 0.1)}, center=center, ")
+                    elif model_av['type'] == 'rigidOvoidPolygon':
+                        f.write(f"    body = pre.rigidOvoidPolygon(r={props.get('r', 0.1)}, center=center, ")
                     elif model_av['type'] == 'rigidDiscreteDisk':
-                        f.write(f"    body = pre.rigidDiscreteDisk(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.rigidDiscreteDisk(r={props.get('r', 0.1)}, center=center, ")  
+                    elif model_av['type'] == 'roughWall':
+                        f.write(f"    body = pre.roughWall(r={props.get('r', 0.1)}, center=center, ")
+                    elif model_av['type'] == 'fineWall':
+                        f.write(f"    body = pre.fineWall(r={props.get('r', 0.1)}, center=center, ")
+                    elif model_av['type'] == 'granuloRoughWall':
+                        f.write(f"    body = pre.granuloRoughWall(r={props.get('r', 0.1)}, center=center, ")
+                    else:
+                        continue
                     f.write(f"model=mods['{mod_name}'], material=mats['{mat_name}'], color='{color}')\n")
                     f.write(f"    bodies.addAvatar(body); bodies_list.append(body)\n")
 
