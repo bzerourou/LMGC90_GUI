@@ -596,6 +596,7 @@ class LMGC90GUI(QMainWindow):
                 # Copier le dict et mettre à jour le centre
                 new_av = model_av.copy()
                 new_av['center'] = center
+                new_av['__from_loop'] = True
                 self.avatar_creations.append(new_av)
             # --- Sauvegarder boucle ---
             loop_data = {
@@ -671,6 +672,7 @@ class LMGC90GUI(QMainWindow):
         QMessageBox.information(self, "Succès", "Projet sauvegardé")
 
     def _serialize_state(self):
+        manual_avatars = [av for av in self.avatar_creations if not av.get('__from_loop', False)]
         return {
             'materials': self.material_creations,
             'models': self.model_creations,
@@ -698,11 +700,8 @@ class LMGC90GUI(QMainWindow):
             self.model_creations.append(m); self.mods_dict[m['name']] = mod
 
         #-------Avatars
-        loop_indices = set()
-        for loop in state.get('loops', []):
-            loop_indices.update(loop.get('generated_avatar_indices',[]))
-        
-        for av in state.get('avatars', []):
+        manual_avatars = [av for av in state.get('avatars', []) if not av.get('__from_loop', False)]
+        for av in manual_avatars:
             #if not all(k in av for k in ['type', ('r' or ('axe1' and 'axe2')), 'center', 'material', 'model', 'color']): continue
             mat = self.mats_dict.get(av['material']); mod = self.mods_dict.get(av['model'])
             if not mat or not mod: continue
@@ -741,7 +740,8 @@ class LMGC90GUI(QMainWindow):
                     nb_vertex= int(av['nb_vertex']))
             else : continue
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
-            self.avatar_creations.append(av)
+            av_copy = av.copy(); av_copy['__from_loop']=False
+            self.avatar_creations.append(av_copy)
 
         # --- Recréer les boucles ---
         import math
@@ -821,6 +821,7 @@ class LMGC90GUI(QMainWindow):
                     self.bodies_list.append(body)
                     new_av = model_av.copy()
                     new_av['center'] = center
+                    new_av['__from_loop'] = True
                     self.avatar_creations.append(new_av)
         
         #------ Lois
@@ -849,6 +850,9 @@ class LMGC90GUI(QMainWindow):
             if 0 <= idx < len(self.bodies_list):
                 body = self.bodies_list[idx]
                 getattr(body, op['type'])(**op['params'])
+        
+        self.update_selections()
+        self.update_model_tree()
     # ========================================
     # CRÉATIONS
     # ========================================
