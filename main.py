@@ -950,6 +950,20 @@ class LMGC90GUI(QMainWindow):
                 body = self.bodies_list[idx]
                 getattr(body, op['type'])(**op['params'])
         
+        # Recharger les groupes
+        self.avatar_groups = state.get('avatar_groups', {})
+        self.group_names = state.get('group_names', list(self.avatar_groups.keys()))
+
+        # Recréer les liens après re-création des avatars via les boucles
+        for loop in self.loop_creations:
+            if loop.get('type') == 'Manuel' and 'group_name' in loop:
+                group_name = loop['group_name']
+                if group_name not in self.avatar_groups:
+                    self.avatar_groups[group_name] = []
+                if group_name not in self.group_names:
+                    self.group_names.append(group_name)
+        
+        
         self.update_selections()
         self.update_model_tree()
     # ========================================
