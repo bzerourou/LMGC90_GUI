@@ -516,6 +516,7 @@ class LMGC90GUI(QMainWindow):
             spiral_factor = float(self.loop_spiral_factor.text())
             # --- Générer centres ---
             centers = []
+    
             if loop_type == "Cercle":
                 for i in range(n):
                     angle = 2 * math.pi * i / n
@@ -605,6 +606,7 @@ class LMGC90GUI(QMainWindow):
                 'count': n,
                 'radius': radius,
                 'step': step,
+                'invert_axis' : self.loop_inv_axe.isChecked(),
                 'offset_x': offset_x,
                 'offset_y': offset_y,
                 'spiral_factor': spiral_factor,
@@ -768,8 +770,12 @@ class LMGC90GUI(QMainWindow):
                 for i in range(n):
                     centers.append([ox + (i % side) * s, oy + (i // side) * s])
             elif loop['type'] == "Ligne":
+                invert = loop.get('invert_axis', False)
                 for i in range(n):
-                    centers.append([ox + i * s, oy])
+                    if invert : 
+                        centers.append([ox,  i * s +oy])
+                    else :  
+                        centers.append([ox + i * s, oy])
             elif loop['type'] == "Spirale":
                 for i in range(n):
                     a = 2 * math.pi * i / max(1, n//5)
@@ -1446,7 +1452,10 @@ class LMGC90GUI(QMainWindow):
                         f.write(f"    centers_{idx}.append([{loop['offset_x']} + (i % {side}) * {loop['step']}, {loop['offset_y']} + (i // {side}) * {loop['step']}])\n")
                     elif loop['type'] == "Ligne":
                         f.write(f"for i in range({loop['count']}):\n")
-                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + i * {loop['step']}, {loop['offset_y']}])\n")
+                        if loop['invert_axis'] == True :
+                            f.write(f"    centers_{idx}.append([{loop['offset_x']}, i * {loop['step']}+{loop['offset_y']}])\n")
+                        else : 
+                            f.write(f"    centers_{idx}.append([{loop['offset_x']} + i * {loop['step']}, {loop['offset_y']}])\n")
                     elif loop['type'] == "Spirale":
                         f.write(f"for i in range({loop['count']}):\n")
                         f.write(f"    a = 2 * math.pi * i / max(1, {loop['count']}//5)\n")
@@ -1457,7 +1466,7 @@ class LMGC90GUI(QMainWindow):
                     props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
                     print(props)
                     if model_av['type'] == 'rigidDisk':
-                        f.write(f"    body = pre.rigidDisk(r={props.get('r', 0.1)}, center={model_av['center']}) ")
+                        f.write(f"    body = pre.rigidDisk(r={props.get('r', 0.1)}, center=center, ")
                     elif model_av['type'] == 'rigidJonc':
                         f.write(f"    body = pre.rigidJonc(r={props.get('r', 0.1)}, center=center, ")
                     elif model_av['type'] == 'rigidPolygon':
