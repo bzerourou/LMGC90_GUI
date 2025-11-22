@@ -223,12 +223,12 @@ class LMGC90GUI(QMainWindow):
         loop_tab = QWidget()
         ll = QVBoxLayout()
         self.loop_type = QComboBox()
-        self.loop_type.addItems(["Cercle", "Grille", "Ligne", "Spirale"])
+        self.loop_type.addItems(["Cercle", "Grille", "Ligne", "Spirale", "Manuel"])
         self.loop_avatar_type = QComboBox()
         self.loop_count = QLineEdit("10")
+        self.loop_count.setPlaceholderText("Nombre total d'avatars à créer")
         self.loop_radius = QLineEdit("2.0")
         self.loop_step = QLineEdit("1.0")
-        self.loop_inv_axe = QCheckBox("inverser l'axe")
         self.loop_offset_x = QLineEdit("0.0")
         self.loop_offset_y = QLineEdit("0.0")
         self.loop_spiral_factor = QLineEdit("0.1")
@@ -236,13 +236,16 @@ class LMGC90GUI(QMainWindow):
         self.loop_store_group = QCheckBox("Stocker dans une liste nommée")
         self.loop_group_name = QLineEdit("granulats_cercle")
         self.loop_group_name.setPlaceholderText("Nom du groupe (ex: murs_gauche)")
+        # Ajout dans le layout
+        ll.addWidget(QLabel("Type de boucle :"))
+        ll.addWidget(self.loop_type)
+        ll.addWidget(QLabel("Avatar modèle :"))
+        ll.addWidget(self.loop_avatar_type)
+        ll.addWidget(QLabel("Nombre d'avatars à créer :"))
+        ll.addWidget(self.loop_count)
         geom_widgets =  [
-            ("Type de boucle :", self.loop_type),
-            ("Avatar à répéter :", self.loop_avatar_type),
-            ("Nombre :", self.loop_count),
             ("Rayon / Pas :", self.loop_radius),
             ("Pas X/Y :", self.loop_step),
-            ("", self.loop_inv_axe),
             ("Offset X :", self.loop_offset_x),
             ("Offset Y :", self.loop_offset_y),
             ("Facteur spirale :", self.loop_spiral_factor),
@@ -253,6 +256,7 @@ class LMGC90GUI(QMainWindow):
             ll.addWidget(widget)
             # On garde une référence pour les masquer facilement
             self.geom_layout_items.extend([ll.itemAt(ll.count()-2), ll.itemAt(ll.count()-1)])
+
         ll.addWidget(self.loop_store_group)
         hgroup = QHBoxLayout()
         hgroup.addWidget(QLabel("Nom du groupe :"))
@@ -266,7 +270,7 @@ class LMGC90GUI(QMainWindow):
         # Connexion pour masquer/afficher les champs selon le type
         self.loop_type.currentTextChanged.connect(self.update_loop_fields)
         self.update_loop_fields(self.loop_type.currentText())
-        
+                
         # --- DOF ---
         dof_tab = QWidget()
         dl = QVBoxLayout()
