@@ -57,6 +57,9 @@ class LMGC90GUI(QMainWindow):
         self.operations = []
         self.current_project_dir = None
         self.script_path = None
+        # ---stockage des groupes d'avatars créés par les boucles ===
+        self.avatar_groups = {}      # {"nom_du_groupe": [indices dans bodies_list]}
+        self.group_names = []        # pour garder l'ordre d'affichage
 
         # --- Boucles ---
         self.loop_creations = []  # Sauvegarde des boucles
@@ -229,6 +232,7 @@ class LMGC90GUI(QMainWindow):
         self.loop_count.setPlaceholderText("Nombre total d'avatars à créer")
         self.loop_radius = QLineEdit("2.0")
         self.loop_step = QLineEdit("1.0")
+        self.loop_inv_axe = QCheckBox("inverser l'axe")
         self.loop_offset_x = QLineEdit("0.0")
         self.loop_offset_y = QLineEdit("0.0")
         self.loop_spiral_factor = QLineEdit("0.1")
@@ -246,6 +250,7 @@ class LMGC90GUI(QMainWindow):
         geom_widgets =  [
             ("Rayon / Pas :", self.loop_radius),
             ("Pas X/Y :", self.loop_step),
+            ("inerser l'axe", self.loop_inv_axe),
             ("Offset X :", self.loop_offset_x),
             ("Offset Y :", self.loop_offset_y),
             ("Facteur spirale :", self.loop_spiral_factor),
@@ -583,6 +588,7 @@ class LMGC90GUI(QMainWindow):
 
             # Créer les avatars
             start_idx = len(self.avatar_creations)
+            generated_indices = []
             for center in centers:
                 av_type = model_av['type']
                 props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
@@ -634,6 +640,16 @@ class LMGC90GUI(QMainWindow):
                 new_av['center'] = center
                 new_av['__from_loop'] = True
                 self.avatar_creations.append(new_av)
+            #stockage dans la liste (si demandé)
+            group_name = None
+            if self.loop_store_group.isChecked():
+                group_name = self.loop_group_name.text().strip()
+                if not group_name:
+                    group_name = f"groupe_{len(self.avatar_groups)+1}"
+                self.avatar_groups[group_name] = generated_indices
+                if group_name not in self.group_names:
+                    self.group_names.append(group_name)
+            
             # --- Sauvegarder boucle ---
             loop_data = {
                 'type': loop_type,
@@ -647,7 +663,47 @@ class LMGC90GUI(QMainWindow):
                 'spiral_factor': spiral_factor,
                 'generated_avatar_indices': list(range(start_idx, len(self.avatar_creations)))
             }
-            self.loop_creations.append(loop_data)
+            if loop_type == "Manuel":
+                if not self.loop_store_group.isChecked():
+                    QMessageBox.warning(self, "Attention", "Le mode Manuel nécessite le stockage dans un groupe")
+                    return
+
+                try:
+                    total_to_create = int(self.loop_count.text())
+                    if total_to_create <= 0:
+                        raise ValueError()
+                except:
+                    QMessageBox.critical(self, "Erreur", "Entre un nombre valide > 0")
+                    return
+
+                group_name = self.loop_group_name.text().strip()
+                if not group_name:
+                    group_name = f"manuel_{len(self.loop_creations)+1}"
+
+                # Créer le groupe
+                self.avatar_groups[group_name] = []
+                if group_name not in self.avatar_groups:
+                    self.avatar_groups.append(group_name)
+
+                # Sauvegarder la boucle manuelle
+                loop_data = {
+                    'type': 'Manuel',
+                    'model_avatar_index': self.loop_avatar_type.currentIndex(),
+                    'count': total_to_create,
+                    'created_count': 0,
+                    'group_name': group_name,
+                    'active': True
+                }
+                self.loop_creations.append(loop_data)
+
+                
+
+                QMessageBox.information(self, "Boucle manuelle activée",
+                    f"Crée <b>{total_to_create}</b> avatars dans l’onglet Avatar.\n"
+                    f"Ils seront automatiquement ajoutés au groupe : <b>{group_name}</b>\n\n"
+                    f"Progression visible dans la barre de statut et dans l’arbre.")
+
+                return
 
             self.update_selections()
             self.update_model_tree()
