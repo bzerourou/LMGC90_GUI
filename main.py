@@ -1267,6 +1267,15 @@ class LMGC90GUI(QMainWindow):
             item.setData(0, Qt.ItemDataRole.UserRole, ("avatar", i))
             av_node.addChild(item)
 
+        # Affichage des groupes
+        if self.avatar_groups:
+            grp_node = QTreeWidgetItem(root, ["Groupes d'avatars", "", f"{len(self.avatar_groups)}"])
+            for name, indices in self.avatar_groups.items():
+                QTreeWidgetItem(grp_node, [f"{name} ({len(indices)} avatars)", "Groupe", ""])
+
+        self.tree.addTopLevelItem(root)
+        root.setExpanded(True)
+        
         # Lois de contact
         law_node = QTreeWidgetItem(root, ["Lois de contact", "", f"{len(self.contact_laws_objects)}"])
         for i, law in enumerate(self.contact_laws_objects):
