@@ -232,8 +232,11 @@ class LMGC90GUI(QMainWindow):
         self.loop_offset_x = QLineEdit("0.0")
         self.loop_offset_y = QLineEdit("0.0")
         self.loop_spiral_factor = QLineEdit("0.1")
-
-        for label, widget in [
+        # stockage dans une liste nommée
+        self.loop_store_group = QCheckBox("Stocker dans une liste nommée")
+        self.loop_group_name = QLineEdit("granulats_cercle")
+        self.loop_group_name.setPlaceholderText("Nom du groupe (ex: murs_gauche)")
+        geom_widgets =  [
             ("Type de boucle :", self.loop_type),
             ("Avatar à répéter :", self.loop_avatar_type),
             ("Nombre :", self.loop_count),
@@ -243,15 +246,26 @@ class LMGC90GUI(QMainWindow):
             ("Offset X :", self.loop_offset_x),
             ("Offset Y :", self.loop_offset_y),
             ("Facteur spirale :", self.loop_spiral_factor),
-        ]:
-            ll.addWidget(QLabel(label))
+        ]
+        self.geom_layout_items = []
+        for label_text, widget in geom_widgets:
+            ll.addWidget(QLabel(label_text))
             ll.addWidget(widget)
-   
+            # On garde une référence pour les masquer facilement
+            self.geom_layout_items.extend([ll.itemAt(ll.count()-2), ll.itemAt(ll.count()-1)])
+        ll.addWidget(self.loop_store_group)
+        hgroup = QHBoxLayout()
+        hgroup.addWidget(QLabel("Nom du groupe :"))
+        hgroup.addWidget(self.loop_group_name)
+        ll.addLayout(hgroup)
         create_loop_btn = QPushButton("Créer boucle")
         create_loop_btn.clicked.connect(self.create_loop)
         ll.addWidget(create_loop_btn)
         loop_tab.setLayout(ll)
         self.tabs.addTab(loop_tab, "Boucles")
+        # Connexion pour masquer/afficher les champs selon le type
+        self.loop_type.currentTextChanged.connect(self.update_loop_fields)
+        self.update_loop_fields(self.loop_type.currentText())
         
         # --- DOF ---
         dof_tab = QWidget()
@@ -491,7 +505,24 @@ class LMGC90GUI(QMainWindow):
         # valeur par défaut du nombre de vertices
         if show_nb and not self.avatar_nb_vertices.text().strip():
             self.avatar_nb_vertices.setText("5")
+    def update_loop_fields(self, loop_type):
+            """Affiche ou masque les champs selon le type de boucle"""
+            is_manual = (loop_type == "Manuel")
 
+            # Masquer tous les champs géométriques en mode Manuelle
+            for item in getattr(self, 'geom_layout_items', []):
+                if item and item.widget():
+                    item.widget().setVisible(not is_manual)
+
+            # En mode Manuelle : on force le stockage + on peut changer le nombre
+            if is_manual:
+                self.loop_store_group.setChecked(True)
+                self.loop_store_group.setEnabled(False)
+                self.loop_count.setEnabled(True)
+                self.loop_count.setPlaceholderText("Combien d'avatars veux-tu créer à la main ?")
+            else:
+                self.loop_store_group.setEnabled(True)
+                self.loop_count.setPlaceholderText("")
     # ========================================
     # BOUCLES
     # ========================================
@@ -1557,7 +1588,7 @@ class LMGC90GUI(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     font = app.font()
-    font.setPointSize(13)
+    font.setPointSize(12)
     font.setFamily("Segoe UI")
     app.setFont(font)
     win = LMGC90GUI()
