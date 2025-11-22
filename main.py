@@ -773,7 +773,9 @@ class LMGC90GUI(QMainWindow):
             'contact_laws': self.contact_creations,
             'visibility_rules': self.visibility_creations,
             'operations': self.operations,
-            'loops' : self.loop_creations
+            'loops' : self.loop_creations,
+            'avatar_groups': self.avatar_groups,    
+            'group_names' : self.group_names
         }
 
     def _deserialize_state(self, state):
