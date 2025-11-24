@@ -225,7 +225,7 @@ class LMGC90GUI(QMainWindow):
         loop_tab = QWidget()
         ll = QVBoxLayout()
         self.loop_type = QComboBox()
-        self.loop_type.addItems(["Cercle", "Grille", "Ligne", "Spirale"])
+        self.loop_type.addItems(["Cercle", "Grille", "Ligne", "Spirale", "Manuel"])
         self.loop_avatar_type = QComboBox()
         self.loop_count = QLineEdit("10")
         self.loop_radius = QLineEdit("2.0")
@@ -238,10 +238,13 @@ class LMGC90GUI(QMainWindow):
         self.loop_store_group = QCheckBox("Stocker dans une liste nommée")
         self.loop_group_name = QLineEdit("granulats_cercle")
         self.loop_group_name.setPlaceholderText("Nom du groupe (ex: murs_gauche)")
+        ll.addWidget(QLabel("Type de boucle :"))
+        ll.addWidget(self.loop_type)
+        ll.addWidget(QLabel("Nombre:  :"))
+        ll.addWidget(self.loop_count)
         geom_widgets =  [
-            ("Type de boucle :", self.loop_type),
+            
             ("Avatar à répéter :", self.loop_avatar_type),
-            ("Nombre :", self.loop_count),
             ("Rayon / Pas :", self.loop_radius),
             ("Pas X/Y :", self.loop_step),
             ("", self.loop_inv_axe),
@@ -656,9 +659,45 @@ class LMGC90GUI(QMainWindow):
                 'offset_x': offset_x,
                 'offset_y': offset_y,
                 'spiral_factor': spiral_factor,
-                'generated_avatar_indices': list(range(start_idx, len(self.avatar_creations)))
+                'generated_avatar_indices': list(range(start_idx, len(self.avatar_creations))),
+                'stored_in_group': group_name
             }
+            # à revoir
             self.loop_creations.append(loop_data)
+            
+
+            if loop_type  == "Manuel":
+                if not self.loop_store_group.isChecked():
+                    QMessageBox.warning(self, "Attention", "En mode Manuel, les avatars sont toujours stockés dans une liste nommée.")
+                    return
+                try:
+                    total_to_create = int(self.loop_count.text())
+                    if total_to_create <= 0:
+                        raise ValueError("Le nombre d'avatars doit être positif.")  
+                except :
+                    QMessageBox.critical(self, "Erreur", "Nombre d'avatars invalide pour le mode Manuel.")
+                    return
+            
+                group_name = self.loop_group_name.text().strip()
+                if not group_name:
+                    group_name = f"groupe_{len(self.loop_creations)+1}"
+           
+                # créer le groupe
+                self.avatar_groups[group_name] = []
+                if group_name not in self.avatar_groups:
+                    self.group_names.append(group_name)
+           
+                #sauver la boucle manuelle
+                loop_data = {
+                    'type': "Manuel",
+                    'model_avatar_index': self.loop_avatar_type.currentIndex(),
+                    'count': total_to_create, 
+                    'created_count': 0,
+                    'group_name': group_name,
+                    'activated': True
+                }
+            # à voir 
+                self.loop_creations.append(loop_data)
 
             self.update_selections()
             self.update_model_tree()
@@ -724,7 +763,7 @@ class LMGC90GUI(QMainWindow):
         return {
             'materials': self.material_creations,
             'models': self.model_creations,
-            'avatars': self.avatar_creations,
+            'avatars': manual_avatars,
             'contact_laws': self.contact_creations,
             'visibility_rules': self.visibility_creations,
             'operations': self.operations,
@@ -756,9 +795,9 @@ class LMGC90GUI(QMainWindow):
             mat = self.mats_dict.get(av['material']); mod = self.mods_dict.get(av['model'])
             if not mat or not mod: continue
             
-            if av['type'] == "rigidDisk" and 'r' in av :
+            if av['type'] == "rigidDisk"  :
                 body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
-            elif av['type'] == "rigidJonc" and 'axe1' in av and 'axe2' in av:
+            elif av['type'] == "rigidJonc" :
                 body = pre.rigidJonc(axe1=av['axe1'], axe2=av['axe2'], center=av['center'], model=mod, material=mat, color=av['color'])
             elif av['type'] == "rigidPolygon"   :
                 if  av['gen_type'] == "regular" :
@@ -767,19 +806,19 @@ class LMGC90GUI(QMainWindow):
                     body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=av['color'], generation_type= av['gen_type'],vertices= np.array(av['vertices'], dtype=float) ,radius=float(av['r']))
             elif av['type'] == "rigidOvoidPolygon" :
                 body = pre.rigidOvoidPolygon(ra=float(av['ra']), rb=float(av['rb']), nb_vertices= int(av['nb_vertices']), center=av['center'], model=mod, material=mat, color=av['color'])
-            elif av['type'] == "rigidDiscreteDisk" and 'r' in av:
+            elif av['type'] == "rigidDiscreteDisk" :
                 body = pre.rigidDiscreteDisk(
                     r=float(av['r']), center=av['center'],
                     model=mod, material=mat, color=av['color'])
-            elif av['type'] == "roughWall" and 'l' in av and 'r' in av:
+            elif av['type'] == "roughWall" :
                 body = pre.roughWall(
                     l=float(av['l']), r=float(av['r']), center=av['center'],
                     model=mod, material=mat, color=av['color'], nb_vertex= int(av['nb_vertex']))
-            elif av['type'] == "fineWall" and 'l' in av and 'r' in av:
+            elif av['type'] == "fineWall" :
                 body = pre.fineWall(
                     l=float(av['l']), r=float(av['r']), center=av['center'],
                     model=mod, material=mat, color=av['color'],  nb_vertex= int(av['nb_vertex']))
-            elif av['type'] == "smoothWall" and 'l' in av and 'h' in av:
+            elif av['type'] == "smoothWall" :
                 body = pre.smoothWall(
                     l=float(av['l']), h=float(av['h']), center=av['center'],
                     model=mod, material=mat, color=av['color'], nb_polyg= int(av['nb_polyg']))
@@ -838,25 +877,25 @@ class LMGC90GUI(QMainWindow):
                 if av_type == "rigidDisk":
                     body = pre.rigidDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
                 
-                elif av_type == "rigidJonc" and 'axe1' in av and 'axe2' in av:
-                    body = pre.rigidJonc(axe1=model_av['axe1'], axe2=model_av['axe2'], center=av['center'], model=mod, material=mat, color=model_av['color'])
+                elif av_type == "rigidJonc" :
+                    body = pre.rigidJonc(axe1=model_av['axe1'], axe2=model_av['axe2'], center=center, model=mod, material=mat, color=model_av['color'])
                 elif av_type == "rigidPolygon"   :
-                    if  av['gen_type'] == "regular" :
-                        body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=model_av['color'], generation_type= model_av['gen_type'], nb_vertices=int(model_av['nb_vertices']),radius=float(model_av['r']))
+                    if  model_av['gen_type'] == "regular" :
+                        body = pre.rigidPolygon( model=mod, material=mat, center=center,color=model_av['color'], generation_type= model_av['gen_type'], nb_vertices=int(model_av['nb_vertices']),radius=float(model_av['r']))
                     else : 
-                        body = pre.rigidPolygon( model=mod, material=mat, center=av['center'],color=model_av['color'], generation_type= model_av['gen_type'],vertices= np.array(model_av['vertices'], dtype=float) ,radius=float(model_av['r']))
+                        body = pre.rigidPolygon( model=mod, material=mat, center=center,color=model_av['color'], generation_type= model_av['gen_type'],vertices= np.array(model_av['vertices'], dtype=float) ,radius=float(model_av['r']))
                 elif av_type == "rigidDiscreteDisk":
                     body = pre.rigidDiscreteDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
                 elif av_type == "roughWall" :
                     body = pre.roughWall(l=props['l'], r=float(props['r']), center=center, model=mod, material=mat, color=model_av['color'])
-                elif av_type == "fineWall" and 'l' in model_av and 'r' in model_av:
+                elif av_type == "fineWall" :
                     body = pre.fineWall(
                         l=float(model_av['l']), r=float(model_av['r']), center=center,
                         model=mod, material=mat, color=model_av['color'],  nb_vertex= int(model_av['nb_vertex'])
                         )
-                elif av_type == "smoothWall" and 'l' in model_av and 'h' in model_av:
+                elif av_type == "smoothWall" :
                     body = pre.smoothWall(
-                        l=float(model_av['l']), h=float(model_av['h']), center=model_av['center'],
+                        l=float(model_av['l']), h=float(model_av['h']), center=center,
                         model=mod, material=mat, color=model_av['color'], nb_polyg= int(model_av['nb_polyg'])
                         )
                 elif av_type == "granuloRoughWall" :
@@ -906,6 +945,18 @@ class LMGC90GUI(QMainWindow):
                 getattr(body, op['type'])(**op['params'])
         
         # to do (rechergerles les groupes d'avatars)
+        self.avatar_groups = state.get('avatar_groups', {})
+        self.group_names = state.get('group_names', list(self.avatar_groups.keys()))    
+
+        #recréer les liens après recréation des avatars
+        for loop in self.loop_creations:
+            if loop.get('type') == "Manuel" and 'group_name' in loop:
+                group_name = loop.get('group_name')
+                if group_name not in self.avatar_groups:
+                    self.avatar_groups[group_name] = []
+                if group_name not in self.group_names:
+                    self.group_names.append(group_name)
+                                
         self.update_selections()
         self.update_model_tree()
     # ========================================
@@ -1126,15 +1177,30 @@ class LMGC90GUI(QMainWindow):
             QMessageBox.critical(self, "Erreur", "Aucun avatar")
             return
         try:
-            idx = self.dof_avatar_name.currentIndex(); body = self.bodies_list[idx]
+
+            selected_text = self.dof_avatar_name.currentText()
             action = self.dof_avatar_force.currentText(); params = self._safe_eval_dict(self.dof_options.text())
-            if action == "imposeDrivenDof" and ('component' not in params or 'dofty' not in params):
-                raise ValueError("imposeDrivenDof → component=[...], dofty='vlocy'")
-            if action == "imposeInitValue" and ('component' not in params or 'value' not in params):
-                raise ValueError("imposeInitValue → component=[...], value=1.0")
-            getattr(body, action)(**params)
-            self.operations.append({'body_index': idx, 'type': action, 'params': params})
+            params = self._safe_eval_dict(self.dof_options.text())
+            
+            if selected_text.startswith("GROUPE:"):
+                group_name = selected_text.split("GROUPE:")[1].strip("(")[0]   
+                indices = self.avatar_groups.get(group_name, [])
+                idx = int(selected_text.split()[1])
+                if not indices:
+                    raise ValueError(f"Groupe '{group_name}' vide ou inexistant")
+                for idx in indices: 
+                    body = self.bodies_list[idx]
+                    getattr(body, action)(**params)
+                    self.operations.append({'body_index': idx, 'type': action, 'params': params.copy})
+                QMessageBox.information(self, "Succès", f"Action '{action}' appliquée au groupe '{group_name}' ({len(indices)} avatars)")
+            else:
+                idx = self.dof_avatar_name.currentIndex()
+                body = self.bodies_objects[idx]
+                getattr(body, action)(**params)  
+                self.operations.append({'body_index': idx, 'type': action, 'params': params})
+                QMessageBox.information(self, "Succès", f"Action '{action}' appliquée à l'avatar {idx}")    
             self.update_model_tree()
+        
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"DOF : {e}")
 
@@ -1183,6 +1249,9 @@ class LMGC90GUI(QMainWindow):
             (self.loop_avatar_type, [a['type'] for a in self.avatar_creations], bool(self.avatar_creations))
         ]:
             combo.blockSignals(True); combo.clear(); combo.addItems(items); combo.setEnabled(enabled); combo.blockSignals(False)
+
+        # todo à compléter
+
 
     # ========================================
     # INTERACTION ARBRE
@@ -1530,22 +1599,26 @@ class LMGC90GUI(QMainWindow):
                     f.write(f"\nfor center in centers_{idx}:\n")
                     props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
                     print(props)
+                    # to do à corriger, 
                     if model_av['type'] == 'rigidDisk':
-                        f.write(f"    body = pre.rigidDisk(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.rigidDisk(r={model_av['r']}, center=center, ")
                     elif model_av['type'] == 'rigidJonc':
-                        f.write(f"    body = pre.rigidJonc(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.rigidJonc(radius={model_av['r']}, center=center, ")
                     elif model_av['type'] == 'rigidPolygon':
-                        f.write(f"    body = pre.rigidPolygon(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.rigidPolygon(radius={model_av['r']}, center=center, ")
                     elif model_av['type'] == 'rigidOvoidPolygon':
-                        f.write(f"    body = pre.rigidOvoidPolygon(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.rigidOvoidPolygon(ra={model_av['ra']}, rb={model_av['rb']}, center=center, nb_vertices={model_av['nb_vertices']}, ")
                     elif model_av['type'] == 'rigidDiscreteDisk':
-                        f.write(f"    body = pre.rigidDiscreteDisk(r={props.get('r', 0.1)}, center=center, ")  
+                        f.write(f"    body = pre.rigidDiscreteDisk(r={model_av['r']}, center=center, ")  
                     elif model_av['type'] == 'roughWall':
-                        f.write(f"    body = pre.roughWall(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.roughWall(l= {model_av['l']}, r={model_av['r']}, center=center, nb_vertex= {model_av['nb_vertex']}, ")
                     elif model_av['type'] == 'fineWall':
-                        f.write(f"    body = pre.fineWall(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.fineWall(l = {model_av['l']},r={model_av['r']}, center=center, nb_vertex= {model_av['nb_vertex']}, ")
+                    elif model_av['type'] == 'smoothWall':
+                        f.write(f"    body = pre.smoothWall(l = {model_av['l']},h={model_av['h']}, center=center, nb_polyg= {model_av['nb_polyg']}, ")
+                    
                     elif model_av['type'] == 'granuloRoughWall':
-                        f.write(f"    body = pre.granuloRoughWall(r={props.get('r', 0.1)}, center=center, ")
+                        f.write(f"    body = pre.granuloRoughWall(l = {model_av['l']},rmin={model_av['rmin']}, rmax = {model_av['rmax']},center=center, ")
                     else:
                         continue
                     f.write(f"model=mods['{mod_name}'], material=mats['{mat_name}'], color='{color}')\n")
