@@ -1611,103 +1611,209 @@ class LMGC90GUI(QMainWindow):
             base = self.current_project_dir or os.getcwd()
             path = os.path.join(base, "lmgc_sim.py")
             with open(path, 'w', encoding='utf-8') as f:
+                f.write("# -*- coding: utf-8 -*-\n")
                 f.write("from pylmgc90 import pre\n")
+                f.write("import math\n")
                 f.write("import numpy as np\n\n")
-                f.write("mats, mods, laws = {}, {}, {}\n")
-                f.write("materials = pre.materials(); models = pre.models(); bodies = pre.avatars()\n")
-                f.write("tacts = pre.tact_behavs(); svs = pre.see_tables()\n\n")
-                f.write("bodies_list = []\n")
-                #----- Matériaux
+
+                # === Conteneurs ===
+                f.write("mats = {}\nmods = {}\nlaws = {}\n")
+                f.write("materials = pre.materials()\n")
+                f.write("models    = pre.models()\n")
+                f.write("bodies    = pre.avatars()\n")
+                f.write("tacts     = pre.tact_behavs()\n")
+                f.write("see_tables = pre.see_tables()\n\n")
+                f.write("bodies_list = []\n\n")
+
+                # === Matériaux ===
                 for m in self.material_creations:
-                    f.write(f"mats['{m['name']}'] = pre.material(name='{m['name']}', materialType='{m['type']}', density={m['density']})\n")
-                    f.write("materials.addMaterial(mats['" + m['name'] + "'])\n\n")
-                #----- Modèles
+                    props = ""
+                    if 'props' in m and m['props']:
+                        props = ", " + ", ".join(f"{k}={v}" for k, v in m['props'].items())
+                    f.write(f"mats['{m['name']}'] = pre.material(name='{m['name']}', "
+                            f"materialType='{m['type']}', density={m['density']}{props})\n")
+                    f.write(f"materials.addMaterial(mats['{m['name']}'])\n")
+                f.write("\n")
+
+                # === Modèles ===
                 for m in self.model_creations:
-                    f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', element='{m['element']}', dimension={m['dimension']})\n")
-                    f.write("models.addModel(mods['" + m['name'] + "'])\n\n")
-                ######### Avatars
-                #---- avatar individuel----
-                loop_indices = set()
+                    props = ""
+                    if 'options' in m and m['options']:
+                        props = ", " + ", ".join(f"{k}={v}" for k, v in m['options'].items())
+                    f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', "
+                            f"element='{m['element']}', dimension={m['dimension']}{props})\n")
+                    f.write(f"models.addModel(mods['{m['name']}'])\n")
+                f.write("\n")
+
+                # === Avatars individuels (hors boucles) ===
+                used_indices = set()
                 for loop in self.loop_creations:
-                    loop_indices.update(loop.get('generated_avatar_indices', []))
+                    used_indices.update(loop.get('generated_avatar_indices', []))
+
                 for i, av in enumerate(self.avatar_creations):
-                    if i not in loop_indices:
-                        self._write_avatar_creation(f, i, av)
-                # --- Boucles ---
-                for idx, loop in enumerate(self.loop_creations):
-                    model_av = self.avatar_creations[loop['model_avatar_index']]
-                    mat_name, mod_name, color = model_av['material'], model_av['model'], model_av['color']
-                    f.write(f"\n# --- Boucle {idx}: {loop['type']} ({loop['count']} avatars) ---\n")
-                    f.write(f"centers_{idx} = []\n")
-                    if loop['type'] == "Cercle":
-                        f.write(f"for i in range({loop['count']}):\n")
-                        f.write(f"    a = 2 * math.pi * i / {loop['count']}\n")
-                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + {loop['radius']} * math.cos(a), {loop['offset_y']} + {loop['radius']} * math.sin(a)])\n")
-                    elif loop['type'] == "Grille":
-                        side = int(math.ceil(math.sqrt(loop['count'])))
-                        f.write(f"for i in range({loop['count']}):\n")
-                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + (i % {side}) * {loop['step']}, {loop['offset_y']} + (i // {side}) * {loop['step']}])\n")
-                    elif loop['type'] == "Ligne":
-                        f.write(f"for i in range({loop['count']}):\n")
-                        if loop['invert_axis'] == True :
-                            f.write(f"    centers_{idx}.append([{loop['offset_x']}, i * {loop['step']}+{loop['offset_y']}])\n")
-                        else : 
-                            f.write(f"    centers_{idx}.append([{loop['offset_x']} + i * {loop['step']}, {loop['offset_y']}])\n")
-                    elif loop['type'] == "Spirale":
-                        f.write(f"for i in range({loop['count']}):\n")
-                        f.write(f"    a = 2 * math.pi * i / max(1, {loop['count']}//5)\n")
-                        f.write(f"    r = {loop['radius']} + i * {loop['spiral_factor']}\n")
-                        f.write(f"    centers_{idx}.append([{loop['offset_x']} + r * math.cos(a), {loop['offset_y']} + r * math.sin(a)])\n")
-
-                    f.write(f"\nfor center in centers_{idx}:\n")
-                    props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
-                    print(props)
-                    # to do à corriger, 
-                    if model_av['type'] == 'rigidDisk':
-                        f.write(f"    body = pre.rigidDisk(r={model_av['r']}, center=center, ")
-                    elif model_av['type'] == 'rigidJonc':
-                        f.write(f"    body = pre.rigidJonc(radius={model_av['r']}, center=center, ")
-                    elif model_av['type'] == 'rigidPolygon':
-                        f.write(f"    body = pre.rigidPolygon(radius={model_av['r']}, center=center, ")
-                    elif model_av['type'] == 'rigidOvoidPolygon':
-                        f.write(f"    body = pre.rigidOvoidPolygon(ra={model_av['ra']}, rb={model_av['rb']}, center=center, nb_vertices={model_av['nb_vertices']}, ")
-                    elif model_av['type'] == 'rigidDiscreteDisk':
-                        f.write(f"    body = pre.rigidDiscreteDisk(r={model_av['r']}, center=center, ")  
-                    elif model_av['type'] == 'roughWall':
-                        f.write(f"    body = pre.roughWall(l= {model_av['l']}, r={model_av['r']}, center=center, nb_vertex= {model_av['nb_vertex']}, ")
-                    elif model_av['type'] == 'fineWall':
-                        f.write(f"    body = pre.fineWall(l = {model_av['l']},r={model_av['r']}, center=center, nb_vertex= {model_av['nb_vertex']}, ")
-                    elif model_av['type'] == 'smoothWall':
-                        f.write(f"    body = pre.smoothWall(l = {model_av['l']},h={model_av['h']}, center=center, nb_polyg= {model_av['nb_polyg']}, ")
-                    
-                    elif model_av['type'] == 'granuloRoughWall':
-                        f.write(f"    body = pre.granuloRoughWall(l = {model_av['l']},rmin={model_av['rmin']}, rmax = {model_av['rmax']},center=center, ")
-                    else:
+                    if i in used_indices:
                         continue
-                    f.write(f"model=mods['{mod_name}'], material=mats['{mat_name}'], color='{color}')\n")
-                    f.write(f"    bodies.addAvatar(body); bodies_list.append(body)\n")
+                    self._write_avatar_creation(f, i, av)
 
-                # DOF
+                # === Boucles ===
+                for loop_idx, loop in enumerate(self.loop_creations):
+                    if loop['type'] == "Manuel":
+                        continue  # Les manuels sont déjà créés individuellement
+
+                    model_av = self.avatar_creations[loop['model_avatar_index']]
+                    mat = self.mats_dict[model_av['material']]
+                    mod = self.mods_dict[model_av['model']]
+                    color = model_av['color']
+
+                    f.write(f"\n# === Boucle : {loop['type']} → groupe '{loop.get('stored_in_group', 'inconnu')}' ===\n")
+                    f.write(f"# {loop['count']} avatars du type {model_av['type']}\n")
+                    f.write("centers = []\n")
+
+                    ox = loop['offset_x']
+                    oy = loop['offset_y']
+                    n = loop['count']
+
+                    if loop['type'] == "Cercle":
+                        r = loop['radius']
+                        f.write(f"for i in range({n}):\n")
+                        f.write(f"    angle = 2*math.pi * i / {n}\n")
+                        f.write(f"    centers.append([ {ox} + {r}*math.cos(angle), {oy} + {r}*math.sin(angle) ])\n")
+
+                    elif loop['type'] == "Grille":
+                        step = loop['step']
+                        side = int(math.ceil(math.sqrt(n)))
+                        f.write(f"for i in range({n}):\n")
+                        f.write(f"    centers.append([ {ox} + (i % {side})*{step}, {oy} + (i // {side})*{step} ])\n")
+
+                    elif loop['type'] == "Ligne":
+                        step = loop['step']
+                        inv = loop.get('invert_axis', False)
+                        f.write(f"for i in range({n}):\n")
+                        if inv:
+                            f.write(f"    centers.append([ {ox}, {oy} + i*{step} ])\n")
+                        else:
+                            f.write(f"    centers.append([ {ox} + i*{step}, {oy} ])\n")
+
+                    elif loop['type'] == "Spirale":
+                        r0 = loop['radius']
+                        factor = loop['spiral_factor']
+                        f.write(f"for i in range({n}):\n")
+                        f.write(f"    angle = 2*math.pi * i / max(1, {n}//5)\n")
+                        f.write(f"    r = {r0} + i*{factor}\n")
+                        f.write(f"    centers.append([ {ox} + r*math.cos(angle), {oy} + r*math.sin(angle) ])\n")
+
+                    # === Génération des avatars dans la boucle ===
+                    f.write(f"\nfor center in centers:\n")
+                    f.write(f"    body = pre.{self._get_avatar_function(model_av)}(center=center, ")
+                    f.write(f"model=mods['{mod.nom}'], material=mats['{mat.nom}'], color='{color}'")
+
+                    # Paramètres spécifiques
+                    params = self._get_avatar_params(model_av)
+                    if params:
+                        f.write(", " + ", ".join(f"{k}={v}" for k, v in params.items()))
+                    f.write(")\n")
+                    f.write("    bodies.addAvatar(body)\n")
+                    f.write("    bodies_list.append(body)\n")
+                f.write("\n")
+
+                # === Opérations DOF (individuelles + groupes) ===
+                f.write("# === Conditions aux limites (DOF) ===\n")
                 for op in self.operations:
-                    args = ", ".join(f"{k}={repr(v)}" for k, v in op['params'].items())
-                    f.write(f"bodies_list[{op['body_index']}].{op['type']}({args})\n")
+                    idx = op['body_index']
+                    action = op['type']
+                    params = op['params']
 
-                # Contact & Visibilité
+                    # Si c’est un groupe → on boucle sur les indices
+                    if str(idx).startswith("GROUPE:"):
+                        group_name = idx.split("GROUPE: ", 1)[1].split(" (", 1)[0]
+                        indices = self.avatar_groups.get(group_name, [])
+                        if not indices:
+                            f.write(f"# Groupe '{group_name}' vide → ignoré\n")
+                            continue
+                        f.write(f"# Application de {action} au groupe '{group_name}' ({len(indices)} avatars)\n")
+                        for body_idx in indices:
+                            args = ", ".join(f"{k}={repr(v)}" for k, v in params.items())
+                            f.write(f"bodies_list[{body_idx}].{action}({args})\n")
+                    else:
+                        # Avatar individuel
+                        args = ", ".join(f"{k}={repr(v)}" for k, v in params.items())
+                        f.write(f"bodies_list[{idx}].{action}({args})\n")
+                f.write("\n")
+
+                # === Lois de contact ===
                 for law in self.contact_creations:
-                    f.write(f"laws['{law['name']}'] = pre.tact_behav(name='{law['name']}', law='{law['law']}', fric={law['fric']})\n")
-                    f.write("tacts.addBehav(laws['" + law['name'] + "'])\n")
-                for rule in self.visibility_creations:
-                    f.write(f"svt = pre.see_table(CorpsCandidat='{rule['CorpsCandidat']}', candidat='{rule['candidat']}', ")
-                    f.write(f"colorCandidat='{rule['colorCandidat']}', CorpsAntagoniste='{rule['CorpsAntagoniste']}', ")
-                    f.write(f"antagoniste='{rule['antagoniste']}', colorAntagoniste='{rule['colorAntagoniste']}', ")
-                    f.write(f"behav=laws['{rule['behav']}'], alert={rule['alert']})\n")
-                    f.write("svs.addSeeTable(svt)")
+                    fric = law.get('fric', 0.3)
+                    f.write(f"laws['{law['name']}'] = pre.tact_behav(name='{law['name']}', law='{law['law']}', fric={fric})\n")
+                    f.write(f"tacts.addBehav(laws['{law['name']}'])\n")
+                f.write("\n")
 
-                f.write("\n\npre.writeDatbox(2, materials, models, bodies, tacts, svs)\n")
+                # === Tables de visibilité ===
+                for rule in self.visibility_creations:
+                    f.write(f"sv = pre.see_table(\n")
+                    f.write(f"    CorpsCandidat='{rule['CorpsCandidat']}', candidat='{rule['candidat']}', colorCandidat='{rule.get('colorCandidat','')}',\n")
+                    f.write(f"    CorpsAntagoniste='{rule['CorpsAntagoniste']}', antagoniste='{rule['antagoniste']}', colorAntagoniste='{rule.get('colorAntagoniste','')}',\n")
+                    f.write(f"    behav=laws['{rule['behav']}'], alert={rule.get('alert', 0.1)}\n")
+                    f.write(f")\n")
+                    f.write(f"see_tables.addSeeTable(sv)\n")
+                f.write("\n")
+
+                # === Écriture finale ===
+                f.write("# Écriture du fichier .datbox\n")
+                f.write("pre.writeDatbox(dim=2, materials=materials, models=models, bodies=bodies, tacts=tacts, see_tables=see_tables)\n")
+
             self.script_path = path
-            QMessageBox.information(self, "Succès", f"Script généré :\n{path}")
+            QMessageBox.information(self, "Succès", f"Script généré avec succès !\n{path}")
+
         except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Génération : {e}")
+            import traceback
+            QMessageBox.critical(self, "Erreur génération", f"{e}\n\n{traceback.format_exc()}")
+
+    def _get_avatar_function(self, av):
+        mapping = {
+            "rigidDisk": "rigidDisk",
+            "rigidJonc": "rigidJonc",
+            "rigidPolygon": "rigidPolygon",
+            "rigidOvoidPolygon": "rigidOvoidPolygon",
+            "rigidDiscreteDisk": "rigidDiscreteDisk",
+            "roughWall": "roughWall",
+            "fineWall": "fineWall",
+            "smoothWall": "smoothWall",
+            "granuloRoughWall": "granuloRoughWall",
+        }
+        return mapping.get(av['type'], "rigidDisk")
+
+    def _get_avatar_params(self, av):
+        params = {}
+        if av['type'] == "rigidDisk":
+            params['r'] = av.get('r', 0.1)
+        elif av['type'] == "rigidJonc":
+            params['axe1'] = av.get('axe1')
+            params['axe2'] = av.get('axe2')
+        elif av['type'] == "rigidPolygon":
+            params['radius'] = av.get('r')
+            params['generation_type'] = f"'{av.get('gen_type')}'"
+            if av.get('gen_type') == "regular":
+                params['nb_vertices'] = av.get('nb_vertices')
+            else:
+                params['vertices'] = f"np.array({av.get('vertices')})"
+        elif av['type'] == "rigidOvoidPolygon":
+            params['ra'] = av.get('ra')
+            params['rb'] = av.get('rb')
+            params['nb_vertices'] = av.get('nb_vertices')
+        elif av['type'] in ["roughWall", "fineWall"]:
+            params['l'] = av.get('l')
+            params['r'] = av.get('r')
+            params['nb_vertex'] = av.get('nb_vertex', 10)
+        elif av['type'] == "smoothWall":
+            params['l'] = av.get('l')
+            params['h'] = av.get('h')
+            params['nb_polyg'] = av.get('nb_polyg', 10)
+        elif av['type'] == "granuloRoughWall":
+            params['l'] = av.get('l')
+            params['rmin'] = av.get('rmin')
+            params['rmax'] = av.get('rmax')
+            params['nb_vertex'] = av.get('nb_vertex', 10)
+        return params
 
     def execute_python_script(self):
         path = self.script_path or os.path.join(self.current_project_dir or os.getcwd(), "lmgc_sim.py")
