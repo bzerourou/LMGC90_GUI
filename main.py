@@ -64,7 +64,7 @@ class LMGC90GUI(QMainWindow):
         self.avatar_groups = {}    
         self.group_names = [] 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.8 ")
+        self.setWindowTitle("LMGC90_GUI v0.1.9 ")
         self.setGeometry(100, 100, 1000, 700)
 
         # --- Menu ---
@@ -636,17 +636,31 @@ class LMGC90GUI(QMainWindow):
                 new_av['center'] = center
                 new_av['__from_loop'] = True
                 self.avatar_creations.append(new_av)
+                generated_indices.append(len(self.bodies_list)-1)
            
            #stockage dans la liste (si demandé)
-            group_name = None
-            if self.loop_store_group.isChecked():
-                group_name = self.loop_group_name.text().strip()
-                if not group_name:
-                    group_name = f"groupe_{len(self.avatar_groups)+1}"
+            if loop_type != "Manuel":
+                # Nom par défaut intelligent
+                if self.loop_store_group.isChecked() and self.loop_group_name.text().strip():
+                    group_name = self.loop_group_name.text().strip()
+                else:
+                    # Nom auto selon type + compteur
+                    base_name = f"{loop_type.lower()}"
+                    counter = sum(1 for g in self.group_names if g.startswith(base_name))
+                    group_name = f"{base_name}_{counter + 1}"
+
                 self.avatar_groups[group_name] = generated_indices
                 if group_name not in self.group_names:
                     self.group_names.append(group_name)
-           
+                    self.group_names.sort()  # optionnel : tri alphabétique
+            else:
+                # Mode Manuel : on garde ta logique existante (déjà corrigée avant)
+                group_name = self.loop_group_name.text().strip()
+                if not group_name:
+                    group_name = f"manuel_{len([g for g in self.group_names if g.startswith('manuel')])+1}"
+                self.avatar_groups[group_name] = []
+                if group_name not in self.group_names:
+                    self.group_names.append(group_name)
            
             # --- Sauvegarder boucle ---
             loop_data = {
@@ -659,7 +673,7 @@ class LMGC90GUI(QMainWindow):
                 'offset_x': offset_x,
                 'offset_y': offset_y,
                 'spiral_factor': spiral_factor,
-                'generated_avatar_indices': list(range(start_idx, len(self.avatar_creations))),
+                'generated_avatar_indices': generated_indices,
                 'stored_in_group': group_name
             }
             # à revoir
@@ -694,10 +708,17 @@ class LMGC90GUI(QMainWindow):
                     'count': total_to_create, 
                     'created_count': 0,
                     'group_name': group_name,
-                    'activated': True
+                    'active': True
                 }
-            # à voir 
+                 # à voir 
                 self.loop_creations.append(loop_data)
+
+                QMessageBox.information(self, "Boucle manuelle activée",
+                    f"Crée <b>{total_to_create}</b> avatars dans l’onglet Avatar.\n"
+                    f"Ils seront automatiquement ajoutés au groupe : <b>{group_name}</b>\n\n"
+                    f"Progression visible dans la barre de statut et dans l’arbre.")
+
+                return
 
             self.update_selections()
             self.update_model_tree()
@@ -956,6 +977,9 @@ class LMGC90GUI(QMainWindow):
                     self.avatar_groups[group_name] = []
                 if group_name not in self.group_names:
                     self.group_names.append(group_name)
+            #réactiver la boucle si pas encore terminée
+            if loop.get('created_count', 0) < loop.get('count', 0) :
+                loop['active'] = True
                                 
         self.update_selections()
         self.update_model_tree()
@@ -1157,17 +1181,40 @@ class LMGC90GUI(QMainWindow):
                 body_dict['nb_vertex'] = self.avatar_nb_vertices.text()
             else : 
                 ValueError("Rigide non connue!")
-
             
             self.avatar_creations.append(body_dict)
-            print(body_dict)
-
+          
             # to do : ajouter dans un groupe si demandé
+            new_index = len(self.bodies_list)-1
+            added_to_manual = False
+            for loop in self.loop_creations:
+                if loop.get('type') == 'Manuel' and loop.get('active', False):
+                    group_name = loop['group_name']
+                    if group_name not in self.avatar_groups:
+                        self.avatar_groups[group_name] = []
+                        if group_name not in self.group_order:
+                            self.group_order.append(group_name)
 
+                    self.avatar_groups[group_name].append(new_index)
+                    loop['created_count'] = loop.get('created_count', 0) + 1
+
+                    # Vérifie si on a atteint le nombre demandé
+                    if loop['created_count'] >= loop['count']:
+                        loop['active'] = False
+                        QMessageBox.information(self, "Groupe complet !",
+                            f"Le groupe <b>{group_name}</b> est terminé : {loop['count']} avatars créés.\n"
+                            f"Tu peux maintenant l'utiliser dans DOF.")
+                    self.update_model_tree()
+                    added_to_manual = True
+                    break  # un seul groupe manuel actif à la fois
             # mise à jour UI
             self.update_selections(); self.update_model_tree()
         
-            # message visuel si aout demandé
+            # message visuel si demandé si ajout manuel
+            if added_to_manual:
+                remaining = loop['count'] - loop['created_count']
+                status = "terminé" if remaining == 0 else f"{remaining} avatars restants à créer"
+                self.statusBar().showMessage(f"Avatar {new_index} ajouté au groupe manuel <{group_name}> ({status})", 3000)
         
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Avatar : {e}")
@@ -1183,7 +1230,7 @@ class LMGC90GUI(QMainWindow):
             params = self._safe_eval_dict(self.dof_options.text())
             
             if selected_text.startswith("GROUPE:"):
-                group_name = selected_text.split("GROUPE:")[1].strip("(")[0]   
+                group_name = selected_text.split("GROUPE: ")[1].strip("(")[0]   
                 indices = self.avatar_groups.get(group_name, [])
                 idx = int(selected_text.split()[1])
                 if not indices:
@@ -1194,6 +1241,7 @@ class LMGC90GUI(QMainWindow):
                     self.operations.append({'body_index': idx, 'type': action, 'params': params.copy})
                 QMessageBox.information(self, "Succès", f"Action '{action}' appliquée au groupe '{group_name}' ({len(indices)} avatars)")
             else:
+                #avatar individuel
                 idx = self.dof_avatar_name.currentIndex()
                 body = self.bodies_objects[idx]
                 getattr(body, action)(**params)  
@@ -1251,7 +1299,21 @@ class LMGC90GUI(QMainWindow):
             combo.blockSignals(True); combo.clear(); combo.addItems(items); combo.setEnabled(enabled); combo.blockSignals(False)
 
         # todo à compléter
+        self.dof_avatar_name.blockSignals(True)
+        self.dof_avatar_name.clear()
+        for i, b in enumerate(self.bodies_objects):
+            color = b.contactors[0].color if b.contactors else "????"
+            self.dof_avatar_name.addItem(f"Avatar {i} ({color})")
+        for name in self.group_names:
+            count = len(self.avatar_groups.get(name, []))
+            self.dof_avatar_name.addItem(f"GROUPE: {name} ({count} avatars)")
+        self.dof_avatar_name.blockSignals(False)
 
+        # Boucles
+        self.loop_avatar_type.blockSignals(True)
+        self.loop_avatar_type.clear()
+        self.loop_avatar_type.addItems([a.get('type', 'Inconnu') for a in self.avatar_creations])
+        self.loop_avatar_type.blockSignals(False)
 
     # ========================================
     # INTERACTION ARBRE
@@ -1288,8 +1350,10 @@ class LMGC90GUI(QMainWindow):
         # affichage des groupes d'avatars
         if self.avatar_groups:
             grp_node = QTreeWidgetItem(root, ["Groupes d'avatars", "", f"{len(self.avatar_groups)}"])
-            for name, indices in self.avatar_groups.items():
-                QTreeWidgetItem(grp_node, [f"{name} ({len(indices)} avatars)", "Groupe", ""])
+            # Tri alphabétique des noms de groupes
+            for name in sorted(self.avatar_groups.keys()):
+                count = len(self.avatar_groups[name])
+                QTreeWidgetItem(grp_node, [f"{name} ({count} avatars)", "Groupe", ""])
 
         self.tree.addTopLevelItem(root)
         root.setExpanded(True)
@@ -1316,7 +1380,6 @@ class LMGC90GUI(QMainWindow):
         if item.parent() is None: return
         parent_text = item.parent().text(0)
         name = item.text(0)
-        print(name)
 
         if parent_text == "Matériaux":
             mat = next((m for m in self.material_objects if m.nom == name), None)
@@ -1687,7 +1750,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.1.8\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.1.9\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
 
 #######################################
       #--------fonction main
