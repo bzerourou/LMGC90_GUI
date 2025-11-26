@@ -27,6 +27,7 @@ class LMGC90GUI(QMainWindow):
         self.update_selections()
         self.update_model_tree()
         self._initializing = False
+        self.cleanup_operations()
 
 
     def _init_containers(self):
@@ -1226,26 +1227,29 @@ class LMGC90GUI(QMainWindow):
         try:
 
             selected_text = self.dof_avatar_name.currentText()
-            action = self.dof_avatar_force.currentText(); params = self._safe_eval_dict(self.dof_options.text())
+            action = self.dof_avatar_force.currentText()
             params = self._safe_eval_dict(self.dof_options.text())
+            if not isinstance(params, dict):
+                raise ValueError("Paramètres invalides")
             
             if selected_text.startswith("GROUPE:"):
-                group_name = selected_text.split("GROUPE: ")[1].strip("(")[0]   
+                group_name = selected_text.split("GROUPE: ", 1)[1].split(" (", 1)[0]
+                print(group_name)
                 indices = self.avatar_groups.get(group_name, [])
-                idx = int(selected_text.split()[1])
+                print(indices)
                 if not indices:
                     raise ValueError(f"Groupe '{group_name}' vide ou inexistant")
                 for idx in indices: 
                     body = self.bodies_list[idx]
                     getattr(body, action)(**params)
-                    self.operations.append({'body_index': idx, 'type': action, 'params': params.copy})
+                self.operations.append({'target' : 'group', 'group_name': group_name, 'type': action, 'params': params})
                 QMessageBox.information(self, "Succès", f"Action '{action}' appliquée au groupe '{group_name}' ({len(indices)} avatars)")
             else:
                 #avatar individuel
                 idx = self.dof_avatar_name.currentIndex()
                 body = self.bodies_objects[idx]
                 getattr(body, action)(**params)  
-                self.operations.append({'body_index': idx, 'type': action, 'params': params})
+                self.operations.append({'target':'avatar', 'body_index': idx, 'type': action, 'params': params})
                 QMessageBox.information(self, "Succès", f"Action '{action}' appliquée à l'avatar {idx}")    
             self.update_model_tree()
         
@@ -1570,40 +1574,42 @@ class LMGC90GUI(QMainWindow):
         self.update_model_tree()
         self.current_selected = None
         QMessageBox.information(self, "Succès", "Supprimé")
+
+    def cleanup_operations(self):
+        """Supprime les anciennes opérations corrompues et les convertit si possible"""
+        new_ops = []
+        for op in self.operations:
+            # On garde seulement les opérations valides
+            if isinstance(op, dict):
+                if 'target' in op and op['target'] == 'group' and 'group_name' in op:
+                    new_ops.append(op)
+                elif 'body_index' in op and isinstance(op['body_index'], int):
+                    new_ops.append(op)
+                # Ancien format "GROUPE: nom" → on ignore (ou on peut tenter de réparer)
+                elif isinstance(op.get('body_index'), str) and op['body_index'].startswith("GROUPE:"):
+                    # Optionnel : extraire le nom si tu veux sauver
+                    pass  # on ignore
+                else:
+                    new_ops.append(op)  # au cas où
+        self.operations = new_ops
+
     # ========================================
     # ACTIONS/GENERATION SCRIPT
     # ========================================
-    def _write_avatar_creation(self, f, i, av):
-        if av['type']  == 'rigidDisk' :
-                f.write(f"body{i} = pre.rigidDisk(r={av['r']}, center={av['center']}, ")
-                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-        elif av['type']  == 'rigidJonc' :
-                f.write(f"body{i} = pre.rigidJonc(axe1={av['axe1']}, axe2 = {av['axe2']},center={av['center']}, ")
-                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-        elif av['type'] == 'rigidPolygon' and av['gen_type'] == 'regular' : 
-                f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', nb_vertices={av['nb_vertices']}, ")
-                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-        elif av['type'] == 'rigidPolygon' and av['gen_type'] == 'full'  :
-                f.write(f"body{i} = pre.rigidPolygon(center={av['center']}, radius= {av['r']}, generation_type= '{av['gen_type']}', vertices=np.array({av['vertices']}), ")
-                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-        elif av['type'] == 'rigidOvoidPolygon':
-                f.write(f"body{i} = pre.rigidOvoidPolygon(ra={av['ra']}, rb={av['rb']}, ")
-                f.write(f"nb_vertices={av['nb_vertices']}, center={av['center']}, ")
-                f.write(f"model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-        elif av['type'] == 'rigidDiscreteDisk':
-                f.write(f"body{i} = pre.rigidDiscreteDisk(r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], color='{av['color']}')\n")
-        elif av['type'] == 'roughWall':
-                f.write(f"body{i} = pre.roughWall(l={av['l']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_vertex= {av['nb_vertex']},color='{av['color']}')\n")
-        elif av['type'] == 'fineWall':
-                f.write(f"body{i} = pre.fineWall(l={av['l']}, r={av['r']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_vertex= {av['nb_vertex']}, color='{av['color']}')\n")
-        elif av['type'] == 'smoothWall':
-                f.write(f"body{i} = pre.smoothWall(l={av['l']}, h={av['h']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'], nb_polyg= {av['nb_polyg']},color='{av['color']}')\n")
-        elif av['type'] == "granuloRoughWall" :
-                f.write(f"body{i} = pre.granuloRoughWall(l={av['l']}, rmin={av['rmin']}, rmax = {av['rmax']}, center={av['center']}, model=mods['{av['model']}'], material=mats['{av['material']}'],nb_vertex= {av['nb_vertex']}, color='{av['color']}',  nb_vertx= {float(av['nb_vertex'])}  )\n")     
-        else:
-                f.write(f"# Type {av['type']} non géré\n")
-                return
-        f.write(f"bodies.addAvatar(body{i}); bodies_list.append(body{i})\n\n")
+    def _write_avatar_creation(self, f, i, av, container_name="bodies"):
+        func = self._get_avatar_function(av)
+        params = self._get_avatar_params(av)
+        color = av['color']
+        model = av['model']
+        material = av['material']
+
+        f.write(f"body = pre.{func}(center={av['center']}, ")
+        f.write(f"model=mods['{model}'], material=mats['{material}'], color='{color}'")
+        if params:
+            f.write(", " + ", ".join(f"{k}={v}" for k, v in params.items()))
+        f.write(")\n")
+        f.write(f"{container_name}.addAvatar(body)\n")
+        f.write(f"bodies_list.append(body)\n")
     
     
     def generate_python_script(self):
@@ -1625,7 +1631,20 @@ class LMGC90GUI(QMainWindow):
                 f.write("see_tables = pre.see_tables()\n\n")
                 f.write("bodies_list = []\n\n")
 
+                # === conteneurs nommés (groupes) ===
+                f.write("# === Groupes d'avatars (conteneurs nommés) ===\n")
+                group_containers = {}
+                for group_name in self.avatar_groups.keys():
+                    safe_name = group_name.replace(" ", "_").replace("-", "_")
+                    f.write(f"{safe_name} = pre.avatars()   # groupe: {group_name}\n")
+                    group_containers[group_name] = safe_name
+                if not group_containers:
+                    f.write("# Aucun groupe défini\n")
+                f.write("\n")
+                
+                
                 # === Matériaux ===
+                f.write("# === Matériaux ===\n")
                 for m in self.material_creations:
                     props = ""
                     if 'props' in m and m['props']:
@@ -1646,6 +1665,7 @@ class LMGC90GUI(QMainWindow):
                 f.write("\n")
 
                 # === Avatars individuels (hors boucles) ===
+                f.write("# === Avatars créés manuellement ===\n")
                 used_indices = set()
                 for loop in self.loop_creations:
                     used_indices.update(loop.get('generated_avatar_indices', []))
@@ -1653,14 +1673,27 @@ class LMGC90GUI(QMainWindow):
                 for i, av in enumerate(self.avatar_creations):
                     if i in used_indices:
                         continue
-                    self._write_avatar_creation(f, i, av)
+                    self._write_avatar_creation(f, i, av , "bodies")
 
-                # === Boucles ===
+                # === Boucles automatiques ===
+                f.write("# === Boucles automatiques → remplissage des groupes ===\n")
                 for loop_idx, loop in enumerate(self.loop_creations):
                     if loop['type'] == "Manuel":
                         continue  # Les manuels sont déjà créés individuellement
 
                     model_av = self.avatar_creations[loop['model_avatar_index']]
+                    group_name = loop.get('stored_in_group')
+                    if not group_name or group_name not in group_containers:
+                        container = "bodies"
+                    else:
+                        container = group_containers[group_name]
+                    f.write(f"\n# --- Boucle #{loop_idx +1} : {loop['type']} → groupe '{group_name or 'inconnu'}' ---\n")
+                    f.write("centers = []\n")
+
+                    ox = loop['offset_x']
+                    oy = loop['offset_y']
+                    n = loop['count']
+                    
                     mat = self.mats_dict[model_av['material']]
                     mod = self.mods_dict[model_av['model']]
                     color = model_av['color']
@@ -1668,10 +1701,6 @@ class LMGC90GUI(QMainWindow):
                     f.write(f"\n# === Boucle : {loop['type']} → groupe '{loop.get('stored_in_group', 'inconnu')}' ===\n")
                     f.write(f"# {loop['count']} avatars du type {model_av['type']}\n")
                     f.write("centers = []\n")
-
-                    ox = loop['offset_x']
-                    oy = loop['offset_y']
-                    n = loop['count']
 
                     if loop['type'] == "Cercle":
                         r = loop['radius']
@@ -1712,32 +1741,51 @@ class LMGC90GUI(QMainWindow):
                     if params:
                         f.write(", " + ", ".join(f"{k}={v}" for k, v in params.items()))
                     f.write(")\n")
-                    f.write("    bodies.addAvatar(body)\n")
-                    f.write("    bodies_list.append(body)\n")
+                    f.write(f"    {container}.append(body)\n")
+                    f.write(f"bodies.__iadd__({container})\n")
                 f.write("\n")
 
+                # === Avatars manuels (mode boucle Manuel) → vont dans leur groupe ===
+                f.write("\n# === Avatars crées en mode Manuel → ajout dans leur groupe ===\n")
+                for group_name, indices in self.avatar_groups.items():
+                    if not indices:
+                        continue
+                    safe_name = group_containers.get(group_name, "bodies")
+                    for idx in indices:
+                        if idx >= len(self.avatar_creations):
+                            continue
+                        av = self.avatar_creations[idx]
+                        if av.get('__from_loop'):  # déjà ajouté via boucle auto
+                            continue
+                        self._write_avatar_creation(f, av, safe_name)
+                
                 # === Opérations DOF (individuelles + groupes) ===
                 f.write("# === Conditions aux limites (DOF) ===\n")
                 for op in self.operations:
-                    idx = op['body_index']
                     action = op['type']
+                    if not action: continue
                     params = op['params']
-
+                    if not isinstance(params, dict):
+                        f.write(f"# [IGNORE]: paramètres invalides pour l'opération {action} sur avatar #{idx}\n")
                     # Si c’est un groupe → on boucle sur les indices
-                    if str(idx).startswith("GROUPE:"):
-                        group_name = idx.split("GROUPE: ", 1)[1].split(" (", 1)[0]
-                        indices = self.avatar_groups.get(group_name, [])
-                        if not indices:
-                            f.write(f"# Groupe '{group_name}' vide → ignoré\n")
-                            continue
-                        f.write(f"# Application de {action} au groupe '{group_name}' ({len(indices)} avatars)\n")
-                        for body_idx in indices:
-                            args = ", ".join(f"{k}={repr(v)}" for k, v in params.items())
-                            f.write(f"bodies_list[{body_idx}].{action}({args})\n")
+                    params_str = ", ".join(f"{k}={repr(v)}" for k, v in params.items())
+                    if op.get('target') == 'group' or 'group_name' in op:
+                            group_name = op['group_name'] or op.get('target_name')
+                            if not group_name:
+                                f.write(f"# [IGNORE]: nom de groupe manquant pour l'opération {action}\n")
+                            # Nom sécurisé pour variable Python
+                            container_var = group_containers.get(group_name, "bodies")
+                            print(container_var)
+                            f.write(f"# {action} sur le groupe '{group_name}'\n")
+                            f.write(f"{container_var}.{action}( {params_str})\n")
+
                     else:
-                        # Avatar individuel
-                        args = ", ".join(f"{k}={repr(v)}" for k, v in params.items())
-                        f.write(f"bodies_list[{idx}].{action}({args})\n")
+                            # Avatar individuel
+                            idx = op.get('body_index', -1)
+                            f.write(f"# {action} sur avatar individuel #{idx}\n")
+                            f.write(f"bodies[{idx}].{action}({params_str})\n")
+                            
+                           
                 f.write("\n")
 
                 # === Lois de contact ===
@@ -1759,7 +1807,7 @@ class LMGC90GUI(QMainWindow):
 
                 # === Écriture finale ===
                 f.write("# Écriture du fichier .datbox\n")
-                f.write("pre.writeDatbox(dim=2, materials=materials, models=models, bodies=bodies, tacts=tacts, see_tables=see_tables)\n")
+                f.write("pre.writeDatbox(dim=2, mats=materials, mods=models, bodies=bodies, tacts=tacts, sees=see_tables)\n")
 
             self.script_path = path
             QMessageBox.information(self, "Succès", f"Script généré avec succès !\n{path}")
