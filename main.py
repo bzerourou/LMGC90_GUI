@@ -111,8 +111,9 @@ class LMGC90GUI(QMainWindow):
         # === Matériau ===
         mat_tab = QWidget()
         ml = QVBoxLayout()
-        self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELASTIC"])
+        self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELAS"])
         self.mat_density = QLineEdit("1000."); self.mat_props = QLineEdit("")
+        self.mat_type.currentTextChanged.connect(self.update_material_fields)
         for label, widget in [
             ("Nom :", self.mat_name), ("Type :", self.mat_type), ("Densité :", self.mat_density),
             ("Propriétés (ex: young=1e9) :", self.mat_props)
@@ -191,6 +192,7 @@ class LMGC90GUI(QMainWindow):
         self.wall_height = QLineEdit("0.15")
 
         self.avatar_properties = QLineEdit("")
+
         for w in [QLabel("Type:"), self.avatar_type, self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis, self.avatar_r_ovoid_label,self.avatar_r_ovoid,self.wall_length_label, self.wall_length,
                     self.wall_height_label, self.wall_height,
                     self.avatar_gen_type, self.avatar_gen, self.avatar_nb_vertices_label, self.avatar_nb_vertices, self.avatar_vertices_label, self.avatar_vertices, self.avatar_center_label, self.avatar_center, QLabel("Mat:"), self.avatar_material,
@@ -529,6 +531,12 @@ class LMGC90GUI(QMainWindow):
             else:
                 self.loop_store_group.setEnabled(True)
                 self.loop_count.setPlaceholderText("")
+
+    def update_material_fields(self):
+        if self.mat_type.currentText() == "ELAS":
+            self.mat_name.setText("ELASx")
+            self.mat_props.setText("elas='standard', young=0.1e+15, nu=0.2, anisotropy='isotropic'")
+        
     # ========================================
     # BOUCLES
     # ========================================
