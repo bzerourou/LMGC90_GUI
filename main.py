@@ -28,6 +28,23 @@ class LMGC90GUI(QMainWindow):
         self.update_model_tree()
         self._initializing = False
         self.cleanup_operations()
+        ##
+        self.ELEMENT_OPTIONS = {
+        "Rxx2D": {}, "Rxx3D": {}, "DISKx": {}, "POLYG": {}, "SPHER": {}, "POLYH": {},
+        "IQS4":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "IQS8":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "ITR3":  {"kinematic": ["small"], "formulation": ["TotaL"]},
+        "ITR6":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"]},
+        "HE8":   {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "SHB8":  {"kinematic": ["large"], "formulation": ["UpdtL"], "mass_storage": ["lump_"]},
+}
+
+        self.GLOBAL_MODEL_OPTIONS = {
+        "material": ["elas_", "elasd", "neoh_", "hyper", "J2iso"],
+        "anisotropy": ["iso__", "ortho"],
+        "external_model": ["MatL_", "Demfi", "Umat_", "no___"],
+        "discrete": ["yes__", "no___"],
+}
 
 
     def _init_containers(self):
@@ -1402,7 +1419,8 @@ class LMGC90GUI(QMainWindow):
          # Matériaux
         mat_node = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.material_objects)}"])
         for i, mat in enumerate(self.material_objects):
-            item = QTreeWidgetItem([mat.nom, "Matériau", f"ρ={mat.density}"])
+            ma = self.material_creations[i]
+            item = QTreeWidgetItem([mat.nom + f"- {ma['type']}", "Matériau", f"ρ={mat.density}"])
             item.setData(0, Qt.ItemDataRole.UserRole, ("material", i))
             mat_node.addChild(item)
 
