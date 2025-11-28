@@ -111,7 +111,7 @@ class LMGC90GUI(QMainWindow):
         # === Matériau ===
         mat_tab = QWidget()
         ml = QVBoxLayout()
-        self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELAS"])
+        self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELAS", "ELAS_DILA", "VISCO_ELAS", "ELAS_PLAS", "THERMO_ELAS", "PORO_ELAS"])
         self.mat_density = QLineEdit("1000."); self.mat_props = QLineEdit("")
         self.mat_type.currentTextChanged.connect(self.update_material_fields)
         for label, widget in [
@@ -534,9 +534,34 @@ class LMGC90GUI(QMainWindow):
 
     def update_material_fields(self):
         if self.mat_type.currentText() == "ELAS":
-            self.mat_name.setText("ELASx")
+            self.mat_name.setText("steel")
             self.mat_props.setText("elas='standard', young=0.1e+15, nu=0.2, anisotropy='isotropic'")
-        
+        elif self.mat_type.currentText() == "ELAS_DILA":
+            self.mat_name.setText("steel")
+            self.mat_props.setText("elas='standard', young=0.1e+15, nu=0.2, anisotropy='isotropic',dilatation=1e-5, T_ref_meca=20.")
+        elif self.mat_type.currentText() == "VISCO_ELAS":
+            self.mat_name.setText("steel")
+            self.mat_props.setText("elas='standard', anisotropy='isotropic', young=1.17e11, nu=0.35,viscous_model='KelvinVoigt', viscous_young=1.17e9, viscous_nu=0.35")
+        elif self.mat_type.currentText() == "ELAS_PLAS":
+            self.mat_name.setText("steel")
+            self.mat_props.setText("elas='standard', anisotropy='isotropic', young=1.17e11, nu=0.35,critere='Von-Mises', isoh='linear', iso_hard=4.e8, isoh_coeff=1e8, cinh='none', visc='none'")
+        elif self.mat_type.currentText() == "THERMO_ELAS":
+            self.mat_name.setText("steel")
+            self.mat_props.setText("elas='standard', young=0.0, nu=0.0, anisotropy='isotropic', dilatation = 0.0,T_ref_meca = 0.0, conductivity='field', specific_capacity='field'")
+        elif self.mat_type.currentText() == "PORO_ELAS":
+            self.mat_name.setText("steel")
+            self.mat_props.setText("elas='standard', young=0.0, nu=0.0, anisotropy='isotropic',hydro_cpl = 0.0, conductivity='field', specific_capacity='field'")
+        elif self.mat_type.currentText() == "DISCRETE":
+            self.mat_density.setEnabled(False)
+            self.mat_density.setText("ignorée")
+            self.mat_props.setText("masses=[0., 0., 0.], stiffnesses=[1e7, 1e7, 1e7], viscosities=[0., 0., 0.]")
+        elif  self.mat_type.currentText() == "USER_MAT":
+            self.mat_density.setEnabled(True)
+            self.mat_density.setText("2000.")
+            self.mat_props.setText("file_mat='elas.mat'")
+        else:
+            self.mat_density.setEnabled(True)
+            self.mat_density.setText("2500.")
     # ========================================
     # BOUCLES
     # ========================================
@@ -807,7 +832,12 @@ class LMGC90GUI(QMainWindow):
         #----Matériaux
         for m in state.get('materials', []):
             if not all(k in m for k in ['name', 'type', 'density']): continue
-            mat = pre.material(name=m['name'], materialType=m['type'], density=m['density'])
+            if m['type'] == "RIGID":
+                mat = pre.material(name=m['name'], materialType=m['type'], density=m['density'])
+            elif m['type'] in  ['ELAS', 'ELAS_DILA', 'VISCO_ELAS', 'ELAS_PLAS', 'THERMO_ELAS', 'PORO_ELAS']:
+                mat = pre.material( name=m['name'], materialType=m['type'], density=m['density'], args=m['props'])
+            else : 
+                mat = pre.material(  m.get('props', {}), name=m['name'], materialType=m['type'], args=m['props'])
             self.materials.addMaterial(mat); self.material_objects.append(mat)
             self.material_creations.append(m); self.mats_dict[m['name']] = mat
 
@@ -998,15 +1028,49 @@ class LMGC90GUI(QMainWindow):
     def create_material(self):
         try:
             name = self.mat_name.text().strip()
-            if not name: raise ValueError("Nom vide")
+            if not name:
+                raise ValueError("Nom vide")
+
+            mat_type = self.mat_type.currentText()
+            density_text = self.mat_density.text().strip()
             props = self._safe_eval_dict(self.mat_props.text())
-            mat = pre.material(name=name, materialType=self.mat_type.currentText(), density=float(self.mat_density.text()), **props)
-            self.materials.addMaterial(mat); self.material_objects.append(mat)
-            self.material_creations.append({'name': name, 'type': self.mat_type.currentText(), 'density': float(self.mat_density.text())})
+
+            # --- Tous les matériaux standards (sauf DISCRET et USER_MAT) ---
+            if mat_type in ["RIGID", "ELAS", "ELAS_DILA", "VISCO_ELAS", "ELAS_PLAS", "THERMO_ELAS", "PORO_ELAS"]:
+                density = float(density_text) if density_text else 1000.
+                mat = pre.material(name=name, materialType=mat_type, density=density, **props)
+
+            # --- DISCRET : ne prend PAS density ---
+            #elif mat_type == "DISCRETE":
+            #    print(props)
+            #    mat = pre.material(name=name, materialType='DISCRETE', masses=props.get('masses', []), stiffnesses=props.get('stiffnesses', []), viscosities=props.get('viscosities', [])  )
+
+            # --- USER_MAT : EXIGE la densité, même si ta loi ne l'utilise pas ! ---
+            #elif mat_type == "USER_MAT": 
+            #    mat = pre.material(name=name, materialType='USER_MAT',  **props)
+
+            else:
+                raise ValueError(f"Type de matériau inconnu : {mat_type}")
+
+            # Ajout commun
+            self.materials.addMaterial(mat)
+            self.material_objects.append(mat)
             self.mats_dict[name] = mat
-            self.update_selections(); self.update_model_tree()
+
+            # Sauvegarde dans l'historique
+            save_dict = {
+                'name': name,
+                'type': mat_type,
+                'density': mat.density if hasattr(mat, 'density') else None,
+                'props': props
+            }
+            self.material_creations.append(save_dict)
+
+            self.update_selections()
+            self.update_model_tree()
+
         except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Matériau : {e}")
+            QMessageBox.critical(self, "Erreur Matériau", f"{e}")
 
     def create_model(self):
         try:
