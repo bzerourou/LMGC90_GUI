@@ -1683,6 +1683,39 @@ class LMGC90GUI(QMainWindow):
         f.write(f"{container_name}.addAvatar(body)\n")
         f.write(f"bodies_list.append(body)\n")
     
+    def _format_value_for_python(self, value):
+        """
+        Retourne la valeur formatée correctement pour un script Python LMGC90
+        - 'standard', 'isotropic', 'orthotropic' → entre quotes
+        - Nombres → sans quotes
+        - True/False → sans quotes
+        - Tout le reste → entre quotes
+        """
+        if isinstance(value, (int, float)):
+            # Nombre → on garde tel quel
+            if value == int(value):
+                return str(int(value))
+            else:
+                return f"{value:.15g}".rstrip('0').rstrip('.')
+        
+        if isinstance(value, bool):
+            return "True" if value else "False"
+        
+        if value is None:
+            return "None"
+        
+        if isinstance(value, str):
+            # Les mots-clés spéciaux de pylmgc90 → entre quotes
+            if value in ["standard", "isotropic", "orthotropic", "transverse", "UpdtL", "small", "large"]:
+                return f"'{value}'"
+            # Si ça commence par un chiffre → c'est une string numérique, on garde entre quotes
+            if value.strip() and value.strip()[0].isdigit():
+                return f"'{value}'"
+            # Sinon, c'est une variable ou un mot → entre quotes
+            return f"'{value}'"
+        
+        # Tout autre cas (listes, etc.)
+        return repr(value)
     
     def generate_python_script(self):
         try:
@@ -1718,11 +1751,18 @@ class LMGC90GUI(QMainWindow):
                 # === Matériaux ===
                 f.write("# === Matériaux ===\n")
                 for m in self.material_creations:
-                    props = ""
+                    props_parts = []
                     if 'props' in m and m['props']:
-                        props = ", " + ", ".join(f"{k}={v}" for k, v in m['props'].items())
+                        for k, v in m['props'].items():
+                            formatted = self._format_value_for_python(v)
+                            props_parts.append(f"{k}={formatted}")
+                    
+                    props_str = ""
+                    if props_parts:
+                        props_str = ", " + ", ".join(props_parts)
+
                     f.write(f"mats['{m['name']}'] = pre.material(name='{m['name']}', "
-                            f"materialType='{m['type']}', density={m['density']}{props})\n")
+                            f"materialType='{m['type']}', density={m['density']}{props_str})\n")
                     f.write(f"materials.addMaterial(mats['{m['name']}'])\n")
                 f.write("\n")
 
