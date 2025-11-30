@@ -10,7 +10,7 @@ import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
     QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox,
-    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout
+    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, 
 )
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -22,30 +22,21 @@ class LMGC90GUI(QMainWindow):
         self.dim = 2
         self.current_selected = None
         self._initializing = True
+
+        # --- Projet ---
+        self.project_name = "Nouveau_Projet"
+        self.project_dir = None  # Dossier du projet
+        
         self._init_containers()
         self._init_ui()
+        self.setWindowTitle(f"LMGC90_GUI v0.2.0 [stable] - {self.project_name}")
+        self.statusBar().showMessage("Prêt")
+
         self.update_selections()
         self.update_model_tree()
         self._initializing = False
         self.cleanup_operations()
-        ##
-        self.ELEMENT_OPTIONS = {
-        "Rxx2D": {}, "Rxx3D": {}, "DISKx": {}, "POLYG": {}, "SPHER": {}, "POLYH": {},
-        "IQS4":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
-        "IQS8":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
-        "ITR3":  {"kinematic": ["small"], "formulation": ["TotaL"]},
-        "ITR6":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"]},
-        "HE8":   {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
-        "SHB8":  {"kinematic": ["large"], "formulation": ["UpdtL"], "mass_storage": ["lump_"]},
-}
-
-        self.GLOBAL_MODEL_OPTIONS = {
-        "material": ["elas_", "elasd", "neoh_", "hyper", "J2iso"],
-        "anisotropy": ["iso__", "ortho"],
-        "external_model": ["MatL_", "Demfi", "Umat_", "no___"],
-        "discrete": ["yes__", "no___"],
-}
-
+        
 
     def _init_containers(self):
         # --- Conteneurs LMGC90 ---
@@ -53,6 +44,7 @@ class LMGC90GUI(QMainWindow):
         self.bodies_objects = []
         self.bodies_list = []
         self.avatar_creations = []
+        self.bodies_dict = {}
 
         self.materials = pre.materials()
         self.material_objects = []
@@ -82,8 +74,9 @@ class LMGC90GUI(QMainWindow):
         self.avatar_groups = {}    
         self.group_names = [] 
     def _init_ui(self):
-        self.setWindowTitle("LMGC90_GUI v0.1.9 ")
+        
         self.setGeometry(100, 100, 1000, 700)
+        self.statusBar()
 
         # --- Menu ---
         menu = QMenuBar(self)
@@ -92,8 +85,15 @@ class LMGC90GUI(QMainWindow):
         file_menu.addAction("Nouveau", self.new_project)
         file_menu.addAction("Ouvrir", self.open_project)
         file_menu.addAction("Sauvegarder", self.save_project)
+        file_menu.addAction("Sauvegarder sous...", self.save_project_as)
         file_menu.addAction("Quitter", self.close)
         menu.addMenu("Help").addAction("À propos", self.about)
+        #racourci menu  
+        file_menu.actions()[0].setShortcut("Ctrl+N")  # Nouveau
+        file_menu.actions()[1].setShortcut("Ctrl+O")  # Ouvrir
+        file_menu.actions()[2].setShortcut("Ctrl+S")  # Sauvegarder
+        file_menu.actions()[3].setShortcut("Ctrl+Shift+S")  # Sauvegarder sous
+        file_menu.actions()[4].setShortcut("Ctrl+Q")  # Quitter
 
         # --- Toolbar ---
         tb = QToolBar("Actions")
@@ -125,6 +125,36 @@ class LMGC90GUI(QMainWindow):
         self.tabs = QTabWidget()
         splitter.addWidget(self.tabs)
 
+        # creation des tabs
+        self._create_material_tab()
+        self._create_model_tab()
+        self._create_avatar_tab()
+        self._create_loop_tab()
+        self._create_dof_tab()
+        self._create_contact_tab()
+        self._create_visibility_tab()
+        
+        # --- Rendu ---
+        render_tabs = QTabWidget()
+        splitter.addWidget(render_tabs)
+        render_tab = QWidget()
+        rl = QVBoxLayout()
+        lmgc_vis_btn = QPushButton("LMGC visualisation")
+        lmgc_vis_btn.clicked.connect(self.visu_lmgc)
+        rl.addWidget(lmgc_vis_btn)
+        paraview_btn = QPushButton("ParaView")
+        paraview_btn.clicked.connect(self.open_paraview)
+        rl.addWidget(paraview_btn)
+        render_tab.setLayout(rl)
+        render_tabs.addTab(render_tab, "Rendu")
+
+        splitter.setSizes([400, 200])
+
+    # ========================================
+    #  CREATION - TABS
+    # =========================================
+    
+    def _create_material_tab(self):
         # === Matériau ===
         mat_tab = QWidget()
         ml = QVBoxLayout()
@@ -150,7 +180,8 @@ class LMGC90GUI(QMainWindow):
         mat_tab.setLayout(ml)
         self.tabs.addTab(mat_tab, "Matériau")
         self.mat_tab = mat_tab
-        
+    
+    def _create_model_tab(self):
         # --- Modèle ---
         mod_tab = QWidget()
         mml = QVBoxLayout()
@@ -179,6 +210,7 @@ class LMGC90GUI(QMainWindow):
         self.tabs.addTab(mod_tab, "Modèle")
         self.mod_tab = mod_tab
 
+    def _create_avatar_tab(self):
         # --- Avatar ---
         av_tab = QWidget()
         al = QVBoxLayout()
@@ -241,6 +273,7 @@ class LMGC90GUI(QMainWindow):
         self._initializing = False
         self.update_avatar_fields(self.avatar_type.currentText())
 
+    def _create_loop_tab(self):
         # avatars boucles ---
         loop_tab = QWidget()
         ll = QVBoxLayout()
@@ -291,7 +324,7 @@ class LMGC90GUI(QMainWindow):
         # Connexion pour masquer/afficher les champs selon le type
         self.loop_type.currentTextChanged.connect(self.update_loop_fields)
         self.update_loop_fields(self.loop_type.currentText())
-        
+    def _create_dof_tab(self):
         # --- DOF ---
         dof_tab = QWidget()
         dl = QVBoxLayout()
@@ -312,6 +345,7 @@ class LMGC90GUI(QMainWindow):
         #initialisation du texte 
         self.update_dof_options(self.dof_avatar_force.currentText())
 
+    def _create_contact_tab(self):    
         # --- Contact ---
         self.contact_tab = QWidget()
         cl = QVBoxLayout()
@@ -328,15 +362,16 @@ class LMGC90GUI(QMainWindow):
         cl.addLayout(btns)
         self.contact_tab.setLayout(cl)
         self.tabs.addTab(self.contact_tab, "Contact")
-
+    
+    def _create_visibility_tab(self) : 
         # --- Visibilité ---
         vis_tab = QWidget()
         vl = QVBoxLayout()
         self.vis_corps_candidat = QComboBox(); self.vis_corps_candidat.addItem("RBDY2")
-        self.vis_candidat = QComboBox(); self.vis_candidat.addItem("DISKx")
+        self.vis_candidat = QComboBox(); self.vis_candidat.addItems(["DISKx", "xKSID", "JONCx", "POLYG"])
         self.candidat_color = QLineEdit("BLUEx")
         self.vis_corps_antagoniste = QComboBox(); self.vis_corps_antagoniste.addItem("RBDY2")
-        self.vis_antagoniste = QComboBox(); self.vis_antagoniste.addItem("DISKx")
+        self.vis_antagoniste = QComboBox(); self.vis_antagoniste.addItems(["DISKx", "xKSID", "JONCx", "POLYG"])
         self.antagoniste_color = QLineEdit("VERTx")
         self.behav = QComboBox()
         self.vis_alert = QLineEdit("0.1")
@@ -353,25 +388,12 @@ class LMGC90GUI(QMainWindow):
         self.tabs.addTab(vis_tab, "Visibilité")
         self.vis_tab =vis_tab
 
-        # --- Rendu ---
-        render_tabs = QTabWidget()
-        splitter.addWidget(render_tabs)
-        render_tab = QWidget()
-        rl = QVBoxLayout()
-        lmgc_vis_btn = QPushButton("LMGC visualisation")
-        lmgc_vis_btn.clicked.connect(self.visu_lmgc)
-        rl.addWidget(lmgc_vis_btn)
-        paraview_btn = QPushButton("ParaView")
-        paraview_btn.clicked.connect(self.open_paraview)
-        rl.addWidget(paraview_btn)
-        render_tab.setLayout(rl)
-        render_tabs.addTab(render_tab, "Rendu")
-
-        splitter.setSizes([400, 200])
-
     # ========================================
     # UTILITAIRES
     # ========================================
+    ''' Evaluer en toute sécurité une chaîne de caractères en dictionnaire 
+        text : str : chaîne à évaluer
+    '''
     def _safe_eval_dict(self, text):
         if not text.strip():
             return {}
@@ -387,10 +409,12 @@ class LMGC90GUI(QMainWindow):
         except Exception as e:
             raise ValueError(f"Paramètres invalides : {e}")
 
-    def _add_to_tree(self, parent, name, type_, details="") -> QTreeWidget:
-        QTreeWidgetItem(parent, [name, type_, details])
+    ''' Met à jour la barre de statut avec un message temporaire'''
+    def update_status(self, msg):
+        self.statusBar().showMessage(msg, 5000)
 
-
+    ''' Met à jour les types d'avatars disponibles selon la dimension du modèle
+      dimension : str : "2" ou "3"'''
     def update_avatar_types(self, dimension):
         self.avatar_type.blockSignals(True)
         self.avatar_type.clear()
@@ -402,6 +426,8 @@ class LMGC90GUI(QMainWindow):
         
         self.update_avatar_fields(self.avatar_type.currentText())
 
+    ''' Met à jour les champs affichés dans l'onglet Avatar selon le type sélectionné
+        avatar_type : str : type d'avatar sélectionné'''
     def update_avatar_fields(self, avatar_type): 
          if self._initializing:
             return
@@ -497,6 +523,8 @@ class LMGC90GUI(QMainWindow):
                 self.wall_length.setText("2.0")
                 self.avatar_nb_vertices.setText("5")
 
+    ''' Met à jour les options disponibles selon l'action DOF sélectionnée
+        action : str : action DOF sélectionnée'''
     def update_dof_options(self, action) :
         forces = {
             "translate" : "dx=0.0 , dy=2.0",
@@ -513,6 +541,8 @@ class LMGC90GUI(QMainWindow):
         default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
         self.avatar_center.setText(default_center)
 
+    ''' Met à jour les champs affichés dans l'onglet Avatar selon le type de génération de polygone
+        gen_type : str : type de génération sélectionné'''
     def update_polygon_fields(self, gen_type):
         if self.avatar_type.currentText() != "rigidPolygon":
             return
@@ -530,6 +560,8 @@ class LMGC90GUI(QMainWindow):
         # valeur par défaut du nombre de vertices
         if show_nb and not self.avatar_nb_vertices.text().strip():
             self.avatar_nb_vertices.setText("5")
+    ''' Met à jour les champs affichés dans l'onglet Boucles selon le type de boucle sélectionné
+        loop_type : str : type de boucle sélectionné'''
     def update_loop_fields(self, loop_type):
             """Affiche ou masque les champs selon le type de boucle"""
             is_manual = (loop_type == "Manuel")
@@ -549,8 +581,12 @@ class LMGC90GUI(QMainWindow):
                 self.loop_store_group.setEnabled(True)
                 self.loop_count.setPlaceholderText("")
 
+    ''' Met à jour les champs de l'onglet Matériau selon le type sélectionné'''
     def update_material_fields(self):
-        if self.mat_type.currentText() == "ELAS":
+        if self.mat_type.currentText() == "RIGID":
+            self.mat_name.setText("rigid")
+            self.mat_props.setText("")
+        elif self.mat_type.currentText() == "ELAS":
             self.mat_name.setText("steel")
             self.mat_props.setText("elas='standard', young=0.1e+15, nu=0.2, anisotropy='isotropic'")
         elif self.mat_type.currentText() == "ELAS_DILA":
@@ -780,7 +816,14 @@ class LMGC90GUI(QMainWindow):
     # PROJET
     # ========================================
     def new_project(self):
-        self._init_containers()
+        name, ok = QInputDialog.getText(self, "Nouveau projet", "Nom du projet :", text="Mon_Projet")
+        if not ok or not name.strip():
+            return
+        name = "".join(c if c.isalnum() or c in "_-" else "_" for c in name.strip())
+        if not name:
+            name = "Projet"
+        self.project_name = name
+        self.project_dir = None
         # Reset UI
         for widget, default in [
             (self.mat_name, "TDURx"), (self.mat_density, "1000."), (self.mat_props, ""),
@@ -793,46 +836,85 @@ class LMGC90GUI(QMainWindow):
                 widget.setText(default)
             elif isinstance(widget, QComboBox):
                 widget.setCurrentIndex(0)
+        self._init_containers()
         self.update_selections()
         self.update_model_tree()
+        self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
+        self.update_status("Nouveau projet créé")
         QMessageBox.information(self, "Succès", "Nouveau projet vide")
 
     def open_project(self):
-        dir_path = QFileDialog.getExistingDirectory(self, "Ouvrir projet")
-        if not dir_path: return
-        json_path = os.path.join(dir_path, "project.json")
-        if not os.path.exists(json_path):
-            QMessageBox.critical(self, "Erreur", "project.json introuvable")
+        file, _ = QFileDialog.getOpenFileName(self, "Ouvrir projet", "", "Projet LMGC90 (*.lmgc90)")
+        if not file:
             return
+        #•print(file)
+        # Recréer matériaux, modèles, avatars, etc.
         try:
-            with open(json_path, 'r', encoding='utf-8') as f:
+            with open(file, 'r', encoding='utf-8') as f:
                 state = json.load(f)
+            self.project_dir = os.path.dirname(file)
+            self.project_name = state.get("project_name", "Projet_sans_nom")
+            self._init_containers()
             self._deserialize_state(state)
-            self.current_project_dir = dir_path
-            self.update_selections()
+     
+
+            self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
+            self.update_status(f"Projet chargé : {self.project_name}")
             self.update_model_tree()
-            QMessageBox.information(self, "Succès", "Projet chargé")
+            self.update_selections()
         except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"JSON invalide : {e}")
+            QMessageBox.critical(self, "Erreur", f"Impossible d'ouvrir le projet :\n{e}")
 
     def save_project(self):
-        if not self.current_project_dir:
-            dir_path = QFileDialog.getExistingDirectory(self, "Sauvegarder dans")
-            if not dir_path: return
-            self.current_project_dir = dir_path
-        self.do_save(self.current_project_dir)
+        # Si on n'a jamais sauvegardé → on force "Enregistrer sous"
+        if not self.project_dir:
+            return self.save_project_as()
+        # Sinon : sauvegarde rapide dans le dossier déjà connu
+        self.do_save()
+        self.update_status(f"Projet sauvegardé : {self.project_name}.lmgc90")
 
-    def do_save(self, dir_path):
-        os.makedirs(dir_path, exist_ok=True)
+    def save_project_as(self):
+        # Demande un dossier
+        dir_path = QFileDialog.getExistingDirectory(self, "Choisir le dossier du projet")
+        if not dir_path:
+         return  # Annulé
+
+        # MET À JOUR LE DOSSIER DU PROJET
+        self.project_dir = dir_path
+
+        # Demande un nom de projet si ce n’est pas déjà fait
+        if not hasattr(self, 'project_name') or self.project_name == "Nouveau_Projet":
+            name, ok = QInputDialog.getText(self, "Nom du projet", "Nom du projet :", text="MonProjet")
+            if not ok or not name.strip():
+                return
+            self.project_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in name.strip())
+
+        self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
+        self.do_save()
+        self.update_status(f"Projet enregistré dans : {dir_path}")
+
+    
+    def do_save(self):
+        """Fonction centrale qui fait vraiment la sauvegarde"""
+        os.makedirs(self.project_dir, exist_ok=True)
+        json_path = os.path.join(self.project_dir, f"{self.project_name}.lmgc90")
+
         state = self._serialize_state()
-        #print(state)
-        with open(os.path.join(dir_path, 'project.json'), 'w', encoding='utf-8') as f:
-            json.dump(state, f, indent=4)
-        QMessageBox.information(self, "Succès", "Projet sauvegardé")
 
+        try:
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(state, f, indent=4)
+        except Exception as e:
+                QMessageBox.critical(self, "Erreur", f"Échec sauvegarde :\n{e}")
+                return
+
+        QMessageBox.information(self, "Succès", f"Projet sauvegardé !\n{json_path}")
+
+        
     def _serialize_state(self):
         manual_avatars = [av for av in self.avatar_creations if not av.get('__from_loop', False)]
         return {
+            'project_name': self.project_name,
             'materials': self.material_creations,
             'models': self.model_creations,
             'avatars': manual_avatars,
@@ -1323,9 +1405,9 @@ class LMGC90GUI(QMainWindow):
             
             if selected_text.startswith("GROUPE:"):
                 group_name = selected_text.split("GROUPE: ", 1)[1].split(" (", 1)[0]
-                print(group_name)
+                #print(group_name)
                 indices = self.avatar_groups.get(group_name, [])
-                print(indices)
+                #print(indices)
                 if not indices:
                     raise ValueError(f"Groupe '{group_name}' vide ou inexistant")
                 for idx in indices: 
@@ -1420,7 +1502,8 @@ class LMGC90GUI(QMainWindow):
         mat_node = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.material_objects)}"])
         for i, mat in enumerate(self.material_objects):
             ma = self.material_creations[i]
-            item = QTreeWidgetItem([mat.nom + f"- {ma['type']}", "Matériau", f"ρ={mat.density}"])
+            display_text = f"{mat.nom} - {ma['type']}"
+            item = QTreeWidgetItem([display_text, "Matériau", f"ρ={mat.density}"])
             item.setData(0, Qt.ItemDataRole.UserRole, ("material", i))
             mat_node.addChild(item)
 
@@ -1471,19 +1554,29 @@ class LMGC90GUI(QMainWindow):
 
     def activate_tab(self, item, column): 
         
-        if item.parent() is None: return
+        if item.parent() is None: 
+            return
         parent_text = item.parent().text(0)
-        name = item.text(0)
+        name = item.text(0).split("-")[0]
+        #print(name)
+        
+        data= item.data(0, Qt.ItemDataRole.UserRole)
+        #print(data)
+        type, idx = data if data else (None, None)
+        #print(type)
 
+        # essai de récupération de l'index
         if parent_text == "Matériaux":
-            mat = next((m for m in self.material_objects if m.nom == name), None)
+            mat = self.material_objects[idx]
+            #print(mat)
             if not mat: return
             self.tabs.setCurrentWidget(self.mat_tab)
             self.mat_name.setText(mat.nom)
             self.mat_type.setCurrentText(mat.materialType)
             self.mat_density.setText(str(mat.density))
+            #self.mat_props.setText(str({k: v for k, v in mat.__dict__.items() if k not in ['nom', 'materialType', 'density']}))
             self.current_selected = ("material", mat)
-
+        # essai avec chaine de cara
         elif parent_text == "Modèles":
             mod = next((m for m in self.model_objects if m.nom == name), None)
             if not mod: return
@@ -1610,7 +1703,7 @@ class LMGC90GUI(QMainWindow):
                 law = data
                 law.nom = self.contact_name.text()
                 law.law = self.contact_type.currentText()
-                law.fric = float(self.contact_fric.text())
+                law.fric = float(self.contact_properties.text().split('=')[1].strip())
                 idx = self.contact_laws_objects.index(law)
                 self.contact_creations[idx].update({"name": law.nom, "law": law.law, "fric": law.fric})
             elif typ == "visibility":
@@ -1630,7 +1723,8 @@ class LMGC90GUI(QMainWindow):
             return
         typ, obj = self.current_selected
         reply = QMessageBox.question(self, "Confirmer", "Supprimer ?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        if reply != QMessageBox.StandardButton.Yes: return
+        if reply != QMessageBox.StandardButton.Yes: 
+            return
 
         if typ == "material":
             self.materials.remove(obj)
@@ -1650,13 +1744,13 @@ class LMGC90GUI(QMainWindow):
             self.bodies_list.pop(idx)
             self.avatar_creations.pop(idx)
         elif typ == "contact":
-            self.contact_laws.remove(obj)
-            self.contact_laws_objects.remove(obj)
-            self.contact_creations = [c for c in self.contact_creations if c['name'] != obj.nom]
+            self.contact_laws.pop(obj)
+            self.contact_laws_objects.pop(obj)
+            self.contact_creations.pop(obj)
         elif typ == "visibility":
                 idx = obj
                 st = self.visibilities_table_objects[idx]
-                self.visibilities_table.removeSeeTable(st)
+                self.visibilities_table.remove(st)
                 self.visibilities_table_objects.pop(idx)
                 self.visibility_creations.pop(idx)
 
@@ -1664,7 +1758,10 @@ class LMGC90GUI(QMainWindow):
         self.update_model_tree()
         self.current_selected = None
         QMessageBox.information(self, "Succès", "Supprimé")
-
+    # ========================================
+    # CORRECTION ANCIENNES OPERATIONS   
+    # ========================================
+    
     def cleanup_operations(self):
         """Supprime les anciennes opérations corrompues et les convertit si possible"""
         new_ops = []
@@ -1736,9 +1833,12 @@ class LMGC90GUI(QMainWindow):
         return repr(value)
     
     def generate_python_script(self):
+        if not self.project_dir:
+            QMessageBox.warning(self, "Attention", "Enregistrez d'abord le projet")
+            return self.save_project_as()
+
+        path = os.path.join(self.project_dir, f"{self.project_name}.py")
         try:
-            base = self.current_project_dir or os.getcwd()
-            path = os.path.join(base, "lmgc_sim.py")
             with open(path, 'w', encoding='utf-8') as f:
                 f.write("# -*- coding: utf-8 -*-\n")
                 f.write("from pylmgc90 import pre\n")
@@ -1905,7 +2005,7 @@ class LMGC90GUI(QMainWindow):
                                 f.write(f"# [IGNORE]: nom de groupe manquant pour l'opération {action}\n")
                             # Nom sécurisé pour variable Python
                             container_var = group_containers.get(group_name, "bodies")
-                            print(container_var)
+                            #print(container_var)
                             f.write(f"# {action} sur le groupe '{group_name}'\n")
                             f.write(f"{container_var}.{action}( {params_str})\n")
 
@@ -2003,6 +2103,10 @@ class LMGC90GUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"{e}")
 
+    # ========================================
+    # VISUALISATION
+    # ========================================
+    
     def visu_lmgc(self):
         try:
             pre.visuAvatars(self.bodies)
@@ -2034,11 +2138,11 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.1.9\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025")
+        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.0 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
 
 #######################################
       #--------fonction main
-     ##################################
+##################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     font = app.font()
