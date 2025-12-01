@@ -218,6 +218,7 @@ class LMGC90GUI(QMainWindow):
                                 "roughWall", "fineWall", "smoothWall", "granuloRoughWall"]
         self.avatar_types_3d = ["rigidSphere"]
         self.avatar_type = QComboBox()
+        self.avatar_hallowed = QCheckBox("Avatar disque  creux (pour les disques)")
         self.avatar_radius_label = QLabel("Rayon");self.avatar_radius = QLineEdit("0.1")
         self.avatar_axis_label = QLabel("Axes :");self.avatar_axis = QLineEdit(("axe1 = 2.0, axe2 = 0.05"))
         self.avatar_vertices_label = QLabel("Vertices : ")
@@ -242,7 +243,7 @@ class LMGC90GUI(QMainWindow):
 
         self.avatar_properties = QLineEdit("")
 
-        for w in [QLabel("Type:"), self.avatar_type, self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis, self.avatar_r_ovoid_label,self.avatar_r_ovoid,self.wall_length_label, self.wall_length,
+        for w in [QLabel("Type:"), self.avatar_type, self.avatar_hallowed,self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis, self.avatar_r_ovoid_label,self.avatar_r_ovoid,self.wall_length_label, self.wall_length,
                     self.wall_height_label, self.wall_height,
                     self.avatar_gen_type, self.avatar_gen, self.avatar_nb_vertices_label, self.avatar_nb_vertices, self.avatar_vertices_label, self.avatar_vertices, self.avatar_center_label, self.avatar_center, QLabel("Mat:"), self.avatar_material,
                     QLabel("Mod:"), self.avatar_model, QLabel("Couleur:"), self.avatar_color,
@@ -434,6 +435,7 @@ class LMGC90GUI(QMainWindow):
          
          # Liste des widgets à gérer
          widgets = [
+             self.avatar_hallowed,
             self.avatar_radius_label, self.avatar_radius,
             self.avatar_center_label, self.avatar_center,
             self.avatar_axis_label, self.avatar_axis,
@@ -461,6 +463,8 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_center.setVisible(True)
                 self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
                 self.avatar_color.setText("BLUEx")
+                self.avatar_hallowed.setVisible(True)
+
          elif avatar_type == "rigidJonc" :
                 self.avatar_radius_label.setVisible(False)
                 self.avatar_radius.setVisible(False)
@@ -955,7 +959,9 @@ class LMGC90GUI(QMainWindow):
             if not mat or not mod: continue
             
             if av['type'] == "rigidDisk"  :
-                body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
+                if av['is_Hollow'] : 
+                    body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'], is_Hollow=True)
+                else : body = pre.rigidDisk(r=av['r'], center=av['center'], model=mod, material=mat, color=av['color'])
             elif av['type'] == "rigidJonc" :
                 body = pre.rigidJonc(axe1=av['axe1'], axe2=av['axe2'], center=av['center'], model=mod, material=mat, color=av['color'])
             elif av['type'] == "rigidPolygon"   :
@@ -1034,7 +1040,9 @@ class LMGC90GUI(QMainWindow):
                 props['center'] = center
                 body = None
                 if av_type == "rigidDisk":
-                    body = pre.rigidDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
+                    if model_av.get('is_Hollow', False) : 
+                        body = pre.rigidDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'], is_Hollow=True)
+                    else : body = pre.rigidDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
                 
                 elif av_type == "rigidJonc" :
                     body = pre.rigidJonc(axe1=model_av['axe1'], axe2=model_av['axe2'], center=center, model=mod, material=mat, color=model_av['color'])
@@ -1198,10 +1206,16 @@ class LMGC90GUI(QMainWindow):
             mat = self.material_objects[self.avatar_material.currentIndex()]
             mod = self.model_objects[self.avatar_model.currentIndex()]
             type = self.avatar_type.currentText()
-            
+            is_hollow = self.avatar_hallowed.isChecked()
             if type == "rigidDisk" :
-                body = pre.rigidDisk(r=float(self.avatar_radius.text()), center=center, model=mod, material=mat,
-                                    color=self.avatar_color.text(), **props)
+                if is_hollow :
+                   
+        # Contacteur xKSID + coque creuse
+                        body =  pre.rigidDisk(r=float(self.avatar_radius.text()), center=center, model=mod, material=mat,
+                                    color=self.avatar_color.text(),is_Hollow=True)
+                
+                else :  body = pre.rigidDisk(r=float(self.avatar_radius.text()), center=center, model=mod, material=mat,
+                                    color=self.avatar_color.text())
             
             elif type == "rigidJonc":
                 center = [float(x) for x in self.avatar_center.text().split(",")]
@@ -1319,6 +1333,7 @@ class LMGC90GUI(QMainWindow):
             }
             if type in [ "rigidDisk","rigidDiscreteDisk"]:
                 body_dict['r']= self.avatar_radius.text()
+                body_dict['is_Hollow'] = self.avatar_hallowed.isChecked()
             elif type ==  "rigidJonc" :
                 body_dict['axe1'] = self.avatar_axis.text().split(',')[0].split('=')[1].strip()
                 body_dict['axe2'] = self.avatar_axis.text().split(',')[1].split('=')[1].strip()
@@ -1609,6 +1624,7 @@ class LMGC90GUI(QMainWindow):
             # --- Champs spécifiques selon le type ---
             if av['type'] in ["rigidDisk", "rigidDiscreteDisk"]:
                 self.avatar_radius.setText(av.get('r', '0.1'))
+                self.avatar_hallowed.setChecked(av.get('is_Hollow', False))
             elif av['type'] == "rigidJonc":
                 self.avatar_axis.setText(f"axe1 = {av['axe1']}, axe2 = {av['axe2']}")
             elif av['type'] == "rigidPolygon":
@@ -2064,6 +2080,9 @@ class LMGC90GUI(QMainWindow):
         params = {}
         if av['type'] == "rigidDisk":
             params['r'] = av.get('r', 0.1)
+            if av.get('is_Hollow', False):
+                params['is_Hollow'] = True
+
         elif av['type'] == "rigidJonc":
             params['axe1'] = av.get('axe1')
             params['axe2'] = av.get('axe2')
