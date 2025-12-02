@@ -463,7 +463,10 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_center.setVisible(True)
                 self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
                 self.avatar_color.setText("BLUEx")
-                self.avatar_hallowed.setVisible(True)
+                if avatar_type == "rigidDisk":
+                    self.avatar_hallowed.setVisible(True)
+                else:
+                    self.avatar_hallowed.setVisible(False)
 
          elif avatar_type == "rigidJonc" :
                 self.avatar_radius_label.setVisible(False)
@@ -1331,9 +1334,11 @@ class LMGC90GUI(QMainWindow):
                 'model': mod.nom, 
                 'color': self.avatar_color.text()
             }
-            if type in [ "rigidDisk","rigidDiscreteDisk"]:
+            if type == "rigidDisk":
                 body_dict['r']= self.avatar_radius.text()
                 body_dict['is_Hollow'] = self.avatar_hallowed.isChecked()
+            elif type == "rigidDiscreteDisk":
+                body_dict['r']= self.avatar_radius.text()
             elif type ==  "rigidJonc" :
                 body_dict['axe1'] = self.avatar_axis.text().split(',')[0].split('=')[1].strip()
                 body_dict['axe2'] = self.avatar_axis.text().split(',')[1].split('=')[1].strip()
