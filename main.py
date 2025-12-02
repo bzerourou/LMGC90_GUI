@@ -214,7 +214,7 @@ class LMGC90GUI(QMainWindow):
         # --- Avatar ---
         av_tab = QWidget()
         al = QVBoxLayout()
-        self.avatar_types_2d = ["rigidDisk", "rigidJonc", "rigidPolygon", "rigidOvoidPolygon", "rigidDiscreteDisk",
+        self.avatar_types_2d = ["rigidDisk", "rigidJonc", "rigidPolygon", "rigidOvoidPolygon", "rigidDiscreteDisk", "rigidCluster",
                                 "roughWall", "fineWall", "smoothWall", "granuloRoughWall"]
         self.avatar_types_3d = ["rigidSphere"]
         self.avatar_type = QComboBox()
@@ -456,7 +456,7 @@ class LMGC90GUI(QMainWindow):
          self.avatar_color.setText("BLUEx")
 
         # Afficher les champs pertinents
-         if avatar_type in ["rigidDisk", "rigidDiscreteDisk"]:
+         if avatar_type in ["rigidDisk", "rigidDiscreteDisk", "rigidCluster"]:
                 self.avatar_radius_label.setVisible(True)
                 self.avatar_radius.setVisible(True)
                 self.avatar_center_label.setVisible(True)
@@ -467,7 +467,12 @@ class LMGC90GUI(QMainWindow):
                     self.avatar_hallowed.setVisible(True)
                 else:
                     self.avatar_hallowed.setVisible(False)
-
+                    
+                if avatar_type == "rigidCluster":
+                    self.avatar_nb_vertices_label.setVisible(True)
+                    self.avatar_nb_vertices_label.setText("Nombre de disques : ")
+                    self.avatar_nb_vertices.setVisible(True)
+                    self.avatar_nb_vertices.setText("5")
          elif avatar_type == "rigidJonc" :
                 self.avatar_radius_label.setVisible(False)
                 self.avatar_radius.setVisible(False)
@@ -978,6 +983,12 @@ class LMGC90GUI(QMainWindow):
                 body = pre.rigidDiscreteDisk(
                     r=float(av['r']), center=av['center'],
                     model=mod, material=mat, color=av['color'])
+                
+            elif av['type'] == "rigidCluster" :
+                body = pre.rigidCluster(
+                    r=float(av['r']), nb_disk= int(av['nb_disk']),
+                    center=av['center'], model=mod, material=mat, color=av['color'])
+                
             elif av['type'] == "roughWall" :
                 body = pre.roughWall(
                     l=float(av['l']), r=float(av['r']), center=av['center'],
@@ -1056,6 +1067,11 @@ class LMGC90GUI(QMainWindow):
                         body = pre.rigidPolygon( model=mod, material=mat, center=center,color=model_av['color'], generation_type= model_av['gen_type'],vertices= np.array(model_av['vertices'], dtype=float) ,radius=float(model_av['r']))
                 elif av_type == "rigidDiscreteDisk":
                     body = pre.rigidDiscreteDisk(r=props.get('r'), center=center, model=mod, material=mat, color=model_av['color'])
+                
+                elif av_type == "rigidCluster" :
+                    body = pre.rigidCluster(
+                        r=float(props['r']), nb_disk= int(props['nb_disk']),
+                        center=center, model=mod, material=mat, color=model_av['color'])
                 elif av_type == "roughWall" :
                     body = pre.roughWall(l=props['l'], r=float(props['r']), center=center, model=mod, material=mat, color=model_av['color'])
                 elif av_type == "fineWall" :
@@ -1283,7 +1299,16 @@ class LMGC90GUI(QMainWindow):
                     color=self.avatar_color.text(), 
                     **props
                 )
-               
+
+            elif type == 'rigidCluster' :
+                body = pre.rigidCluster(
+                    r=float(self.avatar_radius.text()),
+                    center=center,
+                    model=mod,
+                    material=mat,
+                    color=self.avatar_color.text(),
+                    nb_disk= int(self.avatar_nb_vertices.text()),
+                )
 
             elif type == "roughWall":
                 body = pre.roughWall(
@@ -1358,6 +1383,11 @@ class LMGC90GUI(QMainWindow):
                 body_dict['ra'] = self.avatar_r_ovoid.text().split(',')[0].split('=')[1].strip()
                 body_dict['rb'] = self.avatar_r_ovoid.text().split(',')[1].split('=')[1].strip()
                 body_dict['nb_vertices'] = self.avatar_nb_vertices.text()
+
+            elif type == "rigidCluster" :
+                body_dict['r'] = self.avatar_radius.text()
+                body_dict['nb_disk'] = self.avatar_nb_vertices.text()
+
             elif type in ["fineWall" , "roughWall"] :
                 body_dict['l'] = self.wall_length.text()
                 body_dict['r'] = self.wall_height.text()
@@ -2074,6 +2104,7 @@ class LMGC90GUI(QMainWindow):
             "rigidPolygon": "rigidPolygon",
             "rigidOvoidPolygon": "rigidOvoidPolygon",
             "rigidDiscreteDisk": "rigidDiscreteDisk",
+            "rigidCluster":  "rigidCluster",
             "roughWall": "roughWall",
             "fineWall": "fineWall",
             "smoothWall": "smoothWall",
@@ -2102,6 +2133,12 @@ class LMGC90GUI(QMainWindow):
             params['ra'] = av.get('ra')
             params['rb'] = av.get('rb')
             params['nb_vertices'] = av.get('nb_vertices')
+
+        elif av['type'] == "rigidDiscreteDisk":
+            params['r'] = av.get('r', 0.1)
+        elif av['type'] == "rigidCluster":
+            params['r']= av.get('r', 0.1)
+            params['nb_disk'] = av.get('nb_disk', 5) 
         elif av['type'] in ["roughWall", "fineWall"]:
             params['l'] = av.get('l')
             params['r'] = av.get('r')
