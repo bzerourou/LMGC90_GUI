@@ -9,7 +9,7 @@ import numpy as np
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
-    QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox,
+    QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox, QScrollArea,
     QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, 
 )
 from PyQt6.QtCore import Qt
@@ -129,6 +129,7 @@ class LMGC90GUI(QMainWindow):
         self._create_material_tab()
         self._create_model_tab()
         self._create_avatar_tab()
+        self._create_empty_avatar_tab()
         self._create_loop_tab()
         self._create_dof_tab()
         self._create_contact_tab()
@@ -274,6 +275,70 @@ class LMGC90GUI(QMainWindow):
         self._initializing = False
         self.update_avatar_fields(self.avatar_type.currentText())
 
+    def _create_empty_avatar_tab(self):
+            tab = QWidget()
+            layout = QVBoxLayout()
+
+            # === Dimension ===
+            dim_layout = QHBoxLayout()
+            dim_layout.addWidget(QLabel("Dimension :"))
+            self.adv_dim = QComboBox()
+            self.adv_dim.addItems(["2", "3"])
+            self.adv_dim.currentTextChanged.connect(self.update_advanced_fields)
+            dim_layout.addWidget(self.adv_dim)
+            layout.addLayout(dim_layout)
+
+            # === Centre (node principal) ===
+            center_layout = QHBoxLayout()
+            center_layout.addWidget(QLabel("Centre (x,y,z) :"))
+            self.adv_center = QLineEdit("0.0, 0.0")
+            center_layout.addWidget(self.adv_center)
+            layout.addLayout(center_layout)
+
+            # === Couleur globale ===
+            color_layout = QHBoxLayout()
+            #color_layout.addWidget(QLabel("Couleur :"))
+            self.adv_color = QLineEdit("BLUEx")
+            #color_layout.addWidget(self.adv_color)
+            layout.addLayout(color_layout)
+
+            # === Matériau & Modèle ===
+            matmod_layout = QHBoxLayout()
+            matmod_layout.addWidget(QLabel("Matériau :"))
+            self.adv_material = QComboBox()
+            matmod_layout.addWidget(self.adv_material)
+            matmod_layout.addWidget(QLabel("Modèle :"))
+            self.adv_model = QComboBox()
+            matmod_layout.addWidget(self.adv_model)
+            layout.addLayout(matmod_layout)
+
+            # === Contacteurs (liste dynamique) ===
+            layout.addWidget(QLabel("Contacteurs à ajouter :"))
+            self.contactors_list = QWidget()
+            self.contactors_layout = QVBoxLayout()
+            self.contactors_list.setLayout(self.contactors_layout)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(self.contactors_list)
+            layout.addWidget(scroll)
+
+            add_contactor_btn = QPushButton("Ajouter un contacteur")
+            add_contactor_btn.clicked.connect(self.add_contactor_row)
+            layout.addWidget(add_contactor_btn)
+
+            # === Bouton Créer ===
+            create_btn = QPushButton("Créer avatar vide")
+            create_btn.clicked.connect(self.create_empty_avatar)
+            layout.addWidget(create_btn)
+
+            tab.setLayout(layout)
+            self.tabs.addTab(tab, "Avatar vide")
+            self.empty_tab = tab
+
+            # Premier contacteur par défaut
+            self.add_contactor_row()
+
+    
     def _create_loop_tab(self):
         # avatars boucles ---
         loop_tab = QWidget()
@@ -325,6 +390,7 @@ class LMGC90GUI(QMainWindow):
         # Connexion pour masquer/afficher les champs selon le type
         self.loop_type.currentTextChanged.connect(self.update_loop_fields)
         self.update_loop_fields(self.loop_type.currentText())
+    
     def _create_dof_tab(self):
         # --- DOF ---
         dof_tab = QWidget()
@@ -627,6 +693,143 @@ class LMGC90GUI(QMainWindow):
         else:
             self.mat_density.setEnabled(True)
             self.mat_density.setText("2500.")
+    
+    # ========================================
+    # EMPTY AVATAR
+    # ========================================
+
+    def update_advanced_fields(self, dim_text=None):
+        dim = 2 if not dim_text else int(dim_text)
+        default = "0.0, 0.0" if dim == 2 else "0.0, 0.0, 0.0"
+        if self.adv_center.text() in ["0.0, 0.0", "0.0, 0.0, 0.0"]:
+            self.adv_center.setText(default)
+
+    def add_contactor_row(self):
+        row = QHBoxLayout()
+        shape = QComboBox()
+        shape.addItems(["DISKx", "xKSID", "JONCx", "POLYG"])
+        row.addWidget(QLabel("Forme :"))
+        row.addWidget(shape)
+
+        color = QLineEdit("BLUEx")
+        row.addWidget(QLabel("Couleur :"))
+        row.addWidget(color)
+
+        params = QLineEdit("byrd=0.3")  # ex: r=0.3 ou axe1=1.0,axe2=0.1
+        row.addWidget(QLabel("Params :"))
+        row.addWidget(params)
+
+        remove_btn = QPushButton("×")
+        remove_btn.setFixedWidth(30)
+        remove_btn.clicked.connect(lambda: self.remove_contactor_row(row))
+        row.addWidget(remove_btn)
+
+        widget = QWidget()
+        widget.setLayout(row)
+        self.contactors_layout.addWidget(widget)
+
+    def remove_contactor_row(self, row_layout):
+        for i in reversed(range(self.contactors_layout.count())):
+            w = self.contactors_layout.itemAt(i).widget()
+            if w and w.layout() == row_layout:
+                w.deleteLater()
+
+    def create_empty_avatar(self):
+        try:
+            dim = int(self.adv_dim.currentText())
+            center = [float(x) for x in self.adv_center.text().split(',')]
+            if len(center) != dim:
+                raise ValueError(f"Attendu {dim} coordonnées")
+
+            mat = self.material_objects[self.adv_material.currentIndex()]
+            mod = self.model_objects[self.adv_model.currentIndex()]
+            color = self.adv_color.text().strip() or "BLUEx"
+
+            # Création de l'avatar "à la main"
+          
+            body = pre.avatar(dimension=dim)
+
+            # Bulk
+            if dim == 2:
+                body.addBulk(pre.rigid2d())
+            else:
+                body.addBulk(pre.rigid3d())
+
+            # Node principal
+            body.addNode(pre.node(coor=np.array(center), number=1))
+
+            # Groupes, modèle, matériau
+            body.defineGroups()
+            body.defineModel(model=mod)
+            body.defineMaterial(material=mat)
+
+            # Contacteurs
+            for i in range(self.contactors_layout.count()):
+                row_widget = self.contactors_layout.itemAt(i).widget()
+                if not row_widget: continue
+                row = row_widget.layout()
+                shape = row.itemAt(1).widget().currentText()
+                color_c = row.itemAt(3).widget().text().strip() or color
+                params_text = row.itemAt(5).widget().text().strip()
+
+                kwargs = self._safe_eval_dict(params_text)
+                print(kwargs.get('axe1'))
+                print(kwargs)
+                if shape == "DISKx":
+                    body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')))
+                elif shape == "xKSID":
+                    body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')))
+                elif shape == "JONCx":
+                    body.addContactors(shape=shape, color=color_c, axe1=float(kwargs.get('axe1')), axe2=float(kwargs.get('axe2')))
+                elif shape == "POLYG":
+                    body.addContactors(shape=shape, color=color_c, vertices=np.array(kwargs.get('vertices')), nb_vertices=int(kwargs.get('nb_vertices')))
+                else : raise ValueError(f"Contacteur {shape} non géré pour avatar vide")
+
+            # CLÉ : calcul des propriétés rigides
+            body.computeRigidProperties()
+
+            # Ajout final
+            self.bodies.addAvatar(body)
+            self.bodies_objects.append(body)
+            self.bodies_list.append(body)
+
+            # Sauvegarde pour rechargement
+            contactors_data = []
+            for i in range(self.contactors_layout.count()):
+                row_widget = self.contactors_layout.itemAt(i).widget()
+                if not row_widget: continue
+                row = row_widget.layout()
+                shape = row.itemAt(1).widget().currentText()
+                color_c = row.itemAt(3).widget().text().strip() or color
+                params_text = row.itemAt(5).widget().text().strip()
+                kwargs = self._safe_eval_dict(params_text)
+
+                contactors_data.append({
+                    'shape': shape,
+                    'color': color_c,
+                    'params': kwargs
+                })
+
+            self.avatar_creations.append({
+                'type': 'emptyAvatar',
+                'dimension': dim,
+                'center': center,
+                'material': mat.nom,
+                'model': mod.nom,
+                'color': color,
+                'contactors': contactors_data
+            })
+
+            self.update_selections()
+            self.update_model_tree()
+            QMessageBox.information(self, "Succès", "Avatar vide créé avec succès !")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Avatar vide : {e}")
+    
+    
+    
+    
     # ========================================
     # BOUCLES
     # ========================================
@@ -988,7 +1191,7 @@ class LMGC90GUI(QMainWindow):
                 body = pre.rigidCluster(
                     r=float(av['r']), nb_disk= int(av['nb_disk']),
                     center=av['center'], model=mod, material=mat, color=av['color'])
-                
+                            
             elif av['type'] == "roughWall" :
                 body = pre.roughWall(
                     l=float(av['l']), r=float(av['r']), center=av['center'],
@@ -1006,6 +1209,37 @@ class LMGC90GUI(QMainWindow):
                     l=float(av['l']), rmin=float(av['rmin']), rmax= float(av['rmax']),
                     center=av['center'], model=mod, material=mat, color=av['color'],
                     nb_vertex= int(av['nb_vertex']))
+            elif av['type'] == "emptyAvatar" :
+                    body = pre.avatar(dimension=len(av['center']))
+                    # Bulk
+                    if len(av['center']) == 2:
+                        body.addBulk(pre.rigid2d())
+                    else:
+                        body.addBulk(pre.rigid3d())
+
+                    # Node principal
+                    body.addNode(pre.node(coor=np.array(av['center']), number=1))
+
+                    # Groupes, modèle, matériau
+                    body.defineGroups()
+                    body.defineModel(model=mod)
+                    body.defineMaterial(material=mat)
+
+                    # Contacteurs
+                    for contactor in av.get('contactors', []):
+                        shape = contactor['shape']
+                        color_c = contactor['color']
+                        params = contactor['params']
+
+                        if shape == "DISKx":
+                            body.addContactors(shape=shape, color=color_c, byrd=float(params.get('byrd')))
+                        elif shape == "xKSID":
+                            body.addContactors(shape=shape, color=color_c, byrd=float(params.get('byrd')))
+                        elif shape == "JONCx":
+                            body.addContactors(shape=shape, color=color_c, axe1=float(params.get('axe1')), axe2=float(params.get('axe2')))
+                        elif shape == "POLYG":
+                            body.addContactors(shape=shape, color=color_c, vertices=np.array(params.get('vertices')), nb_vertices=int(params.get('nb_vertices')))
+
             else : continue
             self.bodies.addAvatar(body); self.bodies_objects.append(body); self.bodies_list.append(body)
             av_copy = av.copy(); av_copy['__from_loop']=False
@@ -1090,6 +1324,37 @@ class LMGC90GUI(QMainWindow):
                         center=center, model=mod, material=mat, color=model_av['color'],
                         nb_vertex= int(model_av['nb_vertex'])
                     )
+                elif av_type == "emptyAvatar" :
+                    body = pre.avatar(dimension=len(center))
+                    # Bulk
+                    if len(center) == 2:
+                        body.addBulk(pre.rigid2d())
+                    else:
+                        body.addBulk(pre.rigid3d())
+
+                    # Node principal
+                    body.addNode(pre.node(coor=np.array(center), number=1))
+
+                    # Groupes, modèle, matériau
+                    body.defineGroups()
+                    body.defineModel(model=mod)
+                    body.defineMaterial(material=mat)
+
+                    # Contacteurs
+                    for contactor in model_av.get('contactors', []):
+                        shape = contactor['shape']
+                        color_c = contactor['color']
+                        params = contactor['params']
+
+                        if shape == "DISKx":
+                            body.addContactors(shape=shape, color=color_c, byrd=float(params.get('byrd')))
+                        elif shape == "xKSID":
+                            body.addContactors(shape=shape, color=color_c, byrd=float(params.get('byrd')))
+                        elif shape == "JONCx":
+                            body.addContactors(shape=shape, color=color_c, axe1=float(params.get('axe1')), axe2=float(params.get('axe2')))
+                        elif shape == "POLYG":
+                            body.addContactors(shape=shape, color=color_c, vertices=np.array(params.get('vertices')), nb_vertices=int(params.get('nb_vertices')))
+
                 else:
                     continue
                 
@@ -1539,6 +1804,16 @@ class LMGC90GUI(QMainWindow):
         self.loop_avatar_type.clear()
         self.loop_avatar_type.addItems([a.get('type', 'Inconnu') for a in self.avatar_creations])
         self.loop_avatar_type.blockSignals(False)
+        # empty avatar
+        self.adv_material.blockSignals(True)
+        self.adv_material.clear()
+        self.adv_material.addItems([m.nom for m in self.material_objects])
+        self.adv_material.blockSignals(False)
+
+        self.adv_model.blockSignals(True)
+        self.adv_model.clear()
+        self.adv_model.addItems([m.nom for m in self.model_objects])
+        self.adv_model.blockSignals(False)
 
     # ========================================
     # INTERACTION ARBRE
@@ -1570,6 +1845,13 @@ class LMGC90GUI(QMainWindow):
             av = self.avatar_creations[i]
             color = body.contactors[0].color if body.contactors else "?????"
             name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
+            if av.get('type')=='emptyAvatar' : 
+                # Affichage spécial pour avatars avancés
+                cont_types = [c['shape'] for c in av.get('contactors', [])]
+                name = f" Avatar vide  ({', '.join(cont_types)}) — {av['color']}"
+            else : 
+                color = body.contactors[0].color if body.contactors else "?????" 
+                name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
             item = QTreeWidgetItem([name, "Avatar", str(i)])
             item.setData(0, Qt.ItemDataRole.UserRole, ("avatar", i))
             av_node.addChild(item)
@@ -1681,7 +1963,60 @@ class LMGC90GUI(QMainWindow):
                 else:
                     self.wall_height.setText(av['r'])
                 self.avatar_nb_vertices.setText(av.get('nb_vertex', av.get('nb_polyg', '10')))
+            elif av['type'] == "rigidCluster":
+                self.avatar_radius.setText(av['r'])
+                self.avatar_nb_vertices.setText(av['nb_disk'])
+            elif av['type'] == "emptyAvatar":
+                # to do empty avatar
+                    
+                # === ON VA DANS L'ONGLET AVANCÉ ===
+                self.tabs.setCurrentWidget(self.empty_tab)
+
+                # Dimension
+                self.adv_dim.setCurrentText(str(av['dimension']))
+
+                # Centre
+                self.adv_center.setText(",".join(map(str, av['center'])))
+
+                # Couleur globale
+                self.adv_color.setText(av.get('color', 'BLUEx'))
+
+                # Matériau & Modèle
+                self.adv_material.setCurrentText(av['material'])
+                self.adv_model.setCurrentText(av['model'])
+
+                # === Vider les anciens contacteurs ===
+                while self.contactors_layout.count():
+                    child = self.contactors_layout.takeAt(0)
+                    if child.widget():
+                        child.widget().deleteLater()
+
+                # === Recréer chaque contacteur ===
+                for cont in av.get('contactors', []):
+                    self.add_contactor_row()  # ajoute une ligne vide
+                    # Récupérer la dernière ligne ajoutée
+                    last_widget = self.contactors_layout.itemAt(self.contactors_layout.count() - 1).widget()
+                    row = last_widget.layout()
+
+                    # Shape
+                    shape_combo = row.itemAt(1).widget()
+                    shape_combo.setCurrentText(cont['shape'])
+
+                    # Couleur
+                    color_edit = row.itemAt(3).widget()
+                    color_edit.setText(cont.get('color', av.get('color', 'BLUEx')))
+
+                    # Paramètres (ex: r=0.3, axe1=1.0, etc.)
+                    params_edit = row.itemAt(5).widget()
+                    params_str = ", ".join(f"{k}={v}" for k, v in cont.get('params', {}).items())
+                    params_edit.setText(params_str)
+
+                self.current_selected = ("avatar", idx)
+
+                pass
+            
             self.current_selected = ("avatar", idx)
+
 
         elif parent_text == "Lois de contact":
             law = next((l for l in self.contact_laws_objects if l.nom == name), None)
@@ -1835,6 +2170,11 @@ class LMGC90GUI(QMainWindow):
     # ACTIONS/GENERATION SCRIPT
     # ========================================
     def _write_avatar_creation(self, f, i, av, container_name="bodies"):
+        #avatar vide
+        if av['type'] == 'emptyAvatar':
+            self._write_empty_avatar_creation(f, i, av, container_name)
+            return
+
         func = self._get_avatar_function(av)
         params = self._get_avatar_params(av)
         color = av['color']
@@ -1848,6 +2188,47 @@ class LMGC90GUI(QMainWindow):
         f.write(")\n")
         f.write(f"{container_name}.addAvatar(body)\n")
         f.write(f"bodies_list.append(body)\n")
+    
+    def _write_empty_avatar_creation(self, f, i, av, container_name="bodies"):
+        dim = av['dimension']
+        center = av['center']
+        mat_name = av['material']
+        mod_name = av['model']
+        color = av.get('color', 'BLUEx')
+        number = len(self.bodies_list) - len([a for a in self.avatar_creations if a.get('type') != 'emptyAvatar']) + i + 1
+
+        f.write(f"# --- Avatar vide (manuel) ---\n")
+        f.write(f"body = pre.avatar(dimension={dim}, number={number})\n")
+
+        # Bulk
+        if dim == 2:
+            f.write(f"body.addBulk(pre.rigid2d())\n")
+        else:
+            f.write(f"body.addBulk(pre.rigid3d())\n")
+
+        # Node principal
+        f.write(f"body.addNode(pre.node(coor=np.array({center}), number=1))\n")
+
+        # Groupes, modèle, matériau
+        f.write(f"body.defineGroups()\n")
+        f.write(f"body.defineModel(model=mods['{mod_name}'])\n")
+        f.write(f"body.defineMaterial(material=mats['{mat_name}'])\n")
+
+        # Contacteurs
+        for cont in av.get('contactors', []):
+            shape = cont['shape']
+            color_c = cont.get('color', color)
+            params = cont.get('params', {})
+            param_str = ", ".join(f"{k}={self._format_value_for_python(v)}" for k, v in params.items())
+            if param_str:
+                param_str = ", " + param_str
+            f.write(f"body.addContactors(shape='{shape}', color='{color_c}'{param_str})\n")
+
+        # FINAL : calcul des propriétés rigides
+        f.write(f"body.computeRigidProperties()\n")
+
+        f.write(f"{container_name}.addAvatar(body)\n")
+        f.write(f"bodies_list.append(body)\n\n")
     
     def _format_value_for_python(self, value):
         """
@@ -2202,7 +2583,7 @@ class LMGC90GUI(QMainWindow):
         QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.0 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
 
 #######################################
-      #--------fonction main
+#--------fonction main
 ##################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
