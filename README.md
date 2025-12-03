@@ -1,6 +1,6 @@
 Graphical User Interface for LMGC90 with PyQt6.
 
-![Capture d'écran](docs/inter_LMGC90_GUI2.jpg)
+![Capture d'écran](docs/inter_LMGC90_GUI3.jpg)
 
 This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
 
