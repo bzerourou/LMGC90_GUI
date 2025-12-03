@@ -22,10 +22,11 @@ git clone https://github.com/bzerourou/LMGC90_GUI.git
 cd LMGC90_GUI
 python main.py
 ```
-
 This video is a short introduction to LMGC90_GUI
 [Intro LMGC90_GUI](https://www.youtube.com/watch?v=Rn-ewPCuRuw)
 [LMGC90_GUI v0.1.6](https://www.youtube.com/watch?v=BLUeqLHGNXc&feature=youtu.be)
+
+
 
 List of version : 
 -  0.1.0  : first version with `rigidDisk` avatar; 
@@ -37,3 +38,5 @@ List of version :
 -  0.1.6 : add parametric addition of avatars (circular, line, grid and spiral); 
 -  0.1.7 : generate parametric avatars in loops, fix some bugs  ;
 -  0.1.8 : add CRUD possibility for material, model, avatar, law and rule, fix some bugs; 
+-  0.1.9 : add `manual` parametric add avatars, capability to store group of avatars in named list, fix some bugs;
+-  0.2.0 : add `rigidCluster`, and new tab for `empty avatar`, add `'KSIDx'`, `'JONCx'` and `'POLYG'` for visibility table, fix some bugs, **[stable version]** ;
