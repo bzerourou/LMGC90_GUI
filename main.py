@@ -10,7 +10,7 @@ import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
     QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox, QScrollArea,
-    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, 
+    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, QGroupBox, QFormLayout
 )
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -26,6 +26,29 @@ class LMGC90GUI(QMainWindow):
         # --- Projet ---
         self.project_name = "Nouveau_Projet"
         self.project_dir = None  # Dossier du projet
+
+        # ----modèle paramètres 
+        self.ELEMENT_OPTIONS = {
+        "Rxx2D": {}, 
+        "Rxx3D": {}, 
+        "DISKx": {}, 
+        "POLYG": {}, 
+        "SPHER": {}, 
+        "POLYH": {},
+        "IQS4":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "IQS8":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "ITR3":  {"kinematic": ["small"], "formulation": ["TotaL"]},
+        "ITR6":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"]},
+        "HE8":   {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "SHB8":  {"kinematic": ["large"], "formulation": ["UpdtL"], "mass_storage": ["lump_"]},
+}
+
+        self.GLOBAL_MODEL_OPTIONS = {
+        "material": ["elas_", "elasd", "neoh_", "hyper", "J2iso"],
+        "anisotropy": ["iso__", "ortho"],
+        "external_model": ["MatL_", "Demfi", "Umat_", "no___"],
+        "discrete": ["yes__", "no___"]
+        }
         
         self._init_containers()
         self._init_ui()
@@ -188,10 +211,17 @@ class LMGC90GUI(QMainWindow):
         mml = QVBoxLayout()
         self.model_name = QLineEdit("rigid")
         self.model_physics = QComboBox(); self.model_physics.addItems(["MECAx"])
-        self.model_element = QLineEdit("Rxx2D")
+        self.model_element = QComboBox()
+        self.model_element.currentTextChanged.connect(self.update_model_options_fields)
         self.model_dimension = QComboBox(); self.model_dimension.addItems(["2", "3"])
         self.model_dimension.currentTextChanged.connect(self.model_dimension_changed)
         self.model_options = QLineEdit("")
+        # Zone des options (scrollable)
+        self.model_options_group = QGroupBox("Options du modèle")
+        self.model_options_layout = QFormLayout()
+        self.model_options_group.setLayout(self.model_options_layout)
+        self.model_options_group.setVisible(False)
+        mml.addWidget(self.model_options_group)
         for w in [QLabel("Nom:"), self.model_name, QLabel("Phys:"), self.model_physics,
                   QLabel("Élément:"), self.model_element, QLabel("Dim:"), self.model_dimension,
                   QLabel("Opts:"), self.model_options,
@@ -210,6 +240,8 @@ class LMGC90GUI(QMainWindow):
         mod_tab.setLayout(mml)
         self.tabs.addTab(mod_tab, "Modèle")
         self.mod_tab = mod_tab
+        #initialisation des éléments
+        self.update_model_elements()
 
     def _create_avatar_tab(self):
         # --- Avatar ---
@@ -693,7 +725,68 @@ class LMGC90GUI(QMainWindow):
         else:
             self.mat_density.setEnabled(True)
             self.mat_density.setText("2500.")
-    
+
+    def update_model_options_fields(self):
+         # Vider toutes les options
+        for i in reversed(range(self.model_options_layout.count())):
+            widget = self.model_options_layout.takeAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        elem = self.model_element.currentText()
+
+        # === CORPS RIGIDES → AUCUNE OPTION ===
+        rigid_elements = ["Rxx2D", "Rxx3D", "DISKx", "POLYG", "SPHER", "POLYH"]
+        if elem in rigid_elements:
+            self.model_options_group.setVisible(False)  # ← Cache complètement le groupe
+            return  # → on sort, rien à afficher
+
+        # === SINON : on affiche les options ===
+        self.model_options_group.setVisible(True)
+
+        specific = self.ELEMENT_OPTIONS.get(elem, {})
+
+        # Options spécifiques à l’élément
+        for opt, values in specific.items():
+            combo = QComboBox()
+            combo.addItems(values)
+            combo.setCurrentIndex(0)
+            self.model_options_layout.addRow(f"{opt}:", combo)
+
+        # Options globales (toujours disponibles sauf pour rigides)
+        for opt, values in self.GLOBAL_MODEL_OPTIONS.items():
+            combo = QComboBox()
+            combo.addItems(values)
+            combo.setCurrentIndex(0)
+            self.model_options_layout.addRow(f"{opt}:", combo)
+
+        # Champ libre
+        self.external_fields_input = QLineEdit()
+        self.model_options_layout.addRow("external_fields (comma):", self.external_fields_input)
+    def update_model_elements(self):
+        dim = int(self.model_dimension.currentText())
+        if dim == 2:
+            elements = ["Rxx2D", "DISKx", "POLYG", "IQS4", "IQS8", "ITR3", "ITR6"]
+        else:  # dim == 3
+            elements = ["Rxx3D", "SPHER", "POLYH", "HE8", "HE20", "TE4", "TE10", "SHB6", "SHB8", "BTH2"]
+
+        current = self.model_element.currentText()
+        self.model_element.blockSignals(True)   # ← IMPORTANT : bloque les signaux pendant le changement
+        self.model_element.clear()
+        self.model_element.addItems(elements)
+        self.model_element.blockSignals(False)
+
+        # Restaurer la sélection si possible, sinon choix par défaut
+        if current in elements:
+            self.model_element.setCurrentText(current)
+        else:
+            default = "Rxx2D" if dim == 2 else "Rxx3D"
+            self.model_element.setCurrentText(default)
+
+        # ← FORCER la mise à jour des options APRÈS le changement
+        self.update_model_options_fields()
+
+
     # ========================================
     # EMPTY AVATAR
     # ========================================
@@ -2588,7 +2681,7 @@ class LMGC90GUI(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     font = app.font()
-    font.setPointSize(12)
+    font.setPointSize(10)
     font.setFamily("Segoe UI")
     app.setFont(font)
     win = LMGC90GUI()
