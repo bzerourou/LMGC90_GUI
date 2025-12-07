@@ -26,28 +26,26 @@ class LMGC90GUI(QMainWindow):
         # --- Projet ---
         self.project_name = "Nouveau_Projet"
         self.project_dir = None  # Dossier du projet
+        self.model_option_combos = {}   # ← à mettre dans __init__ ou _create_model_tab
 
         # ----modèle paramètres 
         self.ELEMENT_OPTIONS = {
         "Rxx2D": {}, 
         "Rxx3D": {}, 
-        "DISKx": {}, 
-        "POLYG": {}, 
-        "SPHER": {}, 
-        "POLYH": {},
-        "IQS4":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
-        "IQS8":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
-        "ITR3":  {"kinematic": ["small"], "formulation": ["TotaL"]},
-        "ITR6":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"]},
-        "HE8":   {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
-        "SHB8":  {"kinematic": ["large"], "formulation": ["UpdtL"], "mass_storage": ["lump_"]},
+        "T3xxx":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "Q4xxx":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "T6xxx":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "Q8xxx":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"], "mass_storage": ["lump_", "coher"]},
+        "Q9xxx":  {"kinematic": ["small"], "formulation": ["TotaL"]},
+        "SPRG2":  {"kinematic": ["small", "large"], "formulation": ["UpdtL", "TotaL"]},
+        "BARxx":  {"kinematic": ["large"], "formulation": ["UpdtL"], "mass_storage": ["lump_"]},
 }
 
         self.GLOBAL_MODEL_OPTIONS = {
-        "material": ["elas_", "elasd", "neoh_", "hyper", "J2iso"],
+        "material": ["elas_", "elasd","J2iso", "J2mix","kvisc"],
         "anisotropy": ["iso__", "ortho"],
         "external_model": ["MatL_", "Demfi", "Umat_", "no___"],
-        "discrete": ["yes__", "no___"]
+
         }
         
         self._init_containers()
@@ -650,6 +648,7 @@ class LMGC90GUI(QMainWindow):
         # ré-initialise le texte du centre selon la dimension
         default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
         self.avatar_center.setText(default_center)
+        self.update_model_elements()
 
     ''' Met à jour les champs affichés dans l'onglet Avatar selon le type de génération de polygone
         gen_type : str : type de génération sélectionné'''
@@ -727,7 +726,7 @@ class LMGC90GUI(QMainWindow):
             self.mat_density.setText("2500.")
 
     def update_model_options_fields(self):
-         # Vider toutes les options
+        # Vider toutes les options
         for i in reversed(range(self.model_options_layout.count())):
             widget = self.model_options_layout.takeAt(i).widget()
             if widget:
@@ -736,22 +735,20 @@ class LMGC90GUI(QMainWindow):
         elem = self.model_element.currentText()
 
         # === CORPS RIGIDES → AUCUNE OPTION ===
-        rigid_elements = ["Rxx2D", "Rxx3D", "DISKx", "POLYG", "SPHER", "POLYH"]
+        rigid_elements = ["Rxx2D", "Rxx3D"]
         if elem in rigid_elements:
             self.model_options_group.setVisible(False)  # ← Cache complètement le groupe
             return  # → on sort, rien à afficher
-
         # === SINON : on affiche les options ===
         self.model_options_group.setVisible(True)
-
         specific = self.ELEMENT_OPTIONS.get(elem, {})
-
         # Options spécifiques à l’élément
         for opt, values in specific.items():
             combo = QComboBox()
             combo.addItems(values)
             combo.setCurrentIndex(0)
             self.model_options_layout.addRow(f"{opt}:", combo)
+            self.model_option_combos[opt] = combo
 
         # Options globales (toujours disponibles sauf pour rigides)
         for opt, values in self.GLOBAL_MODEL_OPTIONS.items():
@@ -759,16 +756,18 @@ class LMGC90GUI(QMainWindow):
             combo.addItems(values)
             combo.setCurrentIndex(0)
             self.model_options_layout.addRow(f"{opt}:", combo)
+            self.model_option_combos[opt] = combo   # ← même dictionnaire
 
         # Champ libre
         self.external_fields_input = QLineEdit()
         self.model_options_layout.addRow("external_fields (comma):", self.external_fields_input)
+
     def update_model_elements(self):
         dim = int(self.model_dimension.currentText())
         if dim == 2:
-            elements = ["Rxx2D", "DISKx", "POLYG", "IQS4", "IQS8", "ITR3", "ITR6"]
+            elements = ["Rxx2D", "T3xxx", "Q4xxx","T6xxx","Q8xxx","Q9xxx","BARxx"]
         else:  # dim == 3
-            elements = ["Rxx3D", "SPHER", "POLYH", "HE8", "HE20", "TE4", "TE10", "SHB6", "SHB8", "BTH2"]
+            elements = ["Rxx3D", "H8xxx", "SHB8x", "H20xx", "SHB6x", "TE10x", "DKTxx","BARxx"]
 
         current = self.model_element.currentText()
         self.model_element.blockSignals(True)   # ← IMPORTANT : bloque les signaux pendant le changement
@@ -919,9 +918,6 @@ class LMGC90GUI(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Avatar vide : {e}")
-    
-    
-    
     
     # ========================================
     # BOUCLES
@@ -1558,13 +1554,41 @@ class LMGC90GUI(QMainWindow):
 
     def create_model(self):
         try:
+            # Récupérer toutes les options sélectionnées
+            options = {}
+            for opt_name, combo in self.model_option_combos.items():
+                selected = combo.currentText()
+                if selected:  # seulement si pas vide
+                    options[opt_name] = selected
+            element = self.model_element.currentText()
             name = self.model_name.text().strip()
             if not name: raise ValueError("Nom vide")
             props = self._safe_eval_dict(self.model_options.text())
-            mod = pre.model(name=name, physics=self.model_physics.currentText(), element=self.model_element.text(),
+            if element in ["Rxx2D", "Rxx3D"]: 
+                mod = pre.model(name=name, physics=self.model_physics.currentText(), element=element,
                             dimension=int(self.model_dimension.currentText()), **props)
+            elif element in ["T3xxx","Q4xxx","T6xxx","Q8xxx","Q9xxx","BARxx"] :
+                mod = pre.model(name=name, physics=self.model_physics.currentText(), element=element,
+                              dimension=int(self.model_dimension.currentText()), 
+                              external_model =  options['external_model'], 
+                              kinematic = options['kinematic'], 
+                              formulation = options['formulation'] , 
+                              material = options['material'], 
+                              anisotropy = options['anisotropy'], 
+                              mass_storage = options['mass_storage'], 
+                              **props)
+            elif element in ["Rxx3D", "H8xxx", "SHB8x", "H20xx", "SHB6x", "TE10x", "DKTxx","BARxx"] :
+                mod = pre.model(name=name, physics=self.model_physics.currentText(), element=element,
+                              dimension=int(self.model_dimension.currentText()), 
+                              external_model =  options['external_model'], 
+                              kinematic = options['kinematic'], 
+                              formulation = options['formulation'] , 
+                              material = options['material'], 
+                              anisotropy = options['anisotropy'], 
+                              mass_storage = options['mass_storage'], 
+                              **props)
             self.models.addModel(mod); self.model_objects.append(mod)
-            self.model_creations.append({'name': name, 'physics': self.model_physics.currentText(), 'element': self.model_element.text(),
+            self.model_creations.append({'name': name, 'physics': self.model_physics.currentText(), 'element': self.model_element.currentText(),
                                         'dimension': int(self.model_dimension.currentText())})
             self.mods_dict[name] = mod
             self.update_selections(); self.update_model_tree()
