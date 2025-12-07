@@ -1247,7 +1247,17 @@ class LMGC90GUI(QMainWindow):
         #-----Modèles
         for m in state.get('models', []):
             if not all(k in m for k in ['name', 'physics', 'element', 'dimension']): continue
-            mod = pre.model(name=m['name'], physics=m['physics'], element=m['element'], dimension=m['dimension'])
+            if m['element'] in ["Rxx2D", "Rxx3D"] : 
+                mod = pre.model(name=m['name'], physics=m['physics'], element=m['element'], dimension=m['dimension'])
+            elif m['element'] in ["T3xxx", "Q4xxx","T6xxx","Q8xxx","Q9xxx","BARxx"] : 
+                mod = pre.model(name=m['name'], physics=m['physics'], element=m['element'],
+                              dimension=m['dimension'], 
+                              external_model =  m['external_model'], 
+                              kinematic = m['kinematic'], 
+                              formulation = m['formulation'] , 
+                              material = m['material'], 
+                              anisotropy = m['anisotropy'], 
+                              mass_storage = m['mass_storage'], )
             self.models.addModel(mod); self.model_objects.append(mod)
             self.model_creations.append(m); self.mods_dict[m['name']] = mod
 
@@ -1588,8 +1598,16 @@ class LMGC90GUI(QMainWindow):
                               mass_storage = options['mass_storage'], 
                               **props)
             self.models.addModel(mod); self.model_objects.append(mod)
-            self.model_creations.append({'name': name, 'physics': self.model_physics.currentText(), 'element': self.model_element.currentText(),
-                                        'dimension': int(self.model_dimension.currentText())})
+            model_dict = {'name': name, 'physics': self.model_physics.currentText(), 'element': self.model_element.currentText(),
+                                        'dimension': int(self.model_dimension.currentText())}
+            if element in ["T3xxx","Q4xxx","T6xxx","Q8xxx","Q9xxx","BARxx"] : 
+                model_dict['kinematic'] = options['kinematic']
+                model_dict['formulation'] = options['formulation']
+                model_dict['external_model'] = options['external_model']
+                model_dict['material'] = options['material']
+                model_dict['anisotropy'] = options['anisotropy']
+                model_dict['mass_storage'] = options['mass_storage']
+            self.model_creations.append(model_dict)
             self.mods_dict[name] = mod
             self.update_selections(); self.update_model_tree()
         except Exception as e:
@@ -2032,7 +2050,7 @@ class LMGC90GUI(QMainWindow):
             self.tabs.setCurrentWidget(self.mod_tab)
             self.model_name.setText(mod.nom)
             self.model_physics.setCurrentText(mod.physics)
-            self.model_element.setText(mod.element)
+            self.model_element.setCurrentText(mod.element)
             self.model_dimension.setCurrentText(str(mod.dimension))
             self.current_selected = ("model", mod)
 
@@ -2438,8 +2456,14 @@ class LMGC90GUI(QMainWindow):
                     props = ""
                     if 'options' in m and m['options']:
                         props = ", " + ", ".join(f"{k}={v}" for k, v in m['options'].items())
-                    f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', "
+                    if m['element'] in ["Rxx2D", "Rxx3D"] : 
+                        f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', "
                             f"element='{m['element']}', dimension={m['dimension']}{props})\n")
+                    elif m['element'] in ["T3xxx", "Q4xxx","T6xxx","Q8xxx","Q9xxx","BARxx"] : 
+                        f.write(f"mods['{m['name']}'] = pre.model(name='{m['name']}', physics='{m['physics']}', "
+                              f"element='{m['element']}', dimension={m['dimension']}, external_model =  '{m['external_model']}', "
+                              f"kinematic = '{m['kinematic']}', formulation = '{m['formulation']}' , "
+                              f"material = '{m['material']}', anisotropy = '{m['anisotropy']}', mass_storage = '{m['mass_storage']}',{props})\n")
                     f.write(f"models.addModel(mods['{m['name']}'])\n")
                 f.write("\n")
 
