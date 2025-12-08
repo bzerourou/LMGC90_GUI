@@ -4,13 +4,13 @@ Graphical User Interface for LMGC90 with PyQt6.
 
 This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
 
-version 0.1.6 is only for feasibility study, it will be completely rewritten in the future.
+all versions are only for feasibility study, it will be completely rewritten in the future.
 
 For use, you need to download PyQt6 and, of course, install LMGC90 on your machine.
 
 
 
-In this first version,it is completely independant of the pylmgc90 library routines, you can create materials, models, **rigidDisk**  avatars,  and Coulomb friction contact laws with  __'IQS_CLB'__ type. 
+In this first version,it is completely independant of the pylmgc90 library attributs (*lists* and *dicts*), you can create materials, models, **rigidDisk**  avatars,  and Coulomb friction contact laws with  __'IQS_CLB'__ type. 
 You can also apply boundary conditions for this avatars with **translate**, **rotate** and **imposeDrivenDof** functions.
 
 the interface can save and open project with json formated file, and can generate and execute model script.
@@ -32,7 +32,7 @@ List of version :
 -  0.1.0  : first version with `rigidDisk` avatar; 
 -  0.1.1  : add `rigidJonc` avatar;
 -  0.1.2 : add DOF function `imposeDrivenValue`;
--  0.1.3 : add `rigidPolygon` avatar and fix `rigidPolygon` generation type in QComboBox for `regular` qnd `full` values, numpy and math function can be used in QEditLine ;
+-  0.1.3 : add `rigidPolygon` avatar and fix `rigidPolygon` generation type in QComboBox for `regular` and `full` values, numpy and math function can be used in QEditLine ;
 -  0.1.4 : add rigidOvoidPolygon and fix some bugs;
 -  0.1.5 : add `rigidDiscretDisk`, `roughWall`, `fineWall`, `smoothWall`, and `GranuloRoughWall` avatars;
 -  0.1.6 : add parametric addition of avatars (circular, line, grid and spiral); 
@@ -40,3 +40,6 @@ List of version :
 -  0.1.8 : add CRUD possibility for material, model, avatar, law and rule, fix some bugs; 
 -  0.1.9 : add `manual` parametric add avatars, capability to store group of avatars in named list, fix some bugs;
 -  0.2.0 : add `rigidCluster`, and new tab for `empty avatar`, add `'KSIDx'`, `'JONCx'` and `'POLYG'` for visibility table, fix some bugs, **[stable version]** ;
+-  0.2.1 : add `BARxx`, `T3xxx`, `T6xxx`, `T3xxx `, `Q4xxx`, `Q8xxx`, `Q9xxx`, `H8xxx`, `SHB8x`, `H20xx`, `SHB6x`, `TE10x`, and `DKTxx` models, add `PT2Dx`,`PT2DL`,`ALpxx`, `ASpxx`,`CLxxx`,`CSpxx` contactors ;
+-  0.2.2 : Possibility to add new contactors for avatar in **emptyAvatar tab** ;
+-  0.2.3 : add `IQS_CLB_go` and `COUPLED_DOF` contact laws; 
