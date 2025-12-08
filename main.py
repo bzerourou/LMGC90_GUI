@@ -50,7 +50,7 @@ class LMGC90GUI(QMainWindow):
         
         self._init_containers()
         self._init_ui()
-        self.setWindowTitle(f"LMGC90_GUI v0.2.0 [stable] - {self.project_name}")
+        self.setWindowTitle(f"LMGC90_GUI v0.2.3 - {self.project_name}")
         self.statusBar().showMessage("Prêt")
 
         self.update_selections()
@@ -447,7 +447,8 @@ class LMGC90GUI(QMainWindow):
         self.contact_tab = QWidget()
         cl = QVBoxLayout()
         self.contact_name = QLineEdit("iqsc0")
-        self.contact_type = QComboBox(); self.contact_type.addItems(["IQS_CLB"])
+        self.contact_type = QComboBox(); self.contact_type.addItems(["IQS_CLB", "IQS_CLB_g0", "COUPLED_DOF"])
+        self.contact_type.currentTextChanged.connect(self.update_contact_law)
         self.contact_properties = QLineEdit("fric=0.3")
         for w in [QLabel("Nom:"), self.contact_name, QLabel("Type:"), self.contact_type,
                   QLabel("Props:"), self.contact_properties,
@@ -465,10 +466,10 @@ class LMGC90GUI(QMainWindow):
         vis_tab = QWidget()
         vl = QVBoxLayout()
         self.vis_corps_candidat = QComboBox(); self.vis_corps_candidat.addItem("RBDY2")
-        self.vis_candidat = QComboBox(); self.vis_candidat.addItems(["DISKx", "xKSID", "JONCx", "POLYG"])
+        self.vis_candidat = QComboBox(); self.vis_candidat.addItems(["DISKx", "xKSID", "JONCx", "POLYG", "PT2Dx"])
         self.candidat_color = QLineEdit("BLUEx")
         self.vis_corps_antagoniste = QComboBox(); self.vis_corps_antagoniste.addItem("RBDY2")
-        self.vis_antagoniste = QComboBox(); self.vis_antagoniste.addItems(["DISKx", "xKSID", "JONCx", "POLYG"])
+        self.vis_antagoniste = QComboBox(); self.vis_antagoniste.addItems(["DISKx", "xKSID", "JONCx", "POLYG", "PT2Dx"])
         self.antagoniste_color = QLineEdit("VERTx")
         self.behav = QComboBox()
         self.vis_alert = QLineEdit("0.1")
@@ -785,6 +786,12 @@ class LMGC90GUI(QMainWindow):
         # ← FORCER la mise à jour des options APRÈS le changement
         self.update_model_options_fields()
 
+    def update_contact_law(self): 
+        law = self.contact_type.currentText()
+        if law in ["IQS_CLB", "IQS_CLB_g0"] :
+            self.contact_properties.setText("fric=0.3")
+        else : self.contact_properties.setText("")
+
 
     # ========================================
     # EMPTY AVATAR
@@ -795,11 +802,12 @@ class LMGC90GUI(QMainWindow):
         default = "0.0, 0.0" if dim == 2 else "0.0, 0.0, 0.0"
         if self.adv_center.text() in ["0.0, 0.0", "0.0, 0.0, 0.0"]:
             self.adv_center.setText(default)
-
+        
     def add_contactor_row(self):
         row = QHBoxLayout()
         shape = QComboBox()
-        shape.addItems(["DISKx", "xKSID", "JONCx", "POLYG"])
+        shape.addItems(["DISKx", "xKSID", "JONCx", "POLYG", "PT2Dx"])
+        shape.currentTextChanged.connect(self.update_contactors_fields)
         row.addWidget(QLabel("Forme :"))
         row.addWidget(shape)
 
@@ -810,7 +818,7 @@ class LMGC90GUI(QMainWindow):
         params = QLineEdit("byrd=0.3")  # ex: r=0.3 ou axe1=1.0,axe2=0.1
         row.addWidget(QLabel("Params :"))
         row.addWidget(params)
-
+       
         remove_btn = QPushButton("×")
         remove_btn.setFixedWidth(30)
         remove_btn.clicked.connect(lambda: self.remove_contactor_row(row))
@@ -819,7 +827,24 @@ class LMGC90GUI(QMainWindow):
         widget = QWidget()
         widget.setLayout(row)
         self.contactors_layout.addWidget(widget)
-
+    def update_contactors_fields(self):
+        
+        for i in range(self.contactors_layout.count()):
+                row_widget = self.contactors_layout.itemAt(i).widget()
+                if not row_widget: continue
+                row = row_widget.layout()
+                shape = row.itemAt(1).widget().currentText()
+                params = row.itemAt(5).widget()
+        if shape in ["DISKx", "xKSID"] :
+            params.setText("byrd=0.3")
+        if shape == "JONCx" : 
+            params.setText("axe1=1.0,axe2=0.1")
+        elif shape == "POLYG" :
+            params.setText("nb_vertices=4, vertices=[[-1.,-1.],[1.,-1.],[1.,1.],[-1.,1.]] ")
+        elif shape == "PT2Dx" : 
+            params.setText("")
+    
+    
     def remove_contactor_row(self, row_layout):
         for i in reversed(range(self.contactors_layout.count())):
             w = self.contactors_layout.itemAt(i).widget()
@@ -833,14 +858,16 @@ class LMGC90GUI(QMainWindow):
             if len(center) != dim:
                 raise ValueError(f"Attendu {dim} coordonnées")
 
-            mat = self.material_objects[self.adv_material.currentIndex()]
-            mod = self.model_objects[self.adv_model.currentIndex()]
+            mat_idx = self.adv_material.currentIndex()
+            mod_idx = self.adv_model.currentIndex()
+            if mat_idx < 0 or mod_idx < 0:
+                raise ValueError("Créez d'abord au moins un matériau et un modèle avant de créer un avatar vide !")
+            mat  = self.material_objects[mat_idx]
+            mod = self.model_objects[mod_idx]
             color = self.adv_color.text().strip() or "BLUEx"
 
             # Création de l'avatar "à la main"
-          
             body = pre.avatar(dimension=dim)
-
             # Bulk
             if dim == 2:
                 body.addBulk(pre.rigid2d())
@@ -865,16 +892,16 @@ class LMGC90GUI(QMainWindow):
                 params_text = row.itemAt(5).widget().text().strip()
 
                 kwargs = self._safe_eval_dict(params_text)
-                print(kwargs.get('axe1'))
-                print(kwargs)
-                if shape == "DISKx":
-                    body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')))
-                elif shape == "xKSID":
-                    body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')))
+                if shape in  ["DISKx", "xKSID"]:
+                    body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')), shift=kwargs.get('shift'))
+               
                 elif shape == "JONCx":
-                    body.addContactors(shape=shape, color=color_c, axe1=float(kwargs.get('axe1')), axe2=float(kwargs.get('axe2')))
+                    body.addContactors(shape=shape, color=color_c, axe1=float(kwargs.get('axe1')), axe2=float(kwargs.get('axe2')),shift=kwargs.get('shift'))
                 elif shape == "POLYG":
-                    body.addContactors(shape=shape, color=color_c, vertices=np.array(kwargs.get('vertices')), nb_vertices=int(kwargs.get('nb_vertices')))
+                    body.addContactors(shape=shape, color=color_c, vertices=np.array(kwargs.get('vertices')), nb_vertices=int(kwargs.get('nb_vertices')), shift=kwargs.get('shift'))
+                elif shape in ["PT2Dx"]:
+                    body.addContactors(shape=shape, color=color_c, shift=kwargs.get('shift'))
+                
                 else : raise ValueError(f"Contacteur {shape} non géré pour avatar vide")
 
             # CLÉ : calcul des propriétés rigides
@@ -1469,8 +1496,15 @@ class LMGC90GUI(QMainWindow):
         
         #------ Lois
         for law in state.get('contact_laws', []):
-            if not all(k in law for k in ['name', 'law', 'fric']): continue
-            l = pre.tact_behav(name=law['name'], law=law['law'], fric=law['fric'])
+            if not all(k in law for k in ['name', 'law']): continue
+            print(law)
+            if 'fric' in law: 
+                l = pre.tact_behav(name=law['name'], law=law['law'], fric=law['fric'])
+                print("a fric ")
+            else: 
+                l = pre.tact_behav(name=law['name'], law=law['law'])
+                print("na pas fric")
+
             self.contact_laws.addBehav(l); self.contact_laws_objects.append(l)
             self.contact_creations.append(law)
 
@@ -1882,9 +1916,16 @@ class LMGC90GUI(QMainWindow):
             name = self.contact_name.text().strip()
             if not name: raise ValueError("Nom vide")
             props = self._safe_eval_dict(self.contact_properties.text())
-            law = pre.tact_behav(name=name, law=self.contact_type.currentText(), **props)
-            self.contact_laws.addBehav(law); self.contact_laws_objects.append(law)
-            self.contact_creations.append({'name': name, 'law': law.law, 'fric': props.get('fric', 0.0)})
+            if self.contact_type.currentText() == "IQS_CLB" :
+                law = pre.tact_behav(name=name, law=self.contact_type.currentText(), **props)
+            else : law = pre.tact_behav(name=name, law=self.contact_type.currentText(),**props)
+            
+            law_dict = {'name': name, 'law': law.law}
+            if self.contact_type.currentText == "IQS_CLB" :
+                law_dict['fric']= props.get('fric', 0.0)
+
+            self.contact_creations.append(law_dict)
+            self.contact_laws.addBehav(law); self.contact_laws_objects.append(law)                          
             self.update_selections(); self.update_model_tree()
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Loi : {e}")
@@ -2005,7 +2046,10 @@ class LMGC90GUI(QMainWindow):
         # Lois de contact
         law_node = QTreeWidgetItem(root, ["Lois de contact", "", f"{len(self.contact_laws_objects)}"])
         for i, law in enumerate(self.contact_laws_objects):
-            item = QTreeWidgetItem([law.nom, "Loi", f"fric={law.fric}"])
+            if hasattr(law, 'fric'):
+                info = f"fric={law.fric}"
+            else : info = ""
+            item = QTreeWidgetItem([law.nom, "Loi", info])
             item.setData(0, Qt.ItemDataRole.UserRole, ("contact", i))
             law_node.addChild(item)
 
@@ -2159,7 +2203,9 @@ class LMGC90GUI(QMainWindow):
             self.tabs.setCurrentWidget(self.contact_tab)
             self.contact_name.setText(law.nom)
             self.contact_type.setCurrentText(law.law)
-            self.contact_properties.setText(f"fric={law.fric}")
+            if hasattr(law, 'fric') :
+                self.contact_properties.setText(f"fric={law.fric}")
+            else : self.contact_properties.setText("")
             self.current_selected = ("contact", law)
         
         elif parent_text == "Tables de visibilité":
@@ -2721,7 +2767,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.0 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
+        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.3 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
 
 #######################################
 #--------fonction main
