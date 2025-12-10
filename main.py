@@ -152,6 +152,7 @@ class LMGC90GUI(QMainWindow):
         self._create_avatar_tab()
         self._create_empty_avatar_tab()
         self._create_loop_tab()
+        self._create_granulo_tab()
         self._create_dof_tab()
         self._create_contact_tab()
         self._create_visibility_tab()
@@ -486,6 +487,278 @@ class LMGC90GUI(QMainWindow):
         self.tabs.addTab(vis_tab, "Visibilité")
         self.vis_tab =vis_tab
 
+    # ========================================
+    #  NOUVEL ONGLET : GRANULOMETRIE
+    # ========================================
+
+    def _create_granulo_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        # --- 1. Paramètres de Distribution ---
+        grp_dist = QGroupBox("1. Distribution des Particules")
+        gl_dist = QFormLayout()
+        
+        self.gran_nb = QLineEdit("200")
+        self.gran_rmin = QLineEdit("0.05")
+        self.gran_rmax = QLineEdit("0.15")
+        self.gran_seed = QLineEdit("") # Vide = None
+        self.gran_seed.setPlaceholderText("Graine aléatoire (optionnel)")
+
+        gl_dist.addRow("Nombre de particules :", self.gran_nb)
+        gl_dist.addRow("Rayon Min (r_min) :", self.gran_rmin)
+        gl_dist.addRow("Rayon Max (r_max) :", self.gran_rmax)
+        gl_dist.addRow("Seed (entier) :", self.gran_seed)
+        grp_dist.setLayout(gl_dist)
+        layout.addWidget(grp_dist)
+
+        # --- 2. Géométrie du Conteneur ---
+        grp_geo = QGroupBox("2. Géométrie du Dépôt")
+        vl_geo = QVBoxLayout()
+        
+        # Choix de la forme
+        hl_type = QHBoxLayout()
+        hl_type.addWidget(QLabel("Type de conteneur :"))
+        self.gran_shape_type = QComboBox()
+        self.gran_shape_type.addItems(["Box2D","Disk2D"])#,  "squareLattice2D", "triangularLattice2D","Couette2D", "Drum2D"])
+        hl_type.addWidget(self.gran_shape_type)
+        vl_geo.addLayout(hl_type)
+
+        # Paramètres dynamiques (lx, ly, r, etc.)
+        self.gran_params_widget = QWidget()
+        self.gran_params_layout = QFormLayout()
+        self.gran_params_widget.setLayout(self.gran_params_layout)
+        vl_geo.addWidget(self.gran_params_widget)
+        
+        # Champs stockés en mémoire (on les affiche/cache selon le choix)
+        self.gran_lx = QLineEdit("4.0")
+        self.gran_ly = QLineEdit("4.0")
+        self.gran_r = QLineEdit("2.0")
+        self.gran_rint = QLineEdit("2.0")
+        self.gran_rext = QLineEdit("4.0")
+
+        grp_geo.setLayout(vl_geo)
+        layout.addWidget(grp_geo)
+
+        # --- 3. Propriétés Physiques ---
+        grp_phy = QGroupBox("3. Propriétés Physiques")
+        gl_phy = QFormLayout()
+        
+        self.gran_mat = QComboBox()
+        self.gran_mod = QComboBox()
+        self.gran_color = QLineEdit("BLUEx")
+        self.avatar = QComboBox()
+        self.avatar.addItems(["rigidDisk"]) #, "rigidPolygon", "rigidOvoidPolygon", "rigidDiscreteDisk", "rigidCluster"])
+        self.gran_wall_create = QCheckBox("Créer les parois (murs) autour")
+        self.gran_wall_create.setChecked(False)
+
+        gl_phy.addRow("Matériau :", self.gran_mat)
+        gl_phy.addRow("Modèle :", self.gran_mod)
+        gl_phy.addRow("Couleur Particules :", self.gran_color)
+        gl_phy.addRow("Type d'avatar :", self.avatar)
+        #gl_phy.addRow(self.gran_wall_create)
+        grp_phy.setLayout(gl_phy)
+        layout.addWidget(grp_phy)
+
+        # --- Bouton Action ---
+        btn_gen = QPushButton("Générer le Dépôt")
+        btn_gen.setStyleSheet("font-weight: bold; padding: 10px; background-color: #e1f5fe;")
+        btn_gen.clicked.connect(self.generate_granulo_sample)
+        layout.addWidget(btn_gen)
+
+        # Scroll area (au cas où petit écran)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        container.setLayout(layout)
+        scroll.setWidget(container)
+
+        final_layout = QVBoxLayout()
+        final_layout.addWidget(scroll)
+        tab.setLayout(final_layout)
+        
+        self.tabs.addTab(tab, "Granulométrie")
+        self.gran_tab = tab
+
+        # Connexions
+        self.gran_shape_type.currentTextChanged.connect(self.update_granulo_fields)
+        self.update_granulo_fields() # Init
+
+    def update_granulo_fields(self):
+        """Met à jour les champs de saisie selon la forme choisie"""
+        # On vide le layout des paramètres
+        while self.gran_params_layout.rowCount() > 0:
+            self.gran_params_layout.removeRow(0)
+        
+        # recréer les champs
+        self.gran_lx = QLineEdit("4.0")
+        self.gran_ly = QLineEdit("4.0")
+        self.gran_r = QLineEdit("2.0")
+        self.gran_rint = QLineEdit("2.0")
+        self.gran_rext = QLineEdit("4.0")
+        shape = self.gran_shape_type.currentText()
+        print(shape)
+        
+        if shape in ["Box2D", "squareLattice2D","triangularLattice2D"]:
+            self.gran_params_layout.addRow("Largeur (lx) :", self.gran_lx)
+            self.gran_params_layout.addRow("Hauteur (ly) :", self.gran_ly)
+        elif shape in ["Drum2D", "Disk2D"]:
+            self.gran_params_layout.addRow("Rayon (r) :", self.gran_r)
+        elif "Couette2D" in shape:
+            self.gran_params_layout.addRow("Rayon Int (rint) :", self.gran_rint)
+            self.gran_params_layout.addRow("Rayon Ext (rext) :", self.gran_rext)
+
+        
+        
+
+    def refresh_granulo_combos(self):
+        """Met à jour les listes déroulantes quand on clique sur l'onglet"""
+        # Sauvegarde sélection actuelle
+        cur_mat = self.gran_mat.currentText()
+        cur_mod = self.gran_mod.currentText()
+        
+        self.gran_mat.clear()
+        self.gran_mod.clear()
+        
+        # Remplissage
+        self.gran_mat.addItems([m.nom for m in self.material_objects])
+        self.gran_mod.addItems([m.nom for m in self.model_objects])
+        
+        # Restauration
+        if cur_mat: self.gran_mat.setCurrentText(cur_mat)
+        if cur_mod: self.gran_mod.setCurrentText(cur_mod)
+        
+    def generate_granulo_sample(self):
+        if not self.material_objects or not self.model_objects:
+            QMessageBox.warning(self, "Attention", "Veuillez créer au moins un Matériau et un Modèle d'abord.")
+            return
+
+        # Vérification Dimension 2D
+        if self.dim != 2:
+            QMessageBox.warning(self, "Attention", "Les fonctions de dépôt automatique (depositIn...) ne fonctionnent qu'en 2D pour l'instant.")
+            return
+
+        try:
+            # 1. Récupération des paramètres
+            nb = int(self.gran_nb.text())
+            rmin = float(self.gran_rmin.text())
+            rmax = float(self.gran_rmax.text())
+            
+            seed_txt = self.gran_seed.text().strip()
+            seed = int(seed_txt) if seed_txt else None
+
+            mat = self.material_objects[self.gran_mat.currentIndex()]
+            mod = self.model_objects[self.gran_mod.currentIndex()]
+            color = self.gran_color.text()
+
+            self.statusBar().showMessage("Génération de la distribution et calcul du placement...")
+            QApplication.processEvents()
+            # 2. Génération de la liste des rayons
+            radii = pre.granulo_Random(nb, rmin, rmax, seed)
+            # 3. Calcul des positions (Dépôt)
+            shape = self.gran_shape_type.currentText()
+            coor = None
+            container_params = {}
+
+            if "Box2D" in shape:
+                lx = float(self.gran_lx.text())
+                ly = float(self.gran_ly.text())
+                container_params = {'type': 'box', 'lx': lx, 'ly': ly}
+                nb_remaining, coor = pre.depositInBox2D(radii, lx, ly)
+                
+            elif "Disk2D" in shape:
+                r = float(self.gran_r.text())
+                container_params = {'type': 'disk', 'r': r}
+                nb_remaining, coor = pre.depositInDisk2D(radii, r)
+                
+            elif "Couette2D" in shape:
+                rint = float(self.gran_rint.text())
+                rext = float(self.gran_rext.text())
+                container_params = {'type': 'couette', 'rint': rint, 'rext': rext}
+                nb_remaining, coor = pre.depositInCouette2D(radii, rint, rext)
+                
+            elif "Drum2D" in shape:
+                r = float(self.gran_r.text())
+                container_params = {'type': 'drum', 'r': r}
+                nb_remaining, coor = pre.depositInDrum2D(radii, r)
+
+            if coor is None:
+                raise ValueError("Le dépôt a échoué. Essayez de réduire la densité (moins de particules ou plus grand conteneur).")
+
+            # 4. Création des Avatars (Particules)
+            nb_remaining = np.shape(coor)[0]//2
+            coor = np.reshape(coor,(nb_remaining,2))
+            body = None
+            avatar = self.avatar.currentText()
+            for i in range(nb_remaining):
+                if avatar == "rigidDisk" :
+                    body = pre.rigidDisk(r=radii[i], center=coor[i], model=mod, material=mat, color=color)
+                else : 
+                    QMessageBox.information(self,"informations", f"les autres avatars ne sont pas encore implémentés")
+                    break
+
+                self.bodies.addAvatar(body)
+                self.bodies_objects.append(body)
+                self.bodies_list.append(body)
+                
+                # Ajout pour sauvegarde et script
+                self.avatar_creations.append({
+                    'type': 'rigidDisk',
+                    'r': float(radii[i]),
+                    'center': coor[i].tolist(),
+                    'model': mod.nom,
+                    'material': mat.nom,
+                    'color': color,
+                    'is_Hollow': False,
+                    '__from_loop': False # Marqueur interne
+                })
+
+            msg = f"{nb_remaining} particules générées."
+
+            # 5. Création des Murs (Optionnel)
+            if self.gran_wall_create.isChecked():
+                if container_params['type'] == 'box':
+                    lx, ly = container_params['lx'], container_params['ly']
+                    wall_col = "WALLx"
+                    
+                    # Définition des 4 murs (Sol, Plafond, Gauche, Droite) avec rigidJonc
+                    walls_defs = [
+                        {'axe1': lx/2.0, 'axe2': 0.05, 'center': [0, -ly/2.0], 'angle': 0}, # Bas
+                        {'axe1': lx/2.0, 'axe2': 0.05, 'center': [0, ly/2.0],  'angle': 0}, # Haut
+                        {'axe1': ly/2.0, 'axe2': 0.05, 'center': [-lx/2.0, 0], 'angle': math.pi/2.0}, # Gauche
+                        {'axe1': ly/2.0, 'axe2': 0.05, 'center': [lx/2.0, 0],  'angle': math.pi/2.0}, # Droite
+                    ]
+
+                    for w_def in walls_defs:
+                        w = pre.rigidJonc(axe1=w_def['axe1'], axe2=w_def['axe2'], center=w_def['center'], 
+                                          model=mod, material=mat, color=wall_col)
+                        if w_def['angle'] != 0:
+                            w.rotate( psi=w_def['angle'], center=w_def['center'])
+                        
+                        self.bodies.addAvatar(w)
+                        self.bodies_objects.append(w)
+                        self.bodies_list.append(w)
+                        
+                        # Sauvegarde
+                        self.avatar_creations.append({
+                            'type': 'rigidJonc', 'axe1': w_def['axe1'], 'axe2': w_def['axe2'],
+                            'center': w_def['center'], 'model': mod.nom, 'material': mat.nom, 'color': wall_col
+                        })
+                    
+                    msg += "\n+ 4 Murs (Boîte) créés."
+                
+                elif container_params['type'] in ['disk', 'drum', 'couette']:
+                    msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
+
+            self.update_selections()
+            self.update_model_tree()
+            self.statusBar().showMessage("Dépôt terminé.")
+            QMessageBox.information(self, "Succès", msg)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Erreur Granulo", f"{e}")
     # ========================================
     # UTILITAIRES
     # ========================================
@@ -1990,6 +2263,12 @@ class LMGC90GUI(QMainWindow):
         self.adv_model.clear()
         self.adv_model.addItems([m.nom for m in self.model_objects])
         self.adv_model.blockSignals(False)
+        #granulométrie 
+        self.gran_mat.blockSignals(True)
+        self.gran_mat.clear()
+        self.gran_mat.addItems([m.nom for m in self.material_objects])
+        self.gran_mod.addItems([m.nom for m in self.model_objects])
+        self.gran_mat.blockSignals(False)
 
     # ========================================
     # INTERACTION ARBRE
