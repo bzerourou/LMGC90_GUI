@@ -2918,7 +2918,7 @@ class LMGC90GUI(QMainWindow):
                         self._write_avatar_creation(f, av, safe_name)
                 
                 # ===== Granulométrie 
-                f.write("#=== Granulométrie =========\n")
+                '''f.write("#=== Granulométrie =========\n")
                 for gen in self.granulo_generations:
                     f.write(f"nb = {gen['nb']}\n")
                     f.write(f"rmin = {gen['rmin']}\n")
@@ -2945,7 +2945,7 @@ class LMGC90GUI(QMainWindow):
                     if gen['avatar_type'] == "rigidDisk":
                         f.write(f"    body = pre.rigidDisk(r=radii[i], center=coor[i], model={mod_var}, material={mat_var}, color='{gen['color']}')\n")
                     f.write("    bodies.addAvatar(body)\n")
-                
+                '''
                 # === Opérations DOF (individuelles + groupes) ===
                 f.write("# === Conditions aux limites (DOF) ===\n")
                 for op in self.operations:
