@@ -89,6 +89,8 @@ class LMGC90GUI(QMainWindow):
         self.current_project_dir = None
         self.script_path = None
 
+        self.granulo_generations = []
+
         # --- Boucles ---
         self.loop_creations = []  # Sauvegarde des boucles
         # ---stockage des groupes d'avatars créés par les boucles ===
@@ -689,6 +691,7 @@ class LMGC90GUI(QMainWindow):
             nb_remaining = np.shape(coor)[0]//2
             coor = np.reshape(coor,(nb_remaining,2))
             body = None
+
             avatar = self.avatar.currentText()
             for i in range(nb_remaining):
                 if avatar == "rigidDisk" :
@@ -710,8 +713,30 @@ class LMGC90GUI(QMainWindow):
                     'material': mat.nom,
                     'color': color,
                     'is_Hollow': False,
-                    '__from_loop': False # Marqueur interne
+                    '__from_granulo': False # Marqueur interne
+                    
                 })
+
+                 #granulo_dict
+            granulo_dict = {
+                'nb': nb,
+                'rmin' : rmin,
+                'rmax' : rmax,
+                'seed': seed,
+                'shape': shape,
+                'container_params': container_params,
+                'mat_name': mat.nom,
+                'mod_name': mod.nom,
+                'color': color,
+                'avatar_type': avatar
+            }
+            if  avatar == "Box2D" :
+                granulo_dict['lx'] = lx
+                granulo_dict['ly'] = ly
+            elif avatar == "Disk2D" :
+                granulo_dict['r'] =  r,
+
+            self.granulo_generations.append(granulo_dict)
 
             msg = f"{nb_remaining} particules générées."
 
@@ -1527,7 +1552,8 @@ class LMGC90GUI(QMainWindow):
             'operations': self.operations,
             'loops' : self.loop_creations,
             'avatar_groups': self.avatar_groups,    
-            'group_names' : self.group_names
+            'group_names' : self.group_names,
+            #'granulo_generations' : self.granulo_generations
         }
 
     def _deserialize_state(self, state):
@@ -1766,6 +1792,10 @@ class LMGC90GUI(QMainWindow):
                     new_av['center'] = center
                     new_av['__from_loop'] = True
                     self.avatar_creations.append(new_av)
+        
+        #------Granulométrie 
+
+        
         
         #------ Lois
         for law in state.get('contact_laws', []):
@@ -2886,6 +2916,35 @@ class LMGC90GUI(QMainWindow):
                         if av.get('__from_loop'):  # déjà ajouté via boucle auto
                             continue
                         self._write_avatar_creation(f, av, safe_name)
+                
+                # ===== Granulométrie 
+                f.write("#=== Granulométrie =========\n")
+                for gen in self.granulo_generations:
+                    f.write(f"nb = {gen['nb']}\n")
+                    f.write(f"rmin = {gen['rmin']}\n")
+                    f.write(f"rmax = {gen['rmax']}\n")
+                    f.write(f"seed = {gen['seed'] if gen['seed'] is not None else 'None'}\n")
+                    f.write(f"radii = pre.granulo_Random(nb, rmin, rmax, seed)\n")
+                    shape = gen['shape']
+                    params = gen['container_params']
+                    if "Box2D" in shape:
+                        f.write(f"lx = {params['lx']}\n")
+                        f.write(f"ly = {params['ly']}\n")
+                        f.write(f"nb_remaining, coor = pre.depositInBox2D(radii, lx, ly)\n")
+                    elif "Disk2D" in shape:
+                        f.write(f"r = {params['r']}\n")
+                        f.write("nb_remaining, coor = pre.depositInDisk2D(radii, r)\n")
+                    mat_var = f"mats['{gen['mat_name']}']" 
+                    mod_var = f"mods['{gen['mod_name']}']"
+                    
+                    f.write("\n# Création des avatars du lot\n")
+                    f.write("nb_remaining = np.shape(coor)[0]//2\n")
+                    f.write("coor = np.reshape(coor, (nb_remaining, 2))\n")
+                    f.write("for i in range(nb_remaining):\n")
+                    
+                    if gen['avatar_type'] == "rigidDisk":
+                        f.write(f"    body = pre.rigidDisk(r=radii[i], center=coor[i], model={mod_var}, material={mat_var}, color='{gen['color']}')\n")
+                    f.write("    bodies.addAvatar(body)\n")
                 
                 # === Opérations DOF (individuelles + groupes) ===
                 f.write("# === Conditions aux limites (DOF) ===\n")
