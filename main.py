@@ -490,7 +490,7 @@ class LMGC90GUI(QMainWindow):
         self.vis_tab =vis_tab
 
     # ========================================
-    #  NOUVEL ONGLET : GRANULOMETRIE
+    # GRANULOMETRIE
     # ========================================
 
     def _create_granulo_tab(self):
@@ -612,7 +612,6 @@ class LMGC90GUI(QMainWindow):
 
         
         
-
     def refresh_granulo_combos(self):
         """Met à jour les listes déroulantes quand on clique sur l'onglet"""
         # Sauvegarde sélection actuelle
@@ -665,23 +664,23 @@ class LMGC90GUI(QMainWindow):
             if "Box2D" in shape:
                 lx = float(self.gran_lx.text())
                 ly = float(self.gran_ly.text())
-                container_params = {'type': 'box', 'lx': lx, 'ly': ly}
+                container_params = {'type': 'Box2D', 'lx': lx, 'ly': ly}
                 nb_remaining, coor = pre.depositInBox2D(radii, lx, ly)
                 
             elif "Disk2D" in shape:
                 r = float(self.gran_r.text())
-                container_params = {'type': 'disk', 'r': r}
+                container_params = {'type': 'Disk2D', 'r': r}
                 nb_remaining, coor = pre.depositInDisk2D(radii, r)
                 
             elif "Couette2D" in shape:
                 rint = float(self.gran_rint.text())
                 rext = float(self.gran_rext.text())
-                container_params = {'type': 'couette', 'rint': rint, 'rext': rext}
+                container_params = {'type': 'Couette2D', 'rint': rint, 'rext': rext}
                 nb_remaining, coor = pre.depositInCouette2D(radii, rint, rext)
                 
             elif "Drum2D" in shape:
                 r = float(self.gran_r.text())
-                container_params = {'type': 'drum', 'r': r}
+                container_params = {'type': 'Drum2D', 'r': r}
                 nb_remaining, coor = pre.depositInDrum2D(radii, r)
 
             if coor is None:
@@ -713,17 +712,17 @@ class LMGC90GUI(QMainWindow):
                     'material': mat.nom,
                     'color': color,
                     'is_Hollow': False,
-                    '__from_granulo': False # Marqueur interne
+                    '__from_loop': True # Marqueur interne
                     
                 })
 
                  #granulo_dict
             granulo_dict = {
+                'type' : 'granulo',
                 'nb': nb,
                 'rmin' : rmin,
                 'rmax' : rmax,
                 'seed': seed,
-                'shape': shape,
                 'container_params': container_params,
                 'mat_name': mat.nom,
                 'mod_name': mod.nom,
@@ -1553,7 +1552,7 @@ class LMGC90GUI(QMainWindow):
             'loops' : self.loop_creations,
             'avatar_groups': self.avatar_groups,    
             'group_names' : self.group_names,
-            #'granulo_generations' : self.granulo_generations
+            'granulo_generations' : self.granulo_generations
         }
 
     def _deserialize_state(self, state):
@@ -1794,9 +1793,43 @@ class LMGC90GUI(QMainWindow):
                     self.avatar_creations.append(new_av)
         
         #------Granulométrie 
-
         
-        
+        for granulo in state.get('granulo_generations', []): 
+            #création de la granulométrie 
+            nb = granulo.get('nb')
+            rmin = granulo.get('rmin')
+            rmax = granulo.get('rmax')
+            #seed = granulo.get('seed') 
+            radii = pre.granulo_Random(nb, rmin, rmax)
+            #depot 
+            params = granulo.get('container_params', {})
+            shape = params.get('type')
+            if "Box2D" in shape:
+                nb_remaining, coor = pre.depositInBox2D(radii, params.get('lx'), params.get('ly'))
+            elif "Disk2D" in shape:
+                nb_remaining, coor = pre.depositInDisk2D(radii, params.get('r'))
+            nb_remaining = np.shape(coor)[0]//2
+            coor = np.reshape(coor, (nb_remaining, 2))
+            #création des avatars 
+            for i in range(nb_remaining):
+                if granulo.get('avatar_type') == "rigidDisk" :
+                    body = pre.rigidDisk(r=radii[i], center=coor[i], model=mod, material=mat, color=granulo.get('color'))
+                    # remplir les listes 
+                    if body:
+                        self.bodies.addAvatar(body)
+                        self.bodies_objects.append(body)
+                        self.bodies_list.append(body)
+                        self.avatar_creations.append({
+                            'type': 'rigidDisk',
+                            'r': float(radii[i]),
+                            'center': coor[i].tolist(),
+                            'model': mod.nom,
+                            'material': mat.nom,
+                            'color': granulo.get('color'),
+                            'is_Hollow': False,
+                            '__from_loop': True # Marqueur interne
+                        })
+ 
         #------ Lois
         for law in state.get('contact_laws', []):
             if not all(k in law for k in ['name', 'law']): continue
@@ -2219,13 +2252,14 @@ class LMGC90GUI(QMainWindow):
             name = self.contact_name.text().strip()
             if not name: raise ValueError("Nom vide")
             props = self._safe_eval_dict(self.contact_properties.text())
-            if self.contact_type.currentText() == "IQS_CLB" :
+            type_contact =  self.contact_type.currentText()
+            if  type_contact in ["IQS_CLB", "IQS_CLB_g0"] :
                 law = pre.tact_behav(name=name, law=self.contact_type.currentText(), **props)
-            else : law = pre.tact_behav(name=name, law=self.contact_type.currentText(),**props)
+            else : law = pre.tact_behav(name=name, law=self.contact_type.currentText())
             
             law_dict = {'name': name, 'law': law.law}
-            if self.contact_type.currentText == "IQS_CLB" :
-                law_dict['fric']= props.get('fric', 0.0)
+            if type_contact in  ["IQS_CLB", "IQS_CLB_g0"] :
+                law_dict['fric']= props.get('fric')
 
             self.contact_creations.append(law_dict)
             self.contact_laws.addBehav(law); self.contact_laws_objects.append(law)                          
@@ -2327,6 +2361,7 @@ class LMGC90GUI(QMainWindow):
         # Avatars (le plus critique)
         av_node = QTreeWidgetItem(root, ["Avatars", "", f"{len(self.bodies_objects)}"])
         for i, body in enumerate(self.bodies_objects):
+            # il faut gérer l'erreur
             av = self.avatar_creations[i]
             color = body.contactors[0].color if body.contactors else "?????"
             name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
