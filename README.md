@@ -1,19 +1,21 @@
 Graphical User Interface for LMGC90 with PyQt6.
 
-![Capture d'écran](docs/inter_LMGC90_GUI3.jpg)
+![Capture d'écran](docs/inter_LMGC90_GUI4.jpg)
 
 This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
 
-all versions are only for feasibility study, it will be completely rewritten in the future.
+All versions are only for feasibility study, it will be completely rewritten in the future.
 
 For use, you need to download PyQt6 and, of course, install LMGC90 on your machine.
 
 
 
-In this first version,it is completely independant of the pylmgc90 library attributs (*lists* and *dicts*), you can create materials, models, **rigidDisk**  avatars,  and Coulomb friction contact laws with  __'IQS_CLB'__ type. 
-You can also apply boundary conditions for this avatars with **translate**, **rotate** and **imposeDrivenDof** functions.
+In this first version,it is completely independant of the pylmgc90 library attributs (*lists* and *dicts*), you can create materials, models, **rigidDisk**, **rigidJonc**, **rigidPolygon**, **rigidOvoidPolygon**, **rigidDiscreteDisk**, **rigidCluster**, **roughWall**, **fineWall**, **smoothWall**, **granuloRoughWall** avatars,  and Coulomb friction contact laws with  __'IQS_CLB'__, __IQS_CLB_g0__, and __'COUPLED_DOF__ type. 
+You can also apply boundary conditions for this avatars with **translate**, **rotate**, **imposeDrivenDof** and **imposeInitValue** functions.
 
-the interface can save and open project with json formated file, and can generate and execute model script.
+The interface is easy to use and can save and open project with json formated file with extension (.lmgc90), and can generate and execute model script.
+
+Since 0.1.9 version, you can edit and remove *models*, *materials*, *avatars*, *contacts* and *visibilities* elements.
 
 ## Installation
 
@@ -43,3 +45,4 @@ List of version :
 -  0.2.1 : add `BARxx`, `T3xxx`, `T6xxx`, `T3xxx `, `Q4xxx`, `Q8xxx`, `Q9xxx`, `H8xxx`, `SHB8x`, `H20xx`, `SHB6x`, `TE10x`, and `DKTxx` models, add `PT2Dx`,`PT2DL`,`ALpxx`, `ASpxx`,`CLxxx`,`CSpxx` contactors ;
 -  0.2.2 : Possibility to add new contactors for avatar in **emptyAvatar tab** ;
 -  0.2.3 : add `IQS_CLB_go` and `COUPLED_DOF` contact laws; 
+-  0.2.4 : add granulometry distribution and deposit in **Box2D** and **Disk2D** with *rigidDisk* avatar ;
