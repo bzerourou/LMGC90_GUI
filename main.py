@@ -10,10 +10,12 @@ import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
     QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox, QScrollArea,
-    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, QGroupBox, QFormLayout
+    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, QGroupBox, QFormLayout, QDialogButtonBox, QDialog
 )
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
+
+from unity import UnitsOptionsDialog
 
 
 class LMGC90GUI(QMainWindow):
@@ -45,7 +47,23 @@ class LMGC90GUI(QMainWindow):
         "material": ["elas_", "elasd","J2iso", "J2mix","kvisc"],
         "anisotropy": ["iso__", "ortho"],
         "external_model": ["MatL_", "Demfi", "Umat_", "no___"],
-
+        }
+        # --- Unités par défaut (SI) ---
+        self.project_units = {
+            "Longueur": "m", 
+            "Masse": "kg", 
+            "Temps": "s",
+            "Volume" : "m^3",
+            "Force": "N", 
+            "Pression/Contrainte": "Pa", 
+            "Densité": "kg/m^3", 
+            "Énergie": "J",
+            "Température": "K",
+            "Flux ther" : "W",
+            "Moment inertie" : "kgm^2",
+            "Couple" : "Nm" ,
+            "Vitesse" : "m/s",
+            "Viscosité" : "Ns/m^2"
         }
         
         self._init_containers()
@@ -110,6 +128,8 @@ class LMGC90GUI(QMainWindow):
         file_menu.addAction("Sauvegarder", self.save_project)
         file_menu.addAction("Sauvegarder sous...", self.save_project_as)
         file_menu.addAction("Quitter", self.close)
+        tools_menu = menu.addMenu("Outils")
+        tools_menu.addAction("Options (Unités)", self.open_options_dialog)
         menu.addMenu("Help").addAction("À propos", self.about)
         #racourci menu  
         file_menu.actions()[0].setShortcut("Ctrl+N")  # Nouveau
@@ -117,6 +137,8 @@ class LMGC90GUI(QMainWindow):
         file_menu.actions()[2].setShortcut("Ctrl+S")  # Sauvegarder
         file_menu.actions()[3].setShortcut("Ctrl+Shift+S")  # Sauvegarder sous
         file_menu.actions()[4].setShortcut("Ctrl+Q")  # Quitter
+        # --- Menu Outils ---
+       
 
         # --- Toolbar ---
         tb = QToolBar("Actions")
@@ -609,8 +631,6 @@ class LMGC90GUI(QMainWindow):
         elif "Couette2D" in shape:
             self.gran_params_layout.addRow("Rayon Int (rint) :", self.gran_rint)
             self.gran_params_layout.addRow("Rayon Ext (rext) :", self.gran_rext)
-
-        
         
     def refresh_granulo_combos(self):
         """Met à jour les listes déroulantes quand on clique sur l'onglet"""
@@ -1089,7 +1109,64 @@ class LMGC90GUI(QMainWindow):
             self.contact_properties.setText("fric=0.3")
         else : self.contact_properties.setText("")
 
+    def open_options_dialog(self):
+        """Ouvre la fenêtre de configuration des unités"""
+        # Création de la fenêtre (dialogue)
+        dialog = UnitsOptionsDialog(self.project_units, self)
+        
+        # On lance la fenêtre et on attend la réponse (exec)
+        if dialog.exec():
+            # Si l'utilisateur a cliqué sur OK, on récupère les données
+            self.project_units = dialog.get_data()
 
+            # mettre à jour les unités
+            self.refresh_interface_units() 
+            
+            # On confirme à l'utilisateur
+            msg = f"Interface mise à jour en : {self.project_units['Longueur']}, {self.project_units['Masse']}..."
+            self.statusBar().showMessage(msg, 5000)
+
+    def refresh_interface_units(self):
+        """Met à jour tous les labels de l'interface avec les unités actuelles"""
+        u_len = self.project_units.get("Longueur", "m")
+        u_mass = self.project_units.get("Masse", "kg")
+        u_time = self.project_units.get("Temps", "s")
+        u_temp = self.project_units.get("Température", "K")
+        # Densité = Masse / Longueur^3
+        u_cont = self.project_units.get("Pression/Contrainte", "Pa")
+        u_dens = f"{u_mass}/{u_len}³" 
+        
+        # --- 1. Onglet Matériau ---
+        if hasattr(self, 'mat_density'):
+            self.mat_density.setPlaceholderText(f"Densité ({u_dens}) :")
+            self.mat_props.setPlaceholderText(f"young ({u_cont}), dilatation (1/°{u_temp}), T_ref_meca (°{u_temp}) ")
+
+            
+        # --- 2. Onglet Avatar ---
+        # Rayon / Axes (Longueur)
+        if hasattr(self, 'avatar_radius_label'):
+            self.avatar_radius_label.setText(f"Rayon ({u_len}) :")
+        if hasattr(self, 'avatar_axis_label'):
+            self.avatar_axis_label.setText(f"Axes ({u_len}) :")
+        if hasattr(self, 'avatar_center_label'):
+            self.avatar_center_label.setText(f"Centre x,y ({u_len}) :")
+            
+        # Murs
+        if hasattr(self, 'wall_length_label'):
+            self.wall_length_label.setText(f"Longueur ({u_len}) :")
+        if hasattr(self, 'wall_height_label'):
+            # Astuce : le texte change selon le type de mur, on ajoute juste l'unité à la fin
+            current_text = self.wall_height_label.text().split('(')[0].strip() # Garde "Rayon" ou "Hauteur"
+            self.wall_height_label.setText(f"{current_text} ({u_len}) :")
+
+        # --- 3. Onglet Granulométrie ---
+        if hasattr(self, 'lbl_gran_rmin'):
+            self.lbl_gran_rmin.setText(f"Rayon Min ({u_len}) :")
+        if hasattr(self, 'lbl_gran_rmax'):
+            self.lbl_gran_rmax.setText(f"Rayon Max ({u_len}) :")
+            
+        # Mise à jour des placeholders (textes grisés) pour guider l'exemple
+        self.mat_props.setPlaceholderText(f"ex: young=1e9 (Pa), nu=0.3")
     # ========================================
     # EMPTY AVATAR
     # ========================================
@@ -2953,7 +3030,7 @@ class LMGC90GUI(QMainWindow):
                         self._write_avatar_creation(f, av, safe_name)
                 
                 # ===== Granulométrie 
-                '''f.write("#=== Granulométrie =========\n")
+                f.write("#=== Granulométrie =========\n")
                 for gen in self.granulo_generations:
                     f.write(f"nb = {gen['nb']}\n")
                     f.write(f"rmin = {gen['rmin']}\n")
@@ -2980,7 +3057,7 @@ class LMGC90GUI(QMainWindow):
                     if gen['avatar_type'] == "rigidDisk":
                         f.write(f"    body = pre.rigidDisk(r=radii[i], center=coor[i], model={mod_var}, material={mat_var}, color='{gen['color']}')\n")
                     f.write("    bodies.addAvatar(body)\n")
-                '''
+                
                 # === Opérations DOF (individuelles + groupes) ===
                 f.write("# === Conditions aux limites (DOF) ===\n")
                 for op in self.operations:
@@ -3110,7 +3187,11 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     
     def visu_lmgc(self):
+        
+        self.statusBar().showMessage("Visualisation du modèle...")
+        QApplication.processEvents()
         try:
+            
             pre.visuAvatars(self.bodies)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Visu : {e}")
@@ -3141,6 +3222,8 @@ class LMGC90GUI(QMainWindow):
 
     def about(self):
         QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.3 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
+
+
 
 #######################################
 #--------fonction main
