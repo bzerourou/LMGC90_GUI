@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
 
-from unity import PreferencesDialog
+from preferences import PreferencesDialog
 
 
 class LMGC90GUI(QMainWindow):
