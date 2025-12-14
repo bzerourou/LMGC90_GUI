@@ -1,6 +1,6 @@
-# LMGC90_GUI (Graphical User Interface for LMGC90) with PyQt6.
+# LMGC90_GUI (Graphical User Interface for LMGC90).
 
-![Capture d'écran](docs/inter_LMGC90_GUI4.jpg){width=600px height=400px}
+![Capture d'écran](docs/inter_LMGC90_GUI5.jpg)
 
 This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
 
@@ -27,6 +27,7 @@ In this first version,it is completely independant of the pylmgc90 library attri
 - avatars : **rigidDisk**, **rigidJonc**, **rigidPolygon**, **rigidOvoidPolygon**, **rigidDiscreteDisk**, **rigidCluster**, **roughWall**, **fineWall**, **smoothWall**, **granuloRoughWall**
 - contact : Coulomb friction contact laws with  __'IQS_CLB'__, __IQS_CLB_g0__, and __'COUPLED_DOF__ type. 
 - boundary conditions for avatar with :  **translate**, **rotate**, **imposeDrivenDof** and **imposeInitValue** functions.
+- parametric __cirular__, __
 
 The interface is easy to use and can save and open project with json formated file with extension (.lmgc90), and can generate and execute model script.
 
@@ -55,3 +56,4 @@ This video is a short introduction to LMGC90_GUI
 -  0.2.2 : Possibility to add new contactors for avatar in **emptyAvatar tab** ;
 -  0.2.3 : add `IQS_CLB_go` and `COUPLED_DOF` contact laws; 
 -  0.2.4 : add granulometry distribution and deposit in **Box2D** and **Disk2D** with *rigidDisk* avatar ;
+-  0.2.5 : add new menu _outils_ for LMGC90 _options_ (units); 

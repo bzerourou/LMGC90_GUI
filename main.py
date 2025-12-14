@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
 
-from unity import UnitsOptionsDialog
+from unity import PreferencesDialog
 
 
 class LMGC90GUI(QMainWindow):
@@ -48,6 +48,12 @@ class LMGC90GUI(QMainWindow):
         "anisotropy": ["iso__", "ortho"],
         "external_model": ["MatL_", "Demfi", "Umat_", "no___"],
         }
+
+        # Paramètres par défaut de l'application
+        self.app_settings = {
+            'default_dir': os.getcwd(), # Dossier courant par défaut
+            'lmgc90_exec': ''
+        }
         # --- Unités par défaut (SI) ---
         self.project_units = {
             "Longueur": "m", 
@@ -68,13 +74,14 @@ class LMGC90GUI(QMainWindow):
         
         self._init_containers()
         self._init_ui()
-        self.setWindowTitle(f"LMGC90_GUI v0.2.3 - {self.project_name}")
+        self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
         self.statusBar().showMessage("Prêt")
 
         self.update_selections()
         self.update_model_tree()
         self._initializing = False
         self.cleanup_operations()
+        self.refresh_interface_units()
         
 
     def _init_containers(self):
@@ -108,6 +115,8 @@ class LMGC90GUI(QMainWindow):
         self.script_path = None
 
         self.granulo_generations = []
+        #postpro_commands
+        self.postpro_creations = [] # Liste de dictionnaires {'name': str, 'step': int}
 
         # --- Boucles ---
         self.loop_creations = []  # Sauvegarde des boucles
@@ -129,7 +138,7 @@ class LMGC90GUI(QMainWindow):
         file_menu.addAction("Sauvegarder sous...", self.save_project_as)
         file_menu.addAction("Quitter", self.close)
         tools_menu = menu.addMenu("Outils")
-        tools_menu.addAction("Options (Unités)", self.open_options_dialog)
+        tools_menu.addAction("Options ", self.open_options_dialog)
         menu.addMenu("Help").addAction("À propos", self.about)
         #racourci menu  
         file_menu.actions()[0].setShortcut("Ctrl+N")  # Nouveau
@@ -180,6 +189,7 @@ class LMGC90GUI(QMainWindow):
         self._create_dof_tab()
         self._create_contact_tab()
         self._create_visibility_tab()
+        self._create_postpro_tab()
         
         # --- Rendu ---
         render_tabs = QTabWidget()
@@ -206,14 +216,14 @@ class LMGC90GUI(QMainWindow):
         mat_tab = QWidget()
         ml = QVBoxLayout()
         self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELAS", "ELAS_DILA", "VISCO_ELAS", "ELAS_PLAS", "THERMO_ELAS", "PORO_ELAS"])
-        self.mat_density = QLineEdit("1000."); self.mat_props = QLineEdit("")
-        self.mat_type.currentTextChanged.connect(self.update_material_fields)
+        self.mat_density_label = QLabel("Densité :"); self.mat_density = QLineEdit("1000."); self.mat_props_label = QLabel("Propriétés (ex: young=1e9) :");self.mat_props = QLineEdit("")
+        self.mat_type.currentTextChanged.connect(self.update_material_fields)      
         for label, widget in [
-            ("Nom :", self.mat_name), ("Type :", self.mat_type), ("Densité :", self.mat_density),
-            ("Propriétés (ex: young=1e9) :", self.mat_props)
+            ("Nom :", self.mat_name), ("Type :", self.mat_type)
         ]:
             ml.addWidget(QLabel(label)); ml.addWidget(widget)
-        
+        ml.addWidget(self.mat_density_label) ; ml.addWidget(self.mat_density)
+        ml.addWidget(self.mat_props_label); ml.addWidget(self.mat_props)
         btn_layout = QHBoxLayout()
         create_btn = QPushButton("Créer")
         modify_btn = QPushButton("Modifier")
@@ -345,7 +355,8 @@ class LMGC90GUI(QMainWindow):
 
             # === Centre (node principal) ===
             center_layout = QHBoxLayout()
-            center_layout.addWidget(QLabel("Centre (x,y,z) :"))
+            self.empty_av_center_label = QLabel("Centre (x,y,z) :")
+            center_layout.addWidget(self.empty_av_center_label)
             self.adv_center = QLineEdit("0.0, 0.0")
             center_layout.addWidget(self.adv_center)
             layout.addLayout(center_layout)
@@ -511,6 +522,51 @@ class LMGC90GUI(QMainWindow):
         self.tabs.addTab(vis_tab, "Visibilité")
         self.vis_tab =vis_tab
 
+    def _create_postpro_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+        
+        # --- Zone de saisie ---
+        form_group = QGroupBox("")
+        form = QFormLayout()
+        
+        self.post_name = QComboBox()
+        # Liste des commandes standards LMGC90
+        commands_list = [
+            "SOLVER INFORMATIONS", "VIOLATION EVOLUTION", "KINETIC ENERGY",
+            "DISSIPATED ENERGY", "COORDINATION NUMBER", "BODY TRACKING",
+            "TORQUE EVOLUTION", "DOUBLET TORQUE EVOLUTION", "CL CONTACTOR"
+        ]
+        self.post_name.addItems(commands_list)
+        
+        self.post_step = QLineEdit("1")
+        self.post_step.setPlaceholderText("Fréquence d'écriture (ex: 1)")
+        
+        form.addRow("Type de commande :", self.post_name)
+        form.addRow("Step (Fréquence) :", self.post_step)
+        
+        add_btn = QPushButton("Ajouter la commande")
+        add_btn.clicked.connect(self.add_postpro_command)
+        
+        form_group.setLayout(form)
+        layout.addWidget(form_group)
+        layout.addWidget(add_btn)
+        
+        # --- Liste des commandes ajoutées ---
+        layout.addWidget(QLabel("Commandes actives :"))
+        self.post_tree = QTreeWidget()
+        self.post_tree.setHeaderLabels(["Nom", "Step"])
+        layout.addWidget(self.post_tree)
+        
+        # --- Bouton supprimer ---
+        del_btn = QPushButton("Supprimer la commande sélectionnée")
+        del_btn.clicked.connect(self.delete_postpro_command)
+        layout.addWidget(del_btn)
+        
+        tab.setLayout(layout)
+        self.tabs.addTab(tab, "Postpro")
+        self.postpro_tab = tab
+
     # ========================================
     # GRANULOMETRIE
     # ========================================
@@ -519,7 +575,7 @@ class LMGC90GUI(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout()
 
-        # --- 1. Paramètres de Distribution ---
+        # --- 1. Paramètres de Distribgit aution ---
         grp_dist = QGroupBox("1. Distribution des Particules")
         gl_dist = QFormLayout()
         
@@ -528,10 +584,11 @@ class LMGC90GUI(QMainWindow):
         self.gran_rmax = QLineEdit("0.15")
         self.gran_seed = QLineEdit("") # Vide = None
         self.gran_seed.setPlaceholderText("Graine aléatoire (optionnel)")
-
+        self.gran_rmin_label = QLabel("Rayon Min (r_min) :")
+        self.gran_rmax_label = QLabel("Rayon Max (r_max) :")
         gl_dist.addRow("Nombre de particules :", self.gran_nb)
-        gl_dist.addRow("Rayon Min (r_min) :", self.gran_rmin)
-        gl_dist.addRow("Rayon Max (r_max) :", self.gran_rmax)
+        gl_dist.addRow(self.gran_rmin_label, self.gran_rmin)
+        gl_dist.addRow(self.gran_rmax_label, self.gran_rmax)
         gl_dist.addRow("Seed (entier) :", self.gran_seed)
         grp_dist.setLayout(gl_dist)
         layout.addWidget(grp_dist)
@@ -621,7 +678,6 @@ class LMGC90GUI(QMainWindow):
         self.gran_rint = QLineEdit("2.0")
         self.gran_rext = QLineEdit("4.0")
         shape = self.gran_shape_type.currentText()
-        print(shape)
         
         if shape in ["Box2D", "squareLattice2D","triangularLattice2D"]:
             self.gran_params_layout.addRow("Largeur (lx) :", self.gran_lx)
@@ -1110,21 +1166,24 @@ class LMGC90GUI(QMainWindow):
         else : self.contact_properties.setText("")
 
     def open_options_dialog(self):
-        """Ouvre la fenêtre de configuration des unités"""
-        # Création de la fenêtre (dialogue)
-        dialog = UnitsOptionsDialog(self.project_units, self)
+        """Ouvre la fenêtre de Préférences (Onglets verticaux)"""
+        # On passe les unités ET les chemins actuels
+        dialog = PreferencesDialog(self.project_units, self.app_settings, self)
         
-        # On lance la fenêtre et on attend la réponse (exec)
         if dialog.exec():
-            # Si l'utilisateur a cliqué sur OK, on récupère les données
-            self.project_units = dialog.get_data()
-
-            # mettre à jour les unités
-            self.refresh_interface_units() 
+            # 1. Récupération des données
+            self.project_units = dialog.get_units_data()
+            self.app_settings = dialog.get_paths_data()
             
-            # On confirme à l'utilisateur
-            msg = f"Interface mise à jour en : {self.project_units['Longueur']}, {self.project_units['Masse']}..."
-            self.statusBar().showMessage(msg, 5000)
+            # 2. Mise à jour de l'interface (Unité des labels)
+            self.refresh_interface_units()
+            
+            # 3. Confirmation
+            path_msg = ""
+            if self.app_settings['default_dir']:
+                path_msg = f" | Dossier: {os.path.basename(self.app_settings['default_dir'])}"
+                
+            self.statusBar().showMessage(f"Préférences mises à jour{path_msg}", 5000)
 
     def refresh_interface_units(self):
         """Met à jour tous les labels de l'interface avec les unités actuelles"""
@@ -1138,10 +1197,12 @@ class LMGC90GUI(QMainWindow):
         
         # --- 1. Onglet Matériau ---
         if hasattr(self, 'mat_density'):
-            self.mat_density.setPlaceholderText(f"Densité ({u_dens}) :")
+            self.mat_density_label.setText(f"Densité ({u_dens})")
+            self.mat_props_label.setText(f"Propriétés ( ex : young = 1e9 ({u_cont}))")
             self.mat_props.setPlaceholderText(f"young ({u_cont}), dilatation (1/°{u_temp}), T_ref_meca (°{u_temp}) ")
-
-            
+            # Mise à jour des placeholders (textes grisés) pour guider l'exemple
+            self.mat_props.setPlaceholderText(f"ex: young=1e9 ({u_cont}), nu=0.3")
+                
         # --- 2. Onglet Avatar ---
         # Rayon / Axes (Longueur)
         if hasattr(self, 'avatar_radius_label'):
@@ -1150,23 +1211,67 @@ class LMGC90GUI(QMainWindow):
             self.avatar_axis_label.setText(f"Axes ({u_len}) :")
         if hasattr(self, 'avatar_center_label'):
             self.avatar_center_label.setText(f"Centre x,y ({u_len}) :")
-            
-        # Murs
-        if hasattr(self, 'wall_length_label'):
-            self.wall_length_label.setText(f"Longueur ({u_len}) :")
-        if hasattr(self, 'wall_height_label'):
-            # Astuce : le texte change selon le type de mur, on ajoute juste l'unité à la fin
-            current_text = self.wall_height_label.text().split('(')[0].strip() # Garde "Rayon" ou "Hauteur"
-            self.wall_height_label.setText(f"{current_text} ({u_len}) :")
+        # --- 3. Onglet Avatar vide ---
+        if hasattr(self, 'empty_av_center_label') :
+            self.empty_av_center_label.setText(f"Centre (x,y,z) ({u_len}):")
+            self.params.setText(f"params ({u_len})")
+        # --- 4. Onglet Boucles ---
 
-        # --- 3. Onglet Granulométrie ---
-        if hasattr(self, 'lbl_gran_rmin'):
-            self.lbl_gran_rmin.setText(f"Rayon Min ({u_len}) :")
-        if hasattr(self, 'lbl_gran_rmax'):
-            self.lbl_gran_rmax.setText(f"Rayon Max ({u_len}) :")
+
+        # --- 5. Onglet Granulométrie ---
+        if hasattr(self, 'gran_rmin_label'):
+            self.gran_rmin_label.setText(f"Rayon Min ({u_len}) :")
+        if hasattr(self, 'gran_rmax_label'):
+            self.gran_rmax_label.setText(f"Rayon Max ({u_len}) :")
+        if hasattr(self, 'gran_lx'):
+            self.gran_lx.setPlaceholderText(f"({u_len}) :")
+        if hasattr(self, 'gran_ly'):
+            self.gran_ly.setPlaceholderText(f"{u_len} : ")
+         # --- 6. Onglet DOF ---
+
+
+
+    # =======================================
+    # PostPro Commabds 
+    # =======================================
+
+    def add_postpro_command(self):
+        name = self.post_name.currentText()
+        step_txt = self.post_step.text()
+        
+        # Validation simple
+        if not step_txt.isdigit():
+            QMessageBox.warning(self, "Erreur", "Le 'Step' doit être un nombre entier.")
+            return
             
-        # Mise à jour des placeholders (textes grisés) pour guider l'exemple
-        self.mat_props.setPlaceholderText(f"ex: young=1e9 (Pa), nu=0.3")
+        step = int(step_txt)
+        
+        # 1. Ajout dans les données (pour la sauvegarde/script)
+        command_data = {'name': name, 'step': step}
+        self.postpro_creations.append(command_data)
+        
+        # 2. Ajout visuel dans l'arbre
+        item = QTreeWidgetItem([name, str(step)])
+        self.post_tree.addTopLevelItem(item)
+        
+        # Feedback
+        self.statusBar().showMessage(f"Commande {name} ajoutée.")
+
+    def delete_postpro_command(self):
+        selected_item = self.post_tree.currentItem()
+        if not selected_item:
+            return
+            
+        # Trouver l'index pour supprimer de la liste de données
+        index = self.post_tree.indexOfTopLevelItem(selected_item)
+        
+        if index >= 0:
+            # Supprimer des données
+            del self.postpro_creations[index]
+            # Supprimer de l'affichage
+            self.post_tree.takeTopLevelItem(index)
+            self.statusBar().showMessage("Commande supprimée.")
+        
     # ========================================
     # EMPTY AVATAR
     # ========================================
@@ -1190,7 +1295,8 @@ class LMGC90GUI(QMainWindow):
         row.addWidget(color)
 
         params = QLineEdit("byrd=0.3")  # ex: r=0.3 ou axe1=1.0,axe2=0.1
-        row.addWidget(QLabel("Params :"))
+        self.params = QLabel("Params :")
+        row.addWidget(self.params)
         row.addWidget(params)
        
         remove_btn = QPushButton("×")
@@ -3104,9 +3210,16 @@ class LMGC90GUI(QMainWindow):
                     f.write(f"see_tables.addSeeTable(sv)\n")
                 f.write("\n")
 
+                # ==== Postpro_commands
+                # Exemple de ce que devra faire votre générateur plus tard :
+                f.write("\n# --- PostPro ---\n")
+                f.write("post = pre.postpro_commands()\n")
+                for cmd in self.postpro_creations:
+                    f.write(f"post.addCommand(pre.postpro_command(name='{cmd['name']}', step={cmd['step']}))\n" )
+
                 # === Écriture finale ===
                 f.write("# Écriture du fichier .datbox\n")
-                f.write("pre.writeDatbox(dim=2, mats=materials, mods=models, bodies=bodies, tacts=tacts, sees=see_tables)\n")
+                f.write("pre.writeDatbox(post = post, dim=2, mats=materials, mods=models, bodies=bodies, tacts=tacts, sees=see_tables)\n")
 
             self.script_path = path
             QMessageBox.information(self, "Succès", f"Script généré avec succès !\n{path}")
@@ -3221,7 +3334,7 @@ class LMGC90GUI(QMainWindow):
         return None
 
     def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.3 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
+        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.5 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
 
 
 

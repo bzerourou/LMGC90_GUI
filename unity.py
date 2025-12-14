@@ -1,57 +1,118 @@
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, 
+    QLabel, QLineEdit, QPushButton, QFormLayout, QDialogButtonBox, QGroupBox,
+    QFileDialog, QStyle
+)
+from PyQt6.QtCore import Qt
 
-from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, QFormLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton
-
-class UnitsOptionsDialog(QDialog):
-    def __init__(self, current_units, parent=None):
+class PreferencesDialog(QDialog):
+    def __init__(self, current_units, current_paths, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Options du projet - Unités")
-        self.resize(400, 300)
+        self.setWindowTitle("Préférences du projet")
+        self.resize(800, 600)
         
+        # Layout principal
+        main_layout = QVBoxLayout()
+        
+        # --- CRÉATION DES ONGLETS VERTICAUX ---
+        self.tabs = QTabWidget()
+        self.tabs.setTabPosition(QTabWidget.TabPosition.West) # <--- C'est ici que ça se joue !
+        
+        # On agrandit un peu la police des onglets pour que ce soit lisible
+        self.tabs.setStyleSheet("QTabBar::tab { height: 80px; width: 100px; }")
+
+        # --- ONGLET 1 : GÉNÉRAL (Chemins) ---
+        self.tab_general = QWidget()
+        self._init_general_tab(current_paths)
+        self.tabs.addTab(self.tab_general, "Général")
+
+        # --- ONGLET 2 : UNITÉS ---
+        self.tab_units = QWidget()
+        self._init_units_tab(current_units)
+        self.tabs.addTab(self.tab_units, "Unités")
+
+        main_layout.addWidget(self.tabs)
+
+        # --- BOUTONS (OK / Annuler) ---
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        main_layout.addWidget(button_box)
+
+        self.setLayout(main_layout)
+
+    def _init_general_tab(self, paths):
         layout = QVBoxLayout()
-
-        # --- Description ---
-        layout.addWidget(QLabel("Définissez le système d'unités pour ce projet.\n"
-                                "LMGC90 ne fait pas de conversion, soyez cohérent !"))
-
-        # --- Formulaire ---
-        form_layout = QFormLayout()
-        self.inputs = {}
+        form = QFormLayout()
         
-        # Liste des unités à gérer
-        self.unit_labels = ["Longueur", "Masse", "Temps", "Volume", "Force", "Pression/Contrainte", "Densité", "Énergie", "Température",
+        # Champ 1 : Répertoire par défaut des projets
+        self.path_project_dir = QLineEdit(paths.get('default_dir', ''))
+        btn_browse_proj = QPushButton("...")
+        btn_browse_proj.setFixedWidth(30)
+        btn_browse_proj.clicked.connect(lambda: self.browse_folder(self.path_project_dir))
+        
+        h_proj = QHBoxLayout()
+        h_proj.addWidget(self.path_project_dir)
+        h_proj.addWidget(btn_browse_proj)
+        
+        form.addRow("Dossier Projets :", h_proj)
+        
+        # Champ 2 : (Optionnel) Chemin vers l'exécutable Python ou LMGC90
+        self.path_exec = QLineEdit(paths.get('lmgc90_exec', ''))
+        btn_browse_exec = QPushButton("...")
+        btn_browse_exec.setFixedWidth(30)
+        btn_browse_exec.clicked.connect(lambda: self.browse_folder(self.path_exec)) # ou browse_file
+        
+        h_exec = QHBoxLayout()
+        h_exec.addWidget(self.path_exec)
+        h_exec.addWidget(btn_browse_exec)
+        
+        form.addRow("Chemin Exécutable :", h_exec)
+        
+        # Ajout au layout
+        grp = QGroupBox("Chemins et Répertoires")
+        grp.setLayout(form)
+        layout.addWidget(grp)
+        layout.addStretch() # Pousse tout vers le haut
+        self.tab_general.setLayout(layout)
+
+    def _init_units_tab(self, units):
+        layout = QVBoxLayout()
+        
+        layout.addWidget(QLabel("<b>Système d'unités du projet</b>"))
+        
+        form = QFormLayout()
+        self.unit_inputs = {}
+        labels  = ["Longueur", "Masse", "Temps", "Volume", "Force", "Pression/Contrainte", "Densité", "Énergie", "Température",
                             "Flux ther" ,"Moment inertie" ,"Couple" ,"Vitesse","Viscosité"]
-        
-        # Création des champs
-        for label in self.unit_labels:
-            le = QLineEdit()
-            le.setText(current_units.get(label, ""))
-            form_layout.addRow(f"{label} :", le)
-            self.inputs[label] = le
+        for lbl in labels:
+            le = QLineEdit(units.get(lbl, ""))
+            form.addRow(f"{lbl} :", le)
+            self.unit_inputs[lbl] = le
             
-        layout.addLayout(form_layout)
-
-        # --- Boutons Rapides (SI / CGS) ---
-        quick_btn_layout = QHBoxLayout()
-        btn_si = QPushButton("Tout en SI (m, kg, s)")
-        btn_cgs = QPushButton("Tout en CGS (cm, g, s)")
+        layout.addLayout(form)
+        
+        # Boutons SI / CGS
+        hbox = QHBoxLayout()
+        btn_si = QPushButton("Appliquer SI (m, kg, s)")
+        btn_cgs = QPushButton("Appliquer CGS (cm, g, s)")
         
         btn_si.clicked.connect(self.set_si)
         btn_cgs.clicked.connect(self.set_cgs)
         
-        quick_btn_layout.addWidget(btn_si)
-        quick_btn_layout.addWidget(btn_cgs)
-        layout.addLayout(quick_btn_layout)
+        hbox.addWidget(btn_si)
+        hbox.addWidget(btn_cgs)
+        layout.addLayout(hbox)
+        
+        self.tab_units.setLayout(layout)
 
-        # --- Boutons Valider / Annuler ---
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-        self.setLayout(layout)
+    # --- UTILITAIRES ---
+    def browse_folder(self, line_edit):
+        d = QFileDialog.getExistingDirectory(self, "Choisir un dossier")
+        if d:
+            line_edit.setText(d)
 
     def set_si(self):
-        """Remplit les champs avec le Système International"""
         defaults = {
             "Longueur": "m", 
             "Masse": "kg", 
@@ -68,11 +129,10 @@ class UnitsOptionsDialog(QDialog):
             "Vitesse" : "m/s",
             "Viscosité" : "Ns/m^2"
         }
-        for label, val in defaults.items():
-            self.inputs[label].setText(val)
+        for k, v in defaults.items():
+            if k in self.unit_inputs: self.unit_inputs[k].setText(v)
 
     def set_cgs(self):
-        """Remplit les champs avec le système CGS"""
         defaults = {
             "Longueur": "cm", 
             "Masse": "g", 
@@ -89,9 +149,15 @@ class UnitsOptionsDialog(QDialog):
             "Vitesse" : "cm/s",
             "Viscosité" : "poise"
         }
-        for label, val in defaults.items():
-            self.inputs[label].setText(val)
+        for k, v in defaults.items():
+            if k in self.unit_inputs: self.unit_inputs[k].setText(v)
 
-    def get_data(self):
-        """Récupère les données saisies"""
-        return {label: self.inputs[label].text() for label in self.unit_labels}
+    # --- GETTERS (Pour récupérer les données) ---
+    def get_units_data(self):
+        return {k: v.text() for k, v in self.unit_inputs.items()}
+
+    def get_paths_data(self):
+        return {
+            'default_dir': self.path_project_dir.text(),
+            'lmgc90_exec': self.path_exec.text()
+        }
