@@ -533,10 +533,10 @@ class LMGC90GUI(QMainWindow):
         self.post_name = QComboBox()
         # Liste des commandes standards LMGC90
         commands_list = [
-            "SOLVER INFORMATIONS", "VIOLATION EVOLUTION", "KINETIC ENERGY",
-            "DISSIPATED ENERGY", "COORDINATION NUMBER", "BODY TRACKING",
-            "TORQUE EVOLUTION", "DOUBLET TORQUE EVOLUTION", "CL CONTACTOR"
-        ]
+            "SOLVER INFORMATIONS" 
+        ] #, "VIOLATION EVOLUTION", "KINETIC ENERGY",
+          #  "DISSIPATED ENERGY", "COORDINATION NUMBER", "BODY TRACKING",
+          #  "TORQUE EVOLUTION", "DOUBLET TORQUE EVOLUTION", "CL CONTACTOR"
         self.post_name.addItems(commands_list)
         
         self.post_step = QLineEdit("1")

@@ -1,6 +1,6 @@
 # LMGC90_GUI (Graphical User Interface for LMGC90).
 
-![Capture d'écran](docs/inter_LMGC90_GUI5.jpg)
+![Capture d'écran](docs/inter_LMGC90_GUI6.jpg)
 
 This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
 
@@ -27,9 +27,11 @@ In this first version,it is completely independant of the pylmgc90 library attri
 - avatars : **rigidDisk**, **rigidJonc**, **rigidPolygon**, **rigidOvoidPolygon**, **rigidDiscreteDisk**, **rigidCluster**, **roughWall**, **fineWall**, **smoothWall**, **granuloRoughWall**
 - contact : Coulomb friction contact laws with  __'IQS_CLB'__, __IQS_CLB_g0__, and __'COUPLED_DOF__ type. 
 - boundary conditions for avatar with :  **translate**, **rotate**, **imposeDrivenDof** and **imposeInitValue** functions.
-- parametric __cirular__, __
+- parametric __cirular__, __grid__, __Linear__, __spiral__ and __manual__ pattern for add group of avatars ;
+- granulometry : __granulo_random__ distribution, _Box2D_ and _Disk2D_ deposit for _rigidDisk_ avatar;
+- postpro : __SOLVER INFORMATIONS__; 
 
-The interface is easy to use and can save and open project with json formated file with extension (.lmgc90), and can generate and execute model script.
+The interface is easy to use and it can save and open project with json formated file with extension (.lmgc90), and can generate and execute model script.
 
 Since 0.1.9 version, you can edit and remove *models*, *materials*, *avatars*, *contacts* and *visibilities* elements.
 
@@ -56,4 +58,4 @@ This video is a short introduction to LMGC90_GUI
 -  0.2.2 : Possibility to add new contactors for avatar in **emptyAvatar tab** ;
 -  0.2.3 : add `IQS_CLB_go` and `COUPLED_DOF` contact laws; 
 -  0.2.4 : add granulometry distribution and deposit in **Box2D** and **Disk2D** with *rigidDisk* avatar ;
--  0.2.5 : add new menu _outils_ for LMGC90 _options_ (units); 
+-  0.2.5 : add new menu _outils_ for LMGC90 _options_ (units), add new tab for postpro_command for only "_SOLVER INFORMATIONS_"; 
