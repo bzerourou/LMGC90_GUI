@@ -214,126 +214,8 @@ class LMGC90GUI(QMainWindow):
 
         splitter.setSizes([400, 200])
 
-    # ========================================
-    # GRANULOMETRIE
-    # ========================================
-
-    def _create_granulo_tab(self):
-        tab = QWidget()
-        layout = QVBoxLayout()
-
-        # --- 1. Paramètres de Distribgit aution ---
-        grp_dist = QGroupBox("1. Distribution des Particules")
-        gl_dist = QFormLayout()
-        
-        self.gran_nb = QLineEdit("200")
-        self.gran_rmin = QLineEdit("0.05")
-        self.gran_rmax = QLineEdit("0.15")
-        self.gran_seed = QLineEdit("") # Vide = None
-        self.gran_seed.setPlaceholderText("Graine aléatoire (optionnel)")
-        self.gran_rmin_label = QLabel("Rayon Min (r_min) :")
-        self.gran_rmax_label = QLabel("Rayon Max (r_max) :")
-        gl_dist.addRow("Nombre de particules :", self.gran_nb)
-        gl_dist.addRow(self.gran_rmin_label, self.gran_rmin)
-        gl_dist.addRow(self.gran_rmax_label, self.gran_rmax)
-        gl_dist.addRow("Seed (entier) :", self.gran_seed)
-        grp_dist.setLayout(gl_dist)
-        layout.addWidget(grp_dist)
-
-        # --- 2. Géométrie du Conteneur ---
-        grp_geo = QGroupBox("2. Géométrie du Dépôt")
-        vl_geo = QVBoxLayout()
-        
-        # Choix de la forme
-        hl_type = QHBoxLayout()
-        hl_type.addWidget(QLabel("Type de conteneur :"))
-        self.gran_shape_type = QComboBox()
-        self.gran_shape_type.addItems(["Box2D","Disk2D"])#,  "squareLattice2D", "triangularLattice2D","Couette2D", "Drum2D"])
-        hl_type.addWidget(self.gran_shape_type)
-        vl_geo.addLayout(hl_type)
-
-        # Paramètres dynamiques (lx, ly, r, etc.)
-        self.gran_params_widget = QWidget()
-        self.gran_params_layout = QFormLayout()
-        self.gran_params_widget.setLayout(self.gran_params_layout)
-        vl_geo.addWidget(self.gran_params_widget)
-        
-        # Champs stockés en mémoire (on les affiche/cache selon le choix)
-        self.gran_lx = QLineEdit("4.0")
-        self.gran_ly = QLineEdit("4.0")
-        self.gran_r = QLineEdit("2.0")
-        self.gran_rint = QLineEdit("2.0")
-        self.gran_rext = QLineEdit("4.0")
-
-        grp_geo.setLayout(vl_geo)
-        layout.addWidget(grp_geo)
-
-        # --- 3. Propriétés Physiques ---
-        grp_phy = QGroupBox("3. Propriétés Physiques")
-        gl_phy = QFormLayout()
-        
-        self.gran_mat = QComboBox()
-        self.gran_mod = QComboBox()
-        self.gran_color = QLineEdit("BLUEx")
-        self.avatar = QComboBox()
-        self.avatar.addItems(["rigidDisk"]) #, "rigidPolygon", "rigidOvoidPolygon", "rigidDiscreteDisk", "rigidCluster"])
-        self.gran_wall_create = QCheckBox("Créer les parois (murs) autour")
-        self.gran_wall_create.setChecked(False)
-
-        gl_phy.addRow("Matériau :", self.gran_mat)
-        gl_phy.addRow("Modèle :", self.gran_mod)
-        gl_phy.addRow("Couleur Particules :", self.gran_color)
-        gl_phy.addRow("Type d'avatar :", self.avatar)
-        #gl_phy.addRow(self.gran_wall_create)
-        grp_phy.setLayout(gl_phy)
-        layout.addWidget(grp_phy)
-
-        # --- Bouton Action ---
-        btn_gen = QPushButton("Générer le Dépôt")
-        btn_gen.setStyleSheet("font-weight: bold; padding: 10px; background-color: #e1f5fe;")
-        btn_gen.clicked.connect(self.generate_granulo_sample)
-        layout.addWidget(btn_gen)
-
-        # Scroll area (au cas où petit écran)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        container = QWidget()
-        container.setLayout(layout)
-        scroll.setWidget(container)
-
-        final_layout = QVBoxLayout()
-        final_layout.addWidget(scroll)
-        tab.setLayout(final_layout)
-        
-        self.tabs.addTab(tab, "Granulométrie")
-        self.gran_tab = tab
-
-        # Connexions
-        self.gran_shape_type.currentTextChanged.connect(self.update_granulo_fields)
-        self.update_granulo_fields() # Init
-
-    def update_granulo_fields(self):
-        """Met à jour les champs de saisie selon la forme choisie"""
-        # On vide le layout des paramètres
-        while self.gran_params_layout.rowCount() > 0:
-            self.gran_params_layout.removeRow(0)
-        
-        # recréer les champs
-        self.gran_lx = QLineEdit("4.0")
-        self.gran_ly = QLineEdit("4.0")
-        self.gran_r = QLineEdit("2.0")
-        self.gran_rint = QLineEdit("2.0")
-        self.gran_rext = QLineEdit("4.0")
-        shape = self.gran_shape_type.currentText()
-        
-        if shape in ["Box2D", "squareLattice2D","triangularLattice2D"]:
-            self.gran_params_layout.addRow("Largeur (lx) :", self.gran_lx)
-            self.gran_params_layout.addRow("Hauteur (ly) :", self.gran_ly)
-        elif shape in ["Drum2D", "Disk2D"]:
-            self.gran_params_layout.addRow("Rayon (r) :", self.gran_r)
-        elif "Couette2D" in shape:
-            self.gran_params_layout.addRow("Rayon Int (rint) :", self.gran_rint)
-            self.gran_params_layout.addRow("Rayon Ext (rext) :", self.gran_rext)
+    
+    
         
     def refresh_granulo_combos(self):
         """Met à jour les listes déroulantes quand on clique sur l'onglet"""
@@ -509,23 +391,7 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     # UTILITAIRES
     # ========================================
-    ''' Evaluer en toute sécurité une chaîne de caractères en dictionnaire 
-        text : str : chaîne à évaluer
-    '''
-    def _safe_eval_dict(self, text):
-        if not text.strip():
-            return {}
-        #Autorise math, np, et les listes []
-        import math
-        import numpy as np
-
-        local = {"math": math, "np": np, "__builtins__": {}}
-        try:
-            
-            exec(f"props = dict({text})", {}, local)
-            return local.get('props', {})
-        except Exception as e:
-            raise ValueError(f"Paramètres invalides : {e}")
+    
 
     ''' Met à jour la barre de statut avec un message temporaire'''
     def update_status(self, msg):
