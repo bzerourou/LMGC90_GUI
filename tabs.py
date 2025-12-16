@@ -289,7 +289,7 @@ def _create_contact_tab(self):
     cl = QVBoxLayout()
     self.contact_name = QLineEdit("iqsc0")
     self.contact_type = QComboBox(); self.contact_type.addItems(["IQS_CLB", "IQS_CLB_g0", "COUPLED_DOF"])
-    self.contact_type.currentTextChanged.connect(self.update_contact_law)
+    self.contact_type.currentTextChanged.connect(lambda: update_contact_law(self))
     self.contact_properties = QLineEdit("fric=0.3")
     for w in [QLabel("Nom:"), self.contact_name, QLabel("Type:"), self.contact_type,
                 QLabel("Props:"), self.contact_properties,

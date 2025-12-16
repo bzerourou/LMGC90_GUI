@@ -25,7 +25,7 @@ from tabs import (
 )
 from updates import (
     update_model_elements,
-    update_avatar_types, update_avatar_fields, update_contact_law,
+    update_avatar_types, update_avatar_fields,
     update_advanced_fields, update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict
 )
@@ -406,12 +406,6 @@ class LMGC90GUI(QMainWindow):
         default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
         self.avatar_center.setText(default_center)
         update_model_elements(self)
-
-    def update_contact_law(self): 
-        law = self.contact_type.currentText()
-        if law in ["IQS_CLB", "IQS_CLB_g0"] :
-            self.contact_properties.setText("fric=0.3")
-        else : self.contact_properties.setText("")
 
     def open_options_dialog(self):
         """Ouvre la fenêtre de Préférences (Onglets verticaux)"""
