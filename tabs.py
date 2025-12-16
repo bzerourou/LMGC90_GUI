@@ -50,7 +50,7 @@ def _create_model_tab(self):
     self.model_name = QLineEdit("rigid")
     self.model_physics = QComboBox(); self.model_physics.addItems(["MECAx"])
     self.model_element = QComboBox()
-    self.model_element.currentTextChanged.connect(update_model_options_fields)
+    self.model_element.currentTextChanged.connect(lambda : update_model_options_fields(self))
     self.model_dimension = QComboBox(); self.model_dimension.addItems(["2", "3"])
     self.model_dimension.currentTextChanged.connect(self.model_dimension_changed)
     self.model_options = QLineEdit("")

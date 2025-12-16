@@ -26,7 +26,7 @@ from tabs import (
 from updates import (
     update_model_elements,
     update_avatar_types, update_avatar_fields,
-    update_advanced_fields, update_granulo_fields, update_selections,
+    update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict
 )
 
@@ -516,14 +516,7 @@ class LMGC90GUI(QMainWindow):
         
     # ========================================
     # EMPTY AVATAR
-    # ========================================
-
-    def update_advanced_fields(self, dim_text=None):
-        dim = 2 if not dim_text else int(dim_text)
-        default = "0.0, 0.0" if dim == 2 else "0.0, 0.0, 0.0"
-        if self.adv_center.text() in ["0.0, 0.0", "0.0, 0.0, 0.0"]:
-            self.adv_center.setText(default)
-        
+    # ========================================   
     def add_contactor_row(self):
         row = QHBoxLayout()
         shape = QComboBox()
