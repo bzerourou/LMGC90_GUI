@@ -259,8 +259,8 @@ def _create_loop_tab(self):
     loop_tab.setLayout(ll)
     self.tabs.addTab(loop_tab, "Boucles")
     # Connexion pour masquer/afficher les champs selon le type
-    self.loop_type.currentTextChanged.connect(self.update_loop_fields)
-    self.update_loop_fields(self.loop_type.currentText())
+    self.loop_type.currentTextChanged.connect(lambda loop_type: update_loop_fields(self, loop_type))
+    update_loop_fields(self, self.loop_type.currentText())
 
 def _create_dof_tab(self):
     # --- DOF ---

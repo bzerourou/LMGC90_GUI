@@ -25,8 +25,7 @@ from tabs import (
 )
 from updates import (
     update_model_elements,
-    update_avatar_types, update_avatar_fields, 
-    update_loop_fields, update_contact_law,
+    update_avatar_types, update_avatar_fields, update_contact_law,
     update_advanced_fields, update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict
 )
@@ -407,29 +406,6 @@ class LMGC90GUI(QMainWindow):
         default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
         self.avatar_center.setText(default_center)
         update_model_elements(self)
-
-  
-    ''' Met à jour les champs affichés dans l'onglet Boucles selon le type de boucle sélectionné
-        loop_type : str : type de boucle sélectionné'''
-    def update_loop_fields(self, loop_type):
-            """Affiche ou masque les champs selon le type de boucle"""
-            is_manual = (loop_type == "Manuel")
-
-            # Masquer tous les champs géométriques en mode Manuelle
-            for item in getattr(self, 'geom_layout_items', []):
-                if item and item.widget():
-                    item.widget().setVisible(not is_manual)
-
-            # En mode Manuelle : on force le stockage + on peut changer le nombre
-            if is_manual:
-                self.loop_store_group.setChecked(True)
-                self.loop_store_group.setEnabled(False)
-                self.loop_count.setEnabled(True)
-                self.loop_count.setPlaceholderText("Combien d'avatars veux-tu créer à la main ?")
-            else:
-                self.loop_store_group.setEnabled(True)
-                self.loop_count.setPlaceholderText("")
-
 
     def update_contact_law(self): 
         law = self.contact_type.currentText()
