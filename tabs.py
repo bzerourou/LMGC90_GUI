@@ -12,6 +12,13 @@ from updates import (
     update_model_tree, update_status
 )
 
+
+from creations import (
+    create_material, create_model, create_avatar, create_empty_avatar, create_loop,
+    generate_granulo_sample, dof_force, create_contact_law, add_visibility_rule,
+    add_postpro_command, delete_postpro_command, modify_selected, delete_selected
+)
+
 # ========================================
 #  CREATION - TABS
 # =========================================
@@ -33,9 +40,9 @@ def _create_material_tab(self):
     create_btn = QPushButton("Créer")
     modify_btn = QPushButton("Modifier")
     delete_btn = QPushButton("Supprimer")
-    create_btn.clicked.connect(self.create_material)
-    modify_btn.clicked.connect(self.modify_selected)
-    delete_btn.clicked.connect(self.delete_selected)
+    create_btn.clicked.connect(lambda : create_material(self))
+    modify_btn.clicked.connect(lambda :modify_selected(self))
+    delete_btn.clicked.connect(lambda :delete_selected(self))
     for b in [create_btn, modify_btn, delete_btn]:
         btn_layout.addWidget(b)
     ml.addLayout(btn_layout)
@@ -69,9 +76,9 @@ def _create_model_tab(self):
     create_mod_btn = QPushButton("Créer")
     modify_mod_btn = QPushButton("Modifier")
     delete_mod_btn = QPushButton("Supprimer")
-    create_mod_btn.clicked.connect(self.create_model)
-    modify_mod_btn.clicked.connect(self.modify_selected)
-    delete_mod_btn.clicked.connect(self.delete_selected)
+    create_mod_btn.clicked.connect(lambda : create_model(self))
+    modify_mod_btn.clicked.connect(lambda :modify_selected(self))
+    delete_mod_btn.clicked.connect(lambda :delete_selected(self))
     for b in [create_mod_btn, modify_mod_btn, delete_mod_btn]:
         btn_layout.addWidget(b)
     mml.addLayout(btn_layout)
@@ -125,9 +132,9 @@ def _create_avatar_tab(self):
     create_av_btn = QPushButton("Créer")
     modify_av_btn = QPushButton("Modifier")
     delete_av_btn = QPushButton("Supprimer")
-    create_av_btn.clicked.connect(self.create_avatar)
-    modify_av_btn.clicked.connect(self.modify_selected)
-    delete_av_btn.clicked.connect(self.delete_selected)
+    create_av_btn.clicked.connect(lambda :create_avatar(self))
+    modify_av_btn.clicked.connect(lambda :modify_selected(self))
+    delete_av_btn.clicked.connect(lambda :delete_selected(self))
     for b in [create_av_btn, modify_av_btn, delete_av_btn]:
         btn_layout.addWidget(b)
     al.addLayout(btn_layout)
@@ -199,7 +206,7 @@ def _create_empty_avatar_tab(self):
 
         # === Bouton Créer ===
         create_btn = QPushButton("Créer avatar vide")
-        create_btn.clicked.connect(self.create_empty_avatar)
+        create_btn.clicked.connect(lambda :create_empty_avatar(self))
         layout.addWidget(create_btn)
 
         tab.setLayout(layout)
@@ -254,7 +261,7 @@ def _create_loop_tab(self):
     hgroup.addWidget(self.loop_group_name)
     ll.addLayout(hgroup)
     create_loop_btn = QPushButton("Créer boucle")
-    create_loop_btn.clicked.connect(self.create_loop)
+    create_loop_btn.clicked.connect(lambda :create_loop(self))
     ll.addWidget(create_loop_btn)
     loop_tab.setLayout(ll)
     self.tabs.addTab(loop_tab, "Boucles")
@@ -276,7 +283,7 @@ def _create_dof_tab(self):
                 ]:
         dl.addWidget(w)
     dof_btn = QPushButton("Appliquer")
-    dof_btn.clicked.connect( self.dof_force)
+    dof_btn.clicked.connect( lambda : dof_force(self))
     dl.addWidget(dof_btn)
     dof_tab.setLayout(dl)
     self.tabs.addTab(dof_tab, "DOF")
@@ -296,7 +303,7 @@ def _create_contact_tab(self):
                 ]:
         cl.addWidget(w)
     btns = QHBoxLayout()
-    for text, slot in [("Créer", self.create_contact_law), ("Modifier", self.modify_selected), ("Supprimer", self.delete_selected)]:
+    for text, slot in [("Créer", lambda : create_contact_law(self)), ("Modifier", lambda :modify_selected(self)), ("Supprimer", lambda :delete_selected(self))]:
         b = QPushButton(text); b.clicked.connect(slot); btns.addWidget(b)
     cl.addLayout(btns)
     self.contact_tab.setLayout(cl)
@@ -320,7 +327,7 @@ def _create_visibility_tab(self) :
                 ]:
         vl.addWidget(w)
     btns = QHBoxLayout()
-    for text, slot in [("Ajouter", self.add_visibility_rule), ("Modifier", self.modify_selected), ("Supprimer", self.delete_selected)]:
+    for text, slot in [("Ajouter", lambda :add_visibility_rule(self)), ("Modifier", lambda :modify_selected(self)), ("Supprimer", lambda :delete_selected(self))]:
         b = QPushButton(text); b.clicked.connect(slot); btns.addWidget(b)
     vl.addLayout(btns)
     vis_tab.setLayout(vl)
@@ -351,7 +358,7 @@ def _create_postpro_tab(self):
     form.addRow("Step (Fréquence) :", self.post_step)
     
     add_btn = QPushButton("Ajouter la commande")
-    add_btn.clicked.connect(self.add_postpro_command)
+    add_btn.clicked.connect(lambda :add_postpro_command(self))
     
     form_group.setLayout(form)
     layout.addWidget(form_group)
@@ -365,7 +372,7 @@ def _create_postpro_tab(self):
     
     # --- Bouton supprimer ---
     del_btn = QPushButton("Supprimer la commande sélectionnée")
-    del_btn.clicked.connect(self.delete_postpro_command)
+    del_btn.clicked.connect(lambda :delete_postpro_command(self))
     layout.addWidget(del_btn)
     
     tab.setLayout(layout)
@@ -448,7 +455,7 @@ def _create_granulo_tab(self):
     # --- Bouton Action ---
     btn_gen = QPushButton("Générer le Dépôt")
     btn_gen.setStyleSheet("font-weight: bold; padding: 10px; background-color: #e1f5fe;")
-    btn_gen.clicked.connect(self.generate_granulo_sample)
+    btn_gen.clicked.connect(lambda :generate_granulo_sample(self))
     layout.addWidget(btn_gen)
 
     # Scroll area (au cas où petit écran)
