@@ -8,8 +8,8 @@ from updates import (
     update_material_fields, update_model_options_fields, update_model_elements,
     update_avatar_types, update_avatar_fields, update_polygon_fields,
     update_loop_fields, update_dof_options, update_contact_law,
-    update_advanced_fields, update_granulo_fields, update_selections,
-    update_model_tree, update_status
+    update_advanced_fields, update_granulo_fields,
+    model_dimension_changed
 )
 
 
@@ -59,7 +59,7 @@ def _create_model_tab(self):
     self.model_element = QComboBox()
     self.model_element.currentTextChanged.connect(lambda : update_model_options_fields(self))
     self.model_dimension = QComboBox(); self.model_dimension.addItems(["2", "3"])
-    self.model_dimension.currentTextChanged.connect(self.model_dimension_changed)
+    self.model_dimension.currentTextChanged.connect(lambda: model_dimension_changed(self))
     self.model_options = QLineEdit("")
     # Zone des options (scrollable)
     self.model_options_group = QGroupBox("Options du modèle")

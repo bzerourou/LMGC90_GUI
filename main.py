@@ -7,13 +7,11 @@ import numpy as np
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
-    QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox, QCheckBox, QScrollArea,
-    QLabel, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QInputDialog, QGroupBox, QFormLayout, QDialogButtonBox, QDialog
+    QTreeWidget, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox,
+    QLabel, QWidget, QVBoxLayout
 )
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
-
-
 
 from tabs import (
     _create_material_tab, _create_model_tab, _create_avatar_tab,
@@ -22,26 +20,17 @@ from tabs import (
     _create_postpro_tab, 
 )
 from updates import (
-    update_model_elements,
-    update_avatar_types, update_avatar_fields,
-    update_granulo_fields, update_selections,
-    update_model_tree, update_status, _safe_eval_dict,
+    update_avatar_fields,
+    update_selections, refresh_interface_units,
+    update_model_tree, 
     update_contactors_fields
 )
-
 from project import (
-    new_project, open_project, save_project, save_project_as, do_save, open_options_dialog
+    new_project, open_project, save_project, save_project_as, open_options_dialog
 )
-
-from creations import (
-    create_empty_avatar, create_loop,
-    generate_granulo_sample, dof_force, create_contact_law, add_visibility_rule,
-    add_postpro_command, delete_postpro_command, modify_selected, delete_selected
-)
-
 from script_gen import (generate_python_script, execute_python_script
 )
-from visu import visu_lmgc, open_paraview, _find_paraview, about
+from visu import visu_lmgc, open_paraview, generate_datbox, about
 
 class LMGC90GUI(QMainWindow):
     def __init__(self):
@@ -99,14 +88,14 @@ class LMGC90GUI(QMainWindow):
         
         self._init_containers()
         self._init_ui()
-        self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
+        self.setWindowTitle(f"LMGC90_GUI v0.2.6 - {self.project_name}")
         self.statusBar().showMessage("Prêt")
 
         update_selections(self)
         update_model_tree(self)
         self._initializing = False
         self.cleanup_operations()
-        self.refresh_interface_units()
+        refresh_interface_units(self)
         
 
     def _init_containers(self):
@@ -141,6 +130,7 @@ class LMGC90GUI(QMainWindow):
 
         self.granulo_generations = []
         #postpro_commands
+        self.postpro_commands = pre.postpro_commands()
         self.postpro_creations = [] # Liste de dictionnaires {'name': str, 'step': int}
 
         # --- Boucles ---
@@ -183,6 +173,7 @@ class LMGC90GUI(QMainWindow):
             ("Sauvegarder", self.style().StandardPixmap.SP_DriveHDIcon, lambda : save_project(self)),
             ("Script", self.style().StandardPixmap.SP_FileDialogDetailedView, lambda : generate_python_script(self)),
             ("Exécuter", self.style().StandardPixmap.SP_MediaPlay, lambda :execute_python_script(self)),
+            ("Générer DATBOX", self.style().StandardPixmap.SP_FileDialogStart, lambda : generate_datbox(self))
         ]:
             btn = QPushButton(text)
             btn.setIcon(self.style().standardIcon(icon))
@@ -251,65 +242,6 @@ class LMGC90GUI(QMainWindow):
         # Restauration
         if cur_mat: self.gran_mat.setCurrentText(cur_mat)
         if cur_mod: self.gran_mod.setCurrentText(cur_mod)
-        
-    
-    # ========================================
-    # UTILITAIRES
-    # ========================================
-
-    def model_dimension_changed(self, dim_text) :
-        self.dim = int(dim_text)              # garde la dimension globale
-        update_avatar_types(self, dim_text)    # remplissage du ComboBox des avatars
-        # ré-initialise le texte du centre selon la dimension
-        default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
-        self.avatar_center.setText(default_center)
-        update_model_elements(self)
-
-   
-
-    def refresh_interface_units(self):
-        """Met à jour tous les labels de l'interface avec les unités actuelles"""
-        u_len = self.project_units.get("Longueur", "m")
-        u_mass = self.project_units.get("Masse", "kg")
-        u_time = self.project_units.get("Temps", "s")
-        u_temp = self.project_units.get("Température", "K")
-        # Densité = Masse / Longueur^3
-        u_cont = self.project_units.get("Pression/Contrainte", "Pa")
-        u_dens = f"{u_mass}/{u_len}³" 
-        
-        # --- 1. Onglet Matériau ---
-        if hasattr(self, 'mat_density'):
-            self.mat_density_label.setText(f"Densité ({u_dens})")
-            self.mat_props_label.setText(f"Propriétés ( ex : young = 1e9 ({u_cont}))")
-            self.mat_props.setPlaceholderText(f"young ({u_cont}), dilatation (1/°{u_temp}), T_ref_meca (°{u_temp}) ")
-            # Mise à jour des placeholders (textes grisés) pour guider l'exemple
-            self.mat_props.setPlaceholderText(f"ex: young=1e9 ({u_cont}), nu=0.3")
-                
-        # --- 2. Onglet Avatar ---
-        # Rayon / Axes (Longueur)
-        if hasattr(self, 'avatar_radius_label'):
-            self.avatar_radius_label.setText(f"Rayon ({u_len}) :")
-        if hasattr(self, 'avatar_axis_label'):
-            self.avatar_axis_label.setText(f"Axes ({u_len}) :")
-        if hasattr(self, 'avatar_center_label'):
-            self.avatar_center_label.setText(f"Centre x,y ({u_len}) :")
-        # --- 3. Onglet Avatar vide ---
-        if hasattr(self, 'empty_av_center_label') :
-            self.empty_av_center_label.setText(f"Centre (x,y,z) ({u_len}):")
-            self.params.setText(f"params ({u_len})")
-        # --- 4. Onglet Boucles ---
-
-
-        # --- 5. Onglet Granulométrie ---
-        if hasattr(self, 'gran_rmin_label'):
-            self.gran_rmin_label.setText(f"Rayon Min ({u_len}) :")
-        if hasattr(self, 'gran_rmax_label'):
-            self.gran_rmax_label.setText(f"Rayon Max ({u_len}) :")
-        if hasattr(self, 'gran_lx'):
-            self.gran_lx.setPlaceholderText(f"({u_len}) :")
-        if hasattr(self, 'gran_ly'):
-            self.gran_ly.setPlaceholderText(f"{u_len} : ")
-         # --- 6. Onglet DOF ---
         
     # ========================================
     # EMPTY AVATAR

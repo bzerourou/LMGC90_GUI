@@ -902,7 +902,7 @@ def add_postpro_command(self):
     # 2. Ajout visuel dans l'arbre
     item = QTreeWidgetItem([name, str(step)])
     self.post_tree.addTopLevelItem(item)
-    
+
     # Feedback
     self.statusBar().showMessage(f"Commande {name} ajoutée.")
 
