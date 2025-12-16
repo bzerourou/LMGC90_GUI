@@ -31,6 +31,8 @@ from updates import (
     update_model_tree, update_status, _safe_eval_dict
 )
 
+from visu import visu_lmgc, open_paraview, _find_paraview, about
+
 class LMGC90GUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -152,7 +154,7 @@ class LMGC90GUI(QMainWindow):
         file_menu.addAction("Quitter", self.close)
         tools_menu = menu.addMenu("Outils")
         tools_menu.addAction("Options ", self.open_options_dialog)
-        menu.addMenu("Help").addAction("À propos", self.about)
+        menu.addMenu("Help").addAction("À propos", lambda: about(self))
         #racourci menu  
         file_menu.actions()[0].setShortcut("Ctrl+N")  # Nouveau
         file_menu.actions()[1].setShortcut("Ctrl+O")  # Ouvrir
@@ -210,10 +212,10 @@ class LMGC90GUI(QMainWindow):
         render_tab = QWidget()
         rl = QVBoxLayout()
         lmgc_vis_btn = QPushButton("LMGC visualisation")
-        lmgc_vis_btn.clicked.connect(self.visu_lmgc)
+        lmgc_vis_btn.clicked.connect(lambda: visu_lmgc(self))
         rl.addWidget(lmgc_vis_btn)
         paraview_btn = QPushButton("ParaView")
-        paraview_btn.clicked.connect(self.open_paraview)
+        paraview_btn.clicked.connect(lambda : open_paraview(self))
         rl.addWidget(paraview_btn)
         render_tab.setLayout(rl)
         render_tabs.addTab(render_tab, "Rendu")
@@ -2463,46 +2465,6 @@ class LMGC90GUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"{e}")
 
-    # ========================================
-    # VISUALISATION
-    # ========================================
-    
-    def visu_lmgc(self):
-        
-        self.statusBar().showMessage("Visualisation du modèle...")
-        QApplication.processEvents()
-        try:
-            
-            pre.visuAvatars(self.bodies)
-        except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Visu : {e}")
-
-    def open_paraview(self):
-        try:
-            dir_path = self.current_project_dir or os.getcwd()
-            pvd = os.path.join(dir_path, 'DISPLAY', 'rigids.pvd')
-            if not os.path.exists(pvd):
-                QMessageBox.warning(self, "Erreur", "rigids.pvd introuvable\nExécutez le script")
-                return
-            exe = self._find_paraview()
-            if not exe:
-                QMessageBox.critical(self, "Erreur", "ParaView non trouvé")
-                return
-            subprocess.run([exe, pvd], check=True)
-            QMessageBox.information(self, "Succès", "ParaView ouvert")
-        except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"ParaView : {e}")
-
-    def _find_paraview(self):
-        if shutil.which('paraview'): return 'paraview'
-        import glob
-        for p in [r"C:\Program Files\ParaView*\bin\paraview.exe"]:
-            for f in glob.glob(p):
-                if os.path.exists(f): return f
-        return None
-
-    def about(self):
-        QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.5 [stable]\n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
 
 #######################################
 #--------fonction main
