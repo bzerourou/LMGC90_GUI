@@ -1,7 +1,7 @@
 import math
 import numpy as np
 from pylmgc90 import pre
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox, QApplication
 
 from updates import (
  _safe_eval_dict
