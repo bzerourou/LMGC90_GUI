@@ -516,3 +516,21 @@ def update_model_tree(self):
         vis_node.addChild(item)
 
     self.tree.addTopLevelItem(root); root.setExpanded(True)
+
+
+def update_contactors_fields(self):
+        
+        for i in range(self.contactors_layout.count()):
+                row_widget = self.contactors_layout.itemAt(i).widget()
+                if not row_widget: continue
+                row = row_widget.layout()
+                shape = row.itemAt(1).widget().currentText()
+                params = row.itemAt(5).widget()
+        if shape in ["DISKx", "xKSID"] :
+            params.setText("byrd=0.3")
+        if shape == "JONCx" : 
+            params.setText("axe1=1.0,axe2=0.1")
+        elif shape == "POLYG" :
+            params.setText("nb_vertices=4, vertices=[[-1.,-1.],[1.,-1.],[1.,1.],[-1.,1.]] ")
+        elif shape == "PT2Dx" : 
+            params.setText("")
