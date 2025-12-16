@@ -23,7 +23,13 @@ from tabs import (
     _create_dof_tab, _create_contact_tab, _create_visibility_tab,
     _create_postpro_tab
 )
-
+from updates import (
+    update_material_fields, update_model_options_fields, update_model_elements,
+    update_avatar_types, update_avatar_fields, update_polygon_fields,
+    update_loop_fields, update_dof_options, update_contact_law,
+    update_advanced_fields, update_granulo_fields, update_selections,
+    update_model_tree, update_status
+)
 
 class LMGC90GUI(QMainWindow):
     def __init__(self):
@@ -84,8 +90,8 @@ class LMGC90GUI(QMainWindow):
         self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
         self.statusBar().showMessage("Prêt")
 
-        self.update_selections()
-        self.update_model_tree()
+        update_selections(self)
+        update_model_tree(self)
         self._initializing = False
         self.cleanup_operations()
         self.refresh_interface_units()
@@ -216,7 +222,7 @@ class LMGC90GUI(QMainWindow):
 
     
     
-        
+    #=== GRANULO
     def refresh_granulo_combos(self):
         """Met à jour les listes déroulantes quand on clique sur l'onglet"""
         # Sauvegarde sélection actuelle
@@ -379,8 +385,8 @@ class LMGC90GUI(QMainWindow):
                 elif container_params['type'] in ['disk', 'drum', 'couette']:
                     msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
 
-            self.update_selections()
-            self.update_model_tree()
+            update_selections(self)
+            update_model_tree(self)
             self.statusBar().showMessage("Dépôt terminé.")
             QMessageBox.information(self, "Succès", msg)
 
@@ -932,8 +938,8 @@ class LMGC90GUI(QMainWindow):
                 'contactors': contactors_data
             })
 
-            self.update_selections()
-            self.update_model_tree()
+            update_selections(self)
+            update_model_tree(self)
             QMessageBox.information(self, "Succès", "Avatar vide créé avec succès !")
 
         except Exception as e:
@@ -1131,8 +1137,8 @@ class LMGC90GUI(QMainWindow):
 
                 return
 
-            self.update_selections()
-            self.update_model_tree()
+            update_selections(self)
+            update_model_tree(self)
 
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Boucle : {e}")
@@ -1161,8 +1167,8 @@ class LMGC90GUI(QMainWindow):
             elif isinstance(widget, QComboBox):
                 widget.setCurrentIndex(0)
         self._init_containers()
-        self.update_selections()
-        self.update_model_tree()
+        update_selections(self)
+        update_model_tree(self)
         self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
         self.update_status("Nouveau projet créé")
         QMessageBox.information(self, "Succès", "Nouveau projet vide")
@@ -1184,8 +1190,8 @@ class LMGC90GUI(QMainWindow):
 
             self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
             self.update_status(f"Projet chargé : {self.project_name}")
-            self.update_model_tree()
-            self.update_selections()
+            update_model_tree(self)
+            update_selections(self)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Impossible d'ouvrir le projet :\n{e}")
 
@@ -1576,8 +1582,8 @@ class LMGC90GUI(QMainWindow):
             if loop.get('created_count', 0) < loop.get('count', 0) :
                 loop['active'] = True
                                 
-        self.update_selections()
-        self.update_model_tree()
+        update_selections(self)
+        update_model_tree(self)
     # ========================================
     # CRÉATIONS
     # ========================================
@@ -1622,8 +1628,8 @@ class LMGC90GUI(QMainWindow):
             }
             self.material_creations.append(save_dict)
 
-            self.update_selections()
-            self.update_model_tree()
+            update_selections(self)
+            update_model_tree(self)
 
         except Exception as e:
             QMessageBox.critical(self, "Erreur Matériau", f"{e}")
@@ -1675,7 +1681,7 @@ class LMGC90GUI(QMainWindow):
                 model_dict['mass_storage'] = options['mass_storage']
             self.model_creations.append(model_dict)
             self.mods_dict[name] = mod
-            self.update_selections(); self.update_model_tree()
+            update_selections(self); update_model_tree(self)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Modèle : {e}")
 
@@ -1892,11 +1898,11 @@ class LMGC90GUI(QMainWindow):
                         QMessageBox.information(self, "Groupe complet !",
                             f"Le groupe <b>{group_name}</b> est terminé : {loop['count']} avatars créés.\n"
                             f"Tu peux maintenant l'utiliser dans DOF.")
-                    self.update_model_tree()
+                    update_model_tree(self)
                     added_to_manual = True
                     break  # un seul groupe manuel actif à la fois
             # mise à jour UI
-            self.update_selections(); self.update_model_tree()
+            update_selections(self); update_model_tree(self)
         
             # message visuel si demandé si ajout manuel
             if added_to_manual:
@@ -1938,7 +1944,7 @@ class LMGC90GUI(QMainWindow):
                 getattr(body, action)(**params)  
                 self.operations.append({'target':'avatar', 'body_index': idx, 'type': action, 'params': params})
                 QMessageBox.information(self, "Succès", f"Action '{action}' appliquée à l'avatar {idx}")    
-            self.update_model_tree()
+            update_model_tree(self)
         
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"DOF : {e}")
@@ -1959,7 +1965,7 @@ class LMGC90GUI(QMainWindow):
 
             self.contact_creations.append(law_dict)
             self.contact_laws.addBehav(law); self.contact_laws_objects.append(law)                          
-            self.update_selections(); self.update_model_tree()
+            update_selections(self); update_model_tree(self)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Loi : {e}")
 
@@ -1981,127 +1987,13 @@ class LMGC90GUI(QMainWindow):
                 'CorpsAntagoniste': st.CorpsAntagoniste, 'antagoniste': st.antagoniste, 'colorAntagoniste': st.colorAntagoniste,
                 'behav': law.nom, 'alert': st.alert
             })
-            self.update_model_tree()
+            update_model_tree(self)
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Visibilité : {e}")
-    # ========================================
-    # UI
-    # ========================================
-    def update_selections(self):
-        for combo, items, enabled in [
-            (self.avatar_material, [m.nom for m in self.material_objects], bool(self.material_objects)),
-            (self.avatar_model, [m.nom for m in self.model_objects], bool(self.model_objects)),
-            (self.behav, [l.nom for l in self.contact_laws_objects], bool(self.contact_laws_objects)),
-            (self.dof_avatar_name, [f"Avatar {i} ({b.contactors[0].color})" for i, b in enumerate(self.bodies_objects)], bool(self.bodies_objects)),
-            (self.loop_avatar_type, [a['type'] for a in self.avatar_creations], bool(self.avatar_creations))
-        ]:
-            combo.blockSignals(True); combo.clear(); combo.addItems(items); combo.setEnabled(enabled); combo.blockSignals(False)
-
-        # todo à compléter
-        self.dof_avatar_name.blockSignals(True)
-        self.dof_avatar_name.clear()
-        for i, b in enumerate(self.bodies_objects):
-            color = b.contactors[0].color if b.contactors else "????"
-            self.dof_avatar_name.addItem(f"Avatar {i} ({color})")
-        for name in self.group_names:
-            count = len(self.avatar_groups.get(name, []))
-            self.dof_avatar_name.addItem(f"GROUPE: {name} ({count} avatars)")
-        self.dof_avatar_name.blockSignals(False)
-
-        # Boucles
-        self.loop_avatar_type.blockSignals(True)
-        self.loop_avatar_type.clear()
-        self.loop_avatar_type.addItems([a.get('type', 'Inconnu') for a in self.avatar_creations])
-        self.loop_avatar_type.blockSignals(False)
-        # empty avatar
-        self.adv_material.blockSignals(True)
-        self.adv_material.clear()
-        self.adv_material.addItems([m.nom for m in self.material_objects])
-        self.adv_material.blockSignals(False)
-
-        self.adv_model.blockSignals(True)
-        self.adv_model.clear()
-        self.adv_model.addItems([m.nom for m in self.model_objects])
-        self.adv_model.blockSignals(False)
-        #granulométrie 
-        self.gran_mat.blockSignals(True)
-        self.gran_mat.clear()
-        self.gran_mat.addItems([m.nom for m in self.material_objects])
-        self.gran_mod.addItems([m.nom for m in self.model_objects])
-        self.gran_mat.blockSignals(False)
-
+  
     # ========================================
     # INTERACTION ARBRE
     # ========================================
-
-    def update_model_tree(self):
-        self.tree.clear()
-        root = QTreeWidgetItem(["Modèle LMGC90", "", ""])
-   
-         # Matériaux
-        mat_node = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.material_objects)}"])
-        for i, mat in enumerate(self.material_objects):
-            ma = self.material_creations[i]
-            display_text = f"{mat.nom} - {ma['type']}"
-            item = QTreeWidgetItem([display_text, "Matériau", f"ρ={mat.density}"])
-            item.setData(0, Qt.ItemDataRole.UserRole, ("material", i))
-            mat_node.addChild(item)
-
-        # Modèles
-        mod_node = QTreeWidgetItem(root, ["Modèles", "", f"{len(self.model_objects)}"])
-        for i, mod in enumerate(self.model_objects):
-            item = QTreeWidgetItem([mod.nom, "Modèle", f"{mod.element} dim={mod.dimension}"])
-            item.setData(0, Qt.ItemDataRole.UserRole, ("model", i))
-            mod_node.addChild(item)
-
-        # Avatars (le plus critique)
-        av_node = QTreeWidgetItem(root, ["Avatars", "", f"{len(self.bodies_objects)}"])
-        for i, body in enumerate(self.bodies_objects):
-            # il faut gérer l'erreur
-            av = self.avatar_creations[i]
-            color = body.contactors[0].color if body.contactors else "?????"
-            name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
-            if av.get('type')=='emptyAvatar' : 
-                # Affichage spécial pour avatars avancés
-                cont_types = [c['shape'] for c in av.get('contactors', [])]
-                name = f" Avatar vide  ({', '.join(cont_types)}) — {av['color']}"
-            else : 
-                color = body.contactors[0].color if body.contactors else "?????" 
-                name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
-            item = QTreeWidgetItem([name, "Avatar", str(i)])
-            item.setData(0, Qt.ItemDataRole.UserRole, ("avatar", i))
-            av_node.addChild(item)
-
-        # affichage des groupes d'avatars
-        if self.avatar_groups:
-            grp_node = QTreeWidgetItem(root, ["Groupes d'avatars", "", f"{len(self.avatar_groups)}"])
-            # Tri alphabétique des noms de groupes
-            for name in sorted(self.avatar_groups.keys()):
-                count = len(self.avatar_groups[name])
-                QTreeWidgetItem(grp_node, [f"{name} ({count} avatars)", "Groupe", ""])
-
-        self.tree.addTopLevelItem(root)
-        root.setExpanded(True)
-        
-        # Lois de contact
-        law_node = QTreeWidgetItem(root, ["Lois de contact", "", f"{len(self.contact_laws_objects)}"])
-        for i, law in enumerate(self.contact_laws_objects):
-            if hasattr(law, 'fric'):
-                info = f"fric={law.fric}"
-            else : info = ""
-            item = QTreeWidgetItem([law.nom, "Loi", info])
-            item.setData(0, Qt.ItemDataRole.UserRole, ("contact", i))
-            law_node.addChild(item)
-
-        # Visibilités
-        vis_node = QTreeWidgetItem(root, ["Tables de visibilité", "", f"{len(self.visibilities_table_objects)}"])
-        for i, st in enumerate(self.visibilities_table_objects):
-            txt = f"{st.candidat}({st.colorCandidat}) ↔ {st.antagoniste} → {st.behav}"
-            item = QTreeWidgetItem([txt, "Visibilité", ""])
-            item.setData(0, Qt.ItemDataRole.UserRole, ("visibility", i))
-            vis_node.addChild(item)
-
-        self.tree.addTopLevelItem(root); root.setExpanded(True)
 
     def activate_tab(self, item, column): 
         
@@ -2318,8 +2210,8 @@ class LMGC90GUI(QMainWindow):
                 self.add_visibility_rule()
                 return
 
-            self.update_model_tree()
-            self.update_selections()
+            update_model_tree(self)
+            update_selections(self)
             QMessageBox.information(self, "Succès", "Modifié avec succès")
         except Exception as e:
             QMessageBox.critical(self, "Erreur", str(e))
@@ -2361,8 +2253,8 @@ class LMGC90GUI(QMainWindow):
                 self.visibilities_table_objects.pop(idx)
                 self.visibility_creations.pop(idx)
 
-        self.update_selections()
-        self.update_model_tree()
+        update_selections(self)
+        update_model_tree(self)
         self.current_selected = None
         QMessageBox.information(self, "Succès", "Supprimé")
     # ========================================

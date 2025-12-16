@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QLineEdit,
-    QComboBox, QCheckBox, QLabel, QPushButton, QScrollArea, QTreeWidget
+    QComboBox, QCheckBox, QLabel, QPushButton, QScrollArea, QTreeWidget, QTreeWidgetItem
 )
 from PyQt6.QtCore import Qt
 # ========================================

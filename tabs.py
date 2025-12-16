@@ -9,7 +9,7 @@ from updates import (
     update_avatar_types, update_avatar_fields, update_polygon_fields,
     update_loop_fields, update_dof_options, update_contact_law,
     update_advanced_fields, update_granulo_fields, update_selections,
-    update_model_tree
+    update_model_tree, update_status
 )
 
 # ========================================
