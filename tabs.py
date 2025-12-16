@@ -22,7 +22,7 @@ def _create_material_tab(self):
     ml = QVBoxLayout()
     self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELAS", "ELAS_DILA", "VISCO_ELAS", "ELAS_PLAS", "THERMO_ELAS", "PORO_ELAS"])
     self.mat_density_label = QLabel("Densité :"); self.mat_density = QLineEdit("1000."); self.mat_props_label = QLabel("Propriétés (ex: young=1e9) :");self.mat_props = QLineEdit("")
-    self.mat_type.currentTextChanged.connect(self.update_material_fields)      
+    self.mat_type.currentTextChanged.connect(update_material_fields)      
     for label, widget in [
         ("Nom :", self.mat_name), ("Type :", self.mat_type)
     ]:
@@ -50,7 +50,7 @@ def _create_model_tab(self):
     self.model_name = QLineEdit("rigid")
     self.model_physics = QComboBox(); self.model_physics.addItems(["MECAx"])
     self.model_element = QComboBox()
-    self.model_element.currentTextChanged.connect(self.update_model_options_fields)
+    self.model_element.currentTextChanged.connect(update_model_options_fields)
     self.model_dimension = QComboBox(); self.model_dimension.addItems(["2", "3"])
     self.model_dimension.currentTextChanged.connect(self.model_dimension_changed)
     self.model_options = QLineEdit("")
@@ -79,7 +79,7 @@ def _create_model_tab(self):
     self.tabs.addTab(mod_tab, "Modèle")
     self.mod_tab = mod_tab
     #initialisation des éléments
-    self.update_model_elements()
+    update_model_elements(self)
 
 def _create_avatar_tab(self):
     # --- Avatar ---
@@ -101,7 +101,7 @@ def _create_avatar_tab(self):
     self.avatar_gen_type = QLabel("Type de génération ")
     self.avatar_gen = QComboBox()
     self.avatar_gen.addItems(["regular", "full", "bevel"] )
-    self.avatar_gen.currentTextChanged.connect(self.update_polygon_fields)
+    self.avatar_gen.currentTextChanged.connect(update_polygon_fields)
     self.avatar_center_label = QLabel("Centre:");self.avatar_center = QLineEdit("0.0,0.0")
     self.avatar_material = QComboBox()
     self.avatar_model = QComboBox()
@@ -137,13 +137,13 @@ def _create_avatar_tab(self):
 
     # Connecter le signal après la création des widgets, en bloquant les signaux
     self.avatar_type.blockSignals(True)
-    self.update_avatar_types(self.model_dimension.currentText())
+    update_avatar_types(self, self.model_dimension.currentText())
     self.avatar_type.blockSignals(False)
-    self.avatar_type.currentTextChanged.connect(self.update_avatar_fields)
+    self.avatar_type.currentTextChanged.connect(lambda text: update_avatar_fields(self, text))
 
     # Terminer l'initialisation
     self._initializing = False
-    self.update_avatar_fields(self.avatar_type.currentText())
+    update_avatar_fields(self, self.avatar_type.currentText())
 
 def _create_empty_avatar_tab(self):
         tab = QWidget()

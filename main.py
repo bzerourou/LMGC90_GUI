@@ -21,14 +21,14 @@ from tabs import (
     _create_material_tab, _create_model_tab, _create_avatar_tab,
     _create_empty_avatar_tab, _create_loop_tab, _create_granulo_tab,
     _create_dof_tab, _create_contact_tab, _create_visibility_tab,
-    _create_postpro_tab
+    _create_postpro_tab, 
 )
 from updates import (
-    update_material_fields, update_model_options_fields, update_model_elements,
-    update_avatar_types, update_avatar_fields, update_polygon_fields,
+    update_model_elements,
+    update_avatar_types, update_avatar_fields, 
     update_loop_fields, update_dof_options, update_contact_law,
     update_advanced_fields, update_granulo_fields, update_selections,
-    update_model_tree, update_status
+    update_model_tree, update_status, _safe_eval_dict
 )
 
 class LMGC90GUI(QMainWindow):
@@ -397,132 +397,6 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     # UTILITAIRES
     # ========================================
-    
-
-    ''' Met à jour la barre de statut avec un message temporaire'''
-    def update_status(self, msg):
-        self.statusBar().showMessage(msg, 5000)
-
-    ''' Met à jour les types d'avatars disponibles selon la dimension du modèle
-      dimension : str : "2" ou "3"'''
-    def update_avatar_types(self, dimension):
-        self.avatar_type.blockSignals(True)
-        self.avatar_type.clear()
-        if dimension == "2":
-            self.avatar_type.addItems(self.avatar_types_2d)
-        else:
-            self.avatar_type.addItems(self.avatar_types_3d)
-        self.avatar_type.blockSignals(False)
-        
-        self.update_avatar_fields(self.avatar_type.currentText())
-
-    ''' Met à jour les champs affichés dans l'onglet Avatar selon le type sélectionné
-        avatar_type : str : type d'avatar sélectionné'''
-    def update_avatar_fields(self, avatar_type): 
-         if self._initializing:
-            return
-         
-         # Liste des widgets à gérer
-         widgets = [
-             self.avatar_hallowed,
-            self.avatar_radius_label, self.avatar_radius,
-            self.avatar_center_label, self.avatar_center,
-            self.avatar_axis_label, self.avatar_axis,
-            self.avatar_vertices_label, self.avatar_vertices,
-            self.avatar_gen_type, self.avatar_gen,
-            self.avatar_nb_vertices_label, self.avatar_nb_vertices,
-            self.avatar_r_ovoid_label, self.avatar_r_ovoid,
-            self.wall_length_label, self.wall_length,
-            self.wall_height_label, self.wall_height,
-        ]
-         
-         # Masquer tous les champs par défaut
-         for widget in widgets:
-            if widget is not None:
-                widget.setVisible(False)
-        # --- Valeurs par défaut ---
-         self.avatar_center.setText("0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0")
-         self.avatar_color.setText("BLUEx")
-
-        # Afficher les champs pertinents
-         if avatar_type in ["rigidDisk", "rigidDiscreteDisk", "rigidCluster"]:
-                self.avatar_radius_label.setVisible(True)
-                self.avatar_radius.setVisible(True)
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
-                self.avatar_color.setText("BLUEx")
-                if avatar_type == "rigidDisk":
-                    self.avatar_hallowed.setVisible(True)
-                else:
-                    self.avatar_hallowed.setVisible(False)
-                    
-                if avatar_type == "rigidCluster":
-                    self.avatar_nb_vertices_label.setVisible(True)
-                    self.avatar_nb_vertices_label.setText("Nombre de disques : ")
-                    self.avatar_nb_vertices.setVisible(True)
-                    self.avatar_nb_vertices.setText("5")
-         elif avatar_type == "rigidJonc" :
-                self.avatar_radius_label.setVisible(False)
-                self.avatar_radius.setVisible(False)
-                self.avatar_axis_label.setVisible(True)
-                self.avatar_axis.setVisible(True)              
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
-                self.avatar_color.setText("VERTx")
-         elif avatar_type == "rigidPolygon" :
-                self.avatar_radius_label.setVisible(True)
-                self.avatar_radius.setVisible(True)
-                self.avatar_gen_type.setVisible(True)
-                self.avatar_gen.setVisible(True)
-                if self.avatar_gen.currentText()== 'regular' : 
-                    self.avatar_nb_vertices_label.setVisible(True)
-                    self.avatar_nb_vertices.setVisible(True)
-                    self.avatar_nb_vertices_label.setText("Nombre de vertices (>=3)")
-                else : 
-                    self.avatar_nb_vertices_label.setVisible(False)
-                    self.avatar_nb_vertices.setVisible(False)
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
-                self.avatar_color.setText("REDxx")
-                #self.avatar_gen.setText('Regular')
-
-         elif avatar_type == "rigidOvoidPolygon" :
-                self.avatar_radius_label.setVisible(False)
-                self.avatar_radius.setVisible(False)
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
-                self.avatar_r_ovoid_label.setVisible(True)
-                self.avatar_r_ovoid.setVisible(True)
-                self.avatar_nb_vertices_label.setVisible(True)
-                self.avatar_nb_vertices.setVisible(True)
-                self.avatar_color.setText("CYANx")
-         elif avatar_type in ["roughWall", "fineWall", "smoothWall", "granuloRoughWall"]:
-                self.avatar_center_label.setVisible(True)
-                self.avatar_center.setVisible(True)
-                self.wall_length_label.setVisible(True)
-                self.wall_length.setVisible(True)
-                self.wall_height_label.setVisible(True)
-                self.wall_height.setVisible(True)
-                self.avatar_nb_vertices_label.setVisible(True)
-                self.avatar_nb_vertices.setVisible(True)
-
-                # --- Réinitialisation du texte selon le type ---
-                if avatar_type == "granuloRoughWall":
-                    self.wall_height_label.setText("Rayons (rmin, rmax) :")
-                    self.wall_height.setText("rmin = 0.1, rmax = 0.2")
-                elif avatar_type == "smoothWall":
-                    self.wall_height_label.setText("Hauteur (h) :")
-                    self.wall_height.setText("0.15")
-                else:  # roughWall, fineWall
-                    self.wall_height_label.setText("Rayon (r) :")
-                    self.wall_height.setText("0.1")
-
-                self.wall_length.setText("2.0")
-                self.avatar_nb_vertices.setText("5")
 
     ''' Met à jour les options disponibles selon l'action DOF sélectionnée
         action : str : action DOF sélectionnée'''
@@ -537,31 +411,13 @@ class LMGC90GUI(QMainWindow):
 
     def model_dimension_changed(self, dim_text) :
         self.dim = int(dim_text)              # garde la dimension globale
-        self.update_avatar_types(dim_text)    # remplissage du ComboBox des avatars
+        update_avatar_types(self, dim_text)    # remplissage du ComboBox des avatars
         # ré-initialise le texte du centre selon la dimension
         default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
         self.avatar_center.setText(default_center)
-        self.update_model_elements()
+        update_model_elements(self)
 
-    ''' Met à jour les champs affichés dans l'onglet Avatar selon le type de génération de polygone
-        gen_type : str : type de génération sélectionné'''
-    def update_polygon_fields(self, gen_type):
-        if self.avatar_type.currentText() != "rigidPolygon":
-            return
-
-        # nb_vertices n’est utile que pour le mode *regular*
-        show_nb = (gen_type == "regular")
-        self.avatar_nb_vertices_label.setVisible(show_nb)
-        self.avatar_nb_vertices.setVisible(show_nb)
-
-        # le champ *vertices* (liste manuelle) n’est utile que pour *full* et *bevel*
-        show_vertices = (gen_type in ("full", "bevel"))
-        self.avatar_vertices_label.setVisible(show_vertices)
-        self.avatar_vertices.setVisible(show_vertices)
-
-        # valeur par défaut du nombre de vertices
-        if show_nb and not self.avatar_nb_vertices.text().strip():
-            self.avatar_nb_vertices.setText("5")
+  
     ''' Met à jour les champs affichés dans l'onglet Boucles selon le type de boucle sélectionné
         loop_type : str : type de boucle sélectionné'''
     def update_loop_fields(self, loop_type):
@@ -583,100 +439,6 @@ class LMGC90GUI(QMainWindow):
                 self.loop_store_group.setEnabled(True)
                 self.loop_count.setPlaceholderText("")
 
-    ''' Met à jour les champs de l'onglet Matériau selon le type sélectionné'''
-    def update_material_fields(self):
-        if self.mat_type.currentText() == "RIGID":
-            self.mat_name.setText("rigid")
-            self.mat_props.setText("")
-        elif self.mat_type.currentText() == "ELAS":
-            self.mat_name.setText("steel")
-            self.mat_props.setText("elas='standard', young=0.1e+15, nu=0.2, anisotropy='isotropic'")
-        elif self.mat_type.currentText() == "ELAS_DILA":
-            self.mat_name.setText("steel")
-            self.mat_props.setText("elas='standard', young=0.1e+15, nu=0.2, anisotropy='isotropic',dilatation=1e-5, T_ref_meca=20.")
-        elif self.mat_type.currentText() == "VISCO_ELAS":
-            self.mat_name.setText("steel")
-            self.mat_props.setText("elas='standard', anisotropy='isotropic', young=1.17e11, nu=0.35,viscous_model='KelvinVoigt', viscous_young=1.17e9, viscous_nu=0.35")
-        elif self.mat_type.currentText() == "ELAS_PLAS":
-            self.mat_name.setText("steel")
-            self.mat_props.setText("elas='standard', anisotropy='isotropic', young=1.17e11, nu=0.35,critere='Von-Mises', isoh='linear', iso_hard=4.e8, isoh_coeff=1e8, cinh='none', visc='none'")
-        elif self.mat_type.currentText() == "THERMO_ELAS":
-            self.mat_name.setText("steel")
-            self.mat_props.setText("elas='standard', young=0.0, nu=0.0, anisotropy='isotropic', dilatation = 0.0,T_ref_meca = 0.0, conductivity='field', specific_capacity='field'")
-        elif self.mat_type.currentText() == "PORO_ELAS":
-            self.mat_name.setText("steel")
-            self.mat_props.setText("elas='standard', young=0.0, nu=0.0, anisotropy='isotropic',hydro_cpl = 0.0, conductivity='field', specific_capacity='field'")
-        elif self.mat_type.currentText() == "DISCRETE":
-            self.mat_density.setEnabled(False)
-            self.mat_density.setText("ignorée")
-            self.mat_props.setText("masses=[0., 0., 0.], stiffnesses=[1e7, 1e7, 1e7], viscosities=[0., 0., 0.]")
-        elif  self.mat_type.currentText() == "USER_MAT":
-            self.mat_density.setEnabled(True)
-            self.mat_density.setText("2000.")
-            self.mat_props.setText("file_mat='elas.mat'")
-        else:
-            self.mat_density.setEnabled(True)
-            self.mat_density.setText("2500.")
-
-    def update_model_options_fields(self):
-        # Vider toutes les options
-        for i in reversed(range(self.model_options_layout.count())):
-            widget = self.model_options_layout.takeAt(i).widget()
-            if widget:
-                widget.setParent(None)
-
-        elem = self.model_element.currentText()
-
-        # === CORPS RIGIDES → AUCUNE OPTION ===
-        rigid_elements = ["Rxx2D", "Rxx3D"]
-        if elem in rigid_elements:
-            self.model_options_group.setVisible(False)  # ← Cache complètement le groupe
-            return  # → on sort, rien à afficher
-        # === SINON : on affiche les options ===
-        self.model_options_group.setVisible(True)
-        specific = self.ELEMENT_OPTIONS.get(elem, {})
-        # Options spécifiques à l’élément
-        for opt, values in specific.items():
-            combo = QComboBox()
-            combo.addItems(values)
-            combo.setCurrentIndex(0)
-            self.model_options_layout.addRow(f"{opt}:", combo)
-            self.model_option_combos[opt] = combo
-
-        # Options globales (toujours disponibles sauf pour rigides)
-        for opt, values in self.GLOBAL_MODEL_OPTIONS.items():
-            combo = QComboBox()
-            combo.addItems(values)
-            combo.setCurrentIndex(0)
-            self.model_options_layout.addRow(f"{opt}:", combo)
-            self.model_option_combos[opt] = combo   # ← même dictionnaire
-
-        # Champ libre
-        self.external_fields_input = QLineEdit()
-        self.model_options_layout.addRow("external_fields (comma):", self.external_fields_input)
-
-    def update_model_elements(self):
-        dim = int(self.model_dimension.currentText())
-        if dim == 2:
-            elements = ["Rxx2D", "T3xxx", "Q4xxx","T6xxx","Q8xxx","Q9xxx","BARxx"]
-        else:  # dim == 3
-            elements = ["Rxx3D", "H8xxx", "SHB8x", "H20xx", "SHB6x", "TE10x", "DKTxx","BARxx"]
-
-        current = self.model_element.currentText()
-        self.model_element.blockSignals(True)   # ← IMPORTANT : bloque les signaux pendant le changement
-        self.model_element.clear()
-        self.model_element.addItems(elements)
-        self.model_element.blockSignals(False)
-
-        # Restaurer la sélection si possible, sinon choix par défaut
-        if current in elements:
-            self.model_element.setCurrentText(current)
-        else:
-            default = "Rxx2D" if dim == 2 else "Rxx3D"
-            self.model_element.setCurrentText(default)
-
-        # ← FORCER la mise à jour des options APRÈS le changement
-        self.update_model_options_fields()
 
     def update_contact_law(self): 
         law = self.contact_type.currentText()
@@ -890,7 +652,7 @@ class LMGC90GUI(QMainWindow):
                 color_c = row.itemAt(3).widget().text().strip() or color
                 params_text = row.itemAt(5).widget().text().strip()
 
-                kwargs = self._safe_eval_dict(params_text)
+                kwargs = _safe_eval_dict(self, params_text)
                 if shape in  ["DISKx", "xKSID"]:
                     body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')), shift=kwargs.get('shift'))
                
@@ -920,7 +682,7 @@ class LMGC90GUI(QMainWindow):
                 shape = row.itemAt(1).widget().currentText()
                 color_c = row.itemAt(3).widget().text().strip() or color
                 params_text = row.itemAt(5).widget().text().strip()
-                kwargs = self._safe_eval_dict(params_text)
+                kwargs = _safe_eval_dict(self,params_text)
 
                 contactors_data.append({
                     'shape': shape,
@@ -1170,7 +932,7 @@ class LMGC90GUI(QMainWindow):
         update_selections(self)
         update_model_tree(self)
         self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
-        self.update_status("Nouveau projet créé")
+        update_status(self, "Nouveau projet créé")
         QMessageBox.information(self, "Succès", "Nouveau projet vide")
 
     def open_project(self):
@@ -1189,7 +951,7 @@ class LMGC90GUI(QMainWindow):
      
 
             self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
-            self.update_status(f"Projet chargé : {self.project_name}")
+            update_status(self, f"Projet chargé : {self.project_name}")
             update_model_tree(self)
             update_selections(self)
         except Exception as e:
@@ -1201,7 +963,7 @@ class LMGC90GUI(QMainWindow):
             return self.save_project_as()
         # Sinon : sauvegarde rapide dans le dossier déjà connu
         self.do_save()
-        self.update_status(f"Projet sauvegardé : {self.project_name}.lmgc90")
+        update_status(self, f"Projet sauvegardé : {self.project_name}.lmgc90")
 
     def save_project_as(self):
         # Demande un dossier
@@ -1221,7 +983,7 @@ class LMGC90GUI(QMainWindow):
 
         self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
         self.do_save()
-        self.update_status(f"Projet enregistré dans : {dir_path}")
+        update_status(self, f"Projet enregistré dans : {dir_path}")
 
     
     def do_save(self):
@@ -1595,7 +1357,7 @@ class LMGC90GUI(QMainWindow):
 
             mat_type = self.mat_type.currentText()
             density_text = self.mat_density.text().strip()
-            props = self._safe_eval_dict(self.mat_props.text())
+            props = _safe_eval_dict(self,self.mat_props.text())
 
             # --- Tous les matériaux standards (sauf DISCRET et USER_MAT) ---
             if mat_type in ["RIGID", "ELAS", "ELAS_DILA", "VISCO_ELAS", "ELAS_PLAS", "THERMO_ELAS", "PORO_ELAS"]:
@@ -1645,7 +1407,7 @@ class LMGC90GUI(QMainWindow):
             element = self.model_element.currentText()
             name = self.model_name.text().strip()
             if not name: raise ValueError("Nom vide")
-            props = self._safe_eval_dict(self.model_options.text())
+            props = _safe_eval_dict(self,self.model_options.text())
             if element in ["Rxx2D", "Rxx3D"]: 
                 mod = pre.model(name=name, physics=self.model_physics.currentText(), element=element,
                             dimension=int(self.model_dimension.currentText()), **props)
@@ -1693,7 +1455,7 @@ class LMGC90GUI(QMainWindow):
             center = [float(x.strip()) for x in self.avatar_center.text().split(',')]
             #vertices = [float(x) for x in self.avatar_vertices.text().split(",")]
             if len(center) != self.dim: raise ValueError(f"Attendu {self.dim} coordonnées")
-            props = self._safe_eval_dict(self.avatar_properties.text())
+            props = _safe_eval_dict(self,self.avatar_properties.text())
             mat = self.material_objects[self.avatar_material.currentIndex()]
             mod = self.model_objects[self.avatar_model.currentIndex()]
             type = self.avatar_type.currentText()
@@ -1921,7 +1683,7 @@ class LMGC90GUI(QMainWindow):
 
             selected_text = self.dof_avatar_name.currentText()
             action = self.dof_avatar_force.currentText()
-            params = self._safe_eval_dict(self.dof_options.text())
+            params = _safe_eval_dict(self,self.dof_options.text())
             if not isinstance(params, dict):
                 raise ValueError("Paramètres invalides")
             
@@ -1953,7 +1715,7 @@ class LMGC90GUI(QMainWindow):
         try:
             name = self.contact_name.text().strip()
             if not name: raise ValueError("Nom vide")
-            props = self._safe_eval_dict(self.contact_properties.text())
+            props = _safe_eval_dict(self,self.contact_properties.text())
             type_contact =  self.contact_type.currentText()
             if  type_contact in ["IQS_CLB", "IQS_CLB_g0"] :
                 law = pre.tact_behav(name=name, law=self.contact_type.currentText(), **props)
@@ -2039,12 +1801,13 @@ class LMGC90GUI(QMainWindow):
             if idx < 0 or idx >= len(self.avatar_creations):
                 return
             av = self.avatar_creations[idx]
+            print(av['type'])
             self.tabs.setCurrentWidget(self.av_tab)
             # --- Mise à jour des champs ---
             self.avatar_type.blockSignals(True)
             self.avatar_type.setCurrentText(av['type'])
             self.avatar_type.blockSignals(False)
-            self.update_avatar_fields(av['type'])
+            update_avatar_fields(self, av['type'])
             self.avatar_center.setText(",".join(map(str, av['center'])))
             self.avatar_material.setCurrentText(av['material'])
             self.avatar_model.setCurrentText(av['model'])

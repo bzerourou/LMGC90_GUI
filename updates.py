@@ -39,7 +39,7 @@ def update_avatar_types(self, dimension):
         self.avatar_type.addItems(self.avatar_types_3d)
     self.avatar_type.blockSignals(False)
     
-    self.update_avatar_fields(self.avatar_type.currentText())
+    update_avatar_fields(self, self.avatar_type.currentText())
 
 ''' Met à jour les champs affichés dans l'onglet Avatar selon le type sélectionné
     avatar_type : str : type d'avatar sélectionné'''
@@ -301,7 +301,7 @@ def update_model_elements(self):
         self.model_element.setCurrentText(default)
 
     # ← FORCER la mise à jour des options APRÈS le changement
-    self.update_model_options_fields()
+    update_model_options_fields(self)
 
 def update_contact_law(self): 
     law = self.contact_type.currentText()
