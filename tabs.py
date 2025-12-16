@@ -270,7 +270,7 @@ def _create_dof_tab(self):
     self.dof_avatar_force = QComboBox(); self.dof_avatar_force.addItems(["translate", "rotate", "imposeDrivenDof", "imposeInitValue"])
     self.dof_options = QLineEdit("dx=0.0, dy=2.0")
     
-    self.dof_avatar_force.currentTextChanged.connect(self.update_dof_options)
+    self.dof_avatar_force.currentTextChanged.connect(lambda action: update_dof_options(self, action))
     for w in [QLabel("Avatar:"), self.dof_avatar_name, QLabel("Action:"), self.dof_avatar_force,
                 QLabel("Params:"), self.dof_options,
                 ]:
@@ -281,7 +281,7 @@ def _create_dof_tab(self):
     dof_tab.setLayout(dl)
     self.tabs.addTab(dof_tab, "DOF")
     #initialisation du texte 
-    self.update_dof_options(self.dof_avatar_force.currentText())
+    update_dof_options(self, self.dof_avatar_force.currentText())
 
 def _create_contact_tab(self):    
     # --- Contact ---

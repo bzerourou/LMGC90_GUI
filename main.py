@@ -26,7 +26,7 @@ from tabs import (
 from updates import (
     update_model_elements,
     update_avatar_types, update_avatar_fields, 
-    update_loop_fields, update_dof_options, update_contact_law,
+    update_loop_fields, update_contact_law,
     update_advanced_fields, update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict
 )
@@ -399,17 +399,6 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     # UTILITAIRES
     # ========================================
-
-    ''' Met à jour les options disponibles selon l'action DOF sélectionnée
-        action : str : action DOF sélectionnée'''
-    def update_dof_options(self, action) :
-        forces = {
-            "translate" : "dx=0.0 , dy=2.0",
-            "rotate" : "psi=math.pi/2.0, center=[0.0, 0.0]",
-            "imposeDrivenDof" : "component=[1,2,3], dofty='vlocy'",
-            "imposeInitValue" : "component= 1, value= 3.0"
-        }
-        self.dof_options.setText(forces.get(action, "dx=0.0, dy=2.0"))
 
     def model_dimension_changed(self, dim_text) :
         self.dim = int(dim_text)              # garde la dimension globale
