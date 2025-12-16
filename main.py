@@ -1,9 +1,7 @@
 import sys
 import os
-import subprocess
 import json
 import math
-import shutil
 from functools import partial
 import numpy as np
 
@@ -174,7 +172,7 @@ class LMGC90GUI(QMainWindow):
             ("Ouvrir", self.style().StandardPixmap.SP_DirOpenIcon, self.open_project),
             ("Sauvegarder", self.style().StandardPixmap.SP_DriveHDIcon, self.save_project),
             ("Script", self.style().StandardPixmap.SP_FileDialogDetailedView, lambda : generate_python_script(self)),
-            ("Exécuter", self.style().StandardPixmap.SP_MediaPlay, execute_python_script),
+            ("Exécuter", self.style().StandardPixmap.SP_MediaPlay, lambda :execute_python_script(self)),
         ]:
             btn = QPushButton(text)
             btn.setIcon(self.style().standardIcon(icon))

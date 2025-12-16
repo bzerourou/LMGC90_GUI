@@ -5,7 +5,8 @@
 
 import math
 import os
-from PyQt6.QtWidgets import QMessageBox, QFileDialog
+import subprocess
+from PyQt6.QtWidgets import QMessageBox, QFileDialog, QApplication
 
 
 def _write_avatar_creation(self, f, i, av, container_name="bodies"):
@@ -417,6 +418,8 @@ def _get_avatar_params(self, av):
     return params
 
 def execute_python_script(self):
+        self.statusBar().showMessage("Exécute le script...")
+        QApplication.processEvents()
         path = self.script_path or os.path.join(self.current_project_dir or os.getcwd(), "lmgc_sim.py")
         file, _ = QFileDialog.getOpenFileName(self, "Exécuter", path, "Python (*.py)")
         if not file: return
