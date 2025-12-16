@@ -29,7 +29,7 @@ def _create_material_tab(self):
     ml = QVBoxLayout()
     self.mat_name = QLineEdit("TDURx"); self.mat_type = QComboBox(); self.mat_type.addItems(["RIGID", "ELAS", "ELAS_DILA", "VISCO_ELAS", "ELAS_PLAS", "THERMO_ELAS", "PORO_ELAS"])
     self.mat_density_label = QLabel("Densité :"); self.mat_density = QLineEdit("1000."); self.mat_props_label = QLabel("Propriétés (ex: young=1e9) :");self.mat_props = QLineEdit("")
-    self.mat_type.currentTextChanged.connect(update_material_fields)      
+    self.mat_type.currentTextChanged.connect(lambda : update_material_fields(self))      
     for label, widget in [
         ("Nom :", self.mat_name), ("Type :", self.mat_type)
     ]:
@@ -161,7 +161,7 @@ def _create_empty_avatar_tab(self):
         dim_layout.addWidget(QLabel("Dimension :"))
         self.adv_dim = QComboBox()
         self.adv_dim.addItems(["2", "3"])
-        self.adv_dim.currentTextChanged.connect(update_advanced_fields)
+        self.adv_dim.currentTextChanged.connect(lambda dim_text: update_advanced_fields(self, dim_text))
         dim_layout.addWidget(self.adv_dim)
         layout.addLayout(dim_layout)
 
@@ -473,5 +473,5 @@ def _create_granulo_tab(self):
     self.gran_tab = tab
 
     # Connexions
-    self.gran_shape_type.currentTextChanged.connect(update_granulo_fields)
+    self.gran_shape_type.currentTextChanged.connect(lambda: update_granulo_fields(self))
     update_granulo_fields(self) # Init

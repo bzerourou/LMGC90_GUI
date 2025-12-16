@@ -71,7 +71,7 @@ def save_project(self):
     if not self.project_dir:
         return save_project_as(self)
     # Sinon : sauvegarde rapide dans le dossier déjà connu
-    self.do_save()
+    do_save(self)
     update_status(self, f"Projet sauvegardé : {self.project_name}.lmgc90")
 
 def save_project_as(self):
@@ -125,7 +125,8 @@ def _serialize_state(self):
         'loops' : self.loop_creations,
         'avatar_groups': self.avatar_groups,    
         'group_names' : self.group_names,
-        'granulo_generations' : self.granulo_generations
+        'granulo_generations' : self.granulo_generations,
+        'postpro_creations' : self.postpro_creations
     }
 
 def _deserialize_state(self, state):

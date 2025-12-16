@@ -18,7 +18,7 @@ def _safe_eval_dict(self, text):
 
     local = {"math": math, "np": np, "__builtins__": {}}
     try:
-        
+        text.replace("_","-")
         exec(f"props = dict({text})", {}, local)
         return local.get('props', {})
     except Exception as e:

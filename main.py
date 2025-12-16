@@ -357,12 +357,9 @@ class LMGC90GUI(QMainWindow):
             return
         parent_text = item.parent().text(0)
         name = item.text(0).split("-")[0]
-        #print(name)
         
         data= item.data(0, Qt.ItemDataRole.UserRole)
-        #print(data)
         type, idx = data if data else (None, None)
-        #print(type)
 
         # essai de récupération de l'index
         if parent_text == "Matériaux":
@@ -435,9 +432,8 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_radius.setText(av['r'])
                 self.avatar_nb_vertices.setText(av['nb_disk'])
             elif av['type'] == "emptyAvatar":
-                # to do empty avatar
                     
-                # === ON VA DANS L'ONGLET AVANCÉ ===
+                # === onglet avatar vide ===
                 self.tabs.setCurrentWidget(self.empty_tab)
 
                 # Dimension
@@ -480,11 +476,8 @@ class LMGC90GUI(QMainWindow):
                     params_edit.setText(params_str)
 
                 self.current_selected = ("avatar", idx)
-
                 pass
-            
             self.current_selected = ("avatar", idx)
-
 
         elif parent_text == "Lois de contact":
             law = next((l for l in self.contact_laws_objects if l.nom == name), None)
@@ -526,7 +519,6 @@ class LMGC90GUI(QMainWindow):
             # Important : on garde la référence pour Modifier/Supprimer
             self.current_selected = ("visibility", idx)
 
-    
     # ========================================
     # CORRECTION ANCIENNES OPERATIONS   
     # ========================================

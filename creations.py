@@ -1,7 +1,7 @@
 import math
 import numpy as np
 from pylmgc90 import pre
-from PyQt6.QtWidgets import QMessageBox, QApplication
+from PyQt6.QtWidgets import QMessageBox, QApplication, QTreeWidgetItem
 
 from updates import (
  _safe_eval_dict
@@ -23,7 +23,8 @@ def create_material(self):
         name = self.mat_name.text().strip()
         if not name:
             raise ValueError("Nom vide")
-
+        if len(name)>5: 
+            raise ValueError("Nom à 5 caractères")
         mat_type = self.mat_type.currentText()
         density_text = self.mat_density.text().strip()
         props = _safe_eval_dict(self,self.mat_props.text())
@@ -76,6 +77,7 @@ def create_model(self):
         element = self.model_element.currentText()
         name = self.model_name.text().strip()
         if not name: raise ValueError("Nom vide")
+        if len(name)>5 : raise ValueError("Nom à 5 caractères")
         props = _safe_eval_dict(self,self.model_options.text())
         if element in ["Rxx2D", "Rxx3D"]: 
             mod = pre.model(name=name, physics=self.model_physics.currentText(), element=element,
@@ -128,11 +130,14 @@ def create_avatar(self):
         mat = self.material_objects[self.avatar_material.currentIndex()]
         mod = self.model_objects[self.avatar_model.currentIndex()]
         type = self.avatar_type.currentText()
+        if mod.element != "Rxx2D" :
+            raise ValueError("élément finit non adapté pour un rigid avatar")
+
         is_hollow = self.avatar_hallowed.isChecked()
         if type == "rigidDisk" :
             if is_hollow :
                 
-    # Contacteur xKSID + coque creuse
+    # Contacteur xKSID 
                     body =  pre.rigidDisk(r=float(self.avatar_radius.text()), center=center, model=mod, material=mat,
                                 color=self.avatar_color.text(),is_Hollow=True)
             
@@ -443,7 +448,7 @@ def create_empty_avatar(self):
         if dim == 2:
             body.addBulk(pre.rigid2d())
         else:
-            body.addBulk(pre.rigid3d())
+            raise ValueError(f"3D non supporté ")
 
         # Node principal
         body.addNode(pre.node(coor=np.array(center), number=1))
