@@ -347,7 +347,10 @@ def generate_python_script(self):
             f.write("\n# --- PostPro ---\n")
             f.write("post = pre.postpro_commands()\n")
             for cmd in self.postpro_creations:
-                f.write(f"post.addCommand(pre.postpro_command(name='{cmd['name']}', step={cmd['step']}))\n" )
+                if cmd['rigid_set'] is not None:
+                    f.write(f"post.addCommand(pre.postpro_command(name='{cmd['name']}', step={cmd['step']}, rigid_set={cmd['rigid_set']} ))\n" )
+                else : 
+                    f.write(f"post.addCommand(pre.postpro_command(name='{cmd['name']}', step={cmd['step']}))\n" )
 
             # === Écriture finale ===
             f.write("# Écriture du fichier .datbox\n")

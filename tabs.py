@@ -9,7 +9,7 @@ from updates import (
     update_avatar_types, update_avatar_fields, update_polygon_fields,
     update_loop_fields, update_dof_options, update_contact_law,
     update_advanced_fields, update_granulo_fields,
-    model_dimension_changed
+    model_dimension_changed, update_postpro_avatar_selector
 )
 
 
@@ -343,41 +343,58 @@ def _create_postpro_tab(self):
     form = QFormLayout()
     
     self.post_name = QComboBox()
+    #self.avatar = QComboBox()
+
+
     # Liste des commandes standards LMGC90
     commands_list = [
-        "SOLVER INFORMATIONS" 
-    ] #, "VIOLATION EVOLUTION", "KINETIC ENERGY",
-        #  "DISSIPATED ENERGY", "COORDINATION NUMBER", "BODY TRACKING",
-        #  "TORQUE EVOLUTION", "DOUBLET TORQUE EVOLUTION", "CL CONTACTOR"
+        "SOLVER INFORMATIONS" ,"Dep EVOLUTION", "Fint EVOLUTION", "KINETIC ENERGY", "DISSIPATED ENERGY", 
+        "COORDINATION NUMBER", "DISPLAY TENSORS", "DRY CONTACT NATURE", "WET CONTACT NATURE","INTER ANALYSIS",
+        "VISIBILITY STATE", "TORQUE EVOLUTION", "VIOLATION EVOLUTION", "BODY TRACKING","NEW RIGID SETS"
+    ] 
+    
+        # "DOUBLET TORQUE EVOLUTION", "CL CONTACTOR"
     self.post_name.addItems(commands_list)
     
     self.post_step = QLineEdit("1")
     self.post_step.setPlaceholderText("Fréquence d'écriture (ex: 1)")
     
+    #Sélection d'avatar(s) pour certaines commandes
+    self.post_avatar_label = QLabel("Avatar(s) ou groupe(s) à suivre :")
+    self.post_avatar_selector = QComboBox()
+    self.post_avatar_selector.setEnabled(False)  # Désactivé par défaut
+
     form.addRow("Type de commande :", self.post_name)
-    form.addRow("Step (Fréquence) :", self.post_step)
-    
+    form.addRow("Step (fréquence) :", self.post_step)
+    form.addRow(self.post_avatar_label, self.post_avatar_selector)
+
     add_btn = QPushButton("Ajouter la commande")
-    add_btn.clicked.connect(lambda :add_postpro_command(self))
-    
+    add_btn.clicked.connect(lambda: add_postpro_command(self))
+
     form_group.setLayout(form)
     layout.addWidget(form_group)
     layout.addWidget(add_btn)
-    
+
     # --- Liste des commandes ajoutées ---
     layout.addWidget(QLabel("Commandes actives :"))
     self.post_tree = QTreeWidget()
-    self.post_tree.setHeaderLabels(["Nom", "Step"])
+    self.post_tree.setHeaderLabels(["Commande", "Step", "Avatars/Groupes"])
+    self.post_tree.setColumnWidth(0, 200)
+    self.post_tree.setColumnWidth(1, 80)
     layout.addWidget(self.post_tree)
-    
+
     # --- Bouton supprimer ---
     del_btn = QPushButton("Supprimer la commande sélectionnée")
-    del_btn.clicked.connect(lambda :delete_postpro_command(self))
+    del_btn.clicked.connect(lambda: delete_postpro_command(self))
     layout.addWidget(del_btn)
-    
+
     tab.setLayout(layout)
     self.tabs.addTab(tab, "Postpro")
     self.postpro_tab = tab
+
+    # Connexion pour activer/désactiver le sélecteur d'avatars
+    self.post_name.currentTextChanged.connect(lambda text: update_postpro_avatar_selector(self, text))
+    update_postpro_avatar_selector(self, self.post_name.currentText())
 # ========================================
 # GRANULOMETRIE
 # ========================================
@@ -412,7 +429,7 @@ def _create_granulo_tab(self):
     hl_type = QHBoxLayout()
     hl_type.addWidget(QLabel("Type de conteneur :"))
     self.gran_shape_type = QComboBox()
-    self.gran_shape_type.addItems(["Box2D","Disk2D"])#,  "squareLattice2D", "triangularLattice2D","Couette2D", "Drum2D"])
+    self.gran_shape_type.addItems(["Box2D","Disk2D","Couette2D","Drum2D"])#,  "squareLattice2D", "triangularLattice2D","", "Drum2D"])
     hl_type.addWidget(self.gran_shape_type)
     vl_geo.addLayout(hl_type)
 

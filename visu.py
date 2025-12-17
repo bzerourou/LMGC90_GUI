@@ -49,7 +49,7 @@ def _find_paraview(self):
 def generate_datbox(self): 
     if not self.project_dir:
         QMessageBox.warning(self, "Attention", "Enregistrez d'abord le projet pour définir un dossier de sortie.")
-        return save_project_as()
+        return save_project_as(self)
 
     if not self.bodies_objects:
         QMessageBox.warning(self, "Attention", "Aucun avatar créé. Le fichier Datbox sera vide.")
@@ -70,7 +70,10 @@ def generate_datbox(self):
         if hasattr(self, 'postpro_commands') and self.postpro_creations:
             # postpro_commands est une liste de dicts { 'name': str, 'step': int }
             for cmd in self.postpro_creations:
-                self.postpro_commands.addCommand(pre.postpro_command(cmd['name'], freq=cmd['step']))
+                if cmd['rigid_set'] is None: 
+                    self.postpro_commands.addCommand(pre.postpro_command(cmd['name'], freq=cmd['step'], rigid_set=cmd['rigid_set']))
+                else : 
+                    self.postpro_commands.addCommand(pre.postpro_command(cmd['name'], freq=cmd['step']))
 
         # --- Écriture du fichier ---
         datbox_path = os.path.join(self.project_dir, "DATBOX")

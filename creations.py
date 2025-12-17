@@ -12,7 +12,7 @@ from updates import (
     update_avatar_types, update_avatar_fields,
     update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict,
-    update_contactors_fields
+    update_contactors_fields, update_postpro_avatar_selector
 )
 
 # ========================================
@@ -791,14 +791,14 @@ def generate_granulo_sample(self):
         for i in range(nb_remaining):
             if avatar == "rigidDisk" :
                 body = pre.rigidDisk(r=radii[i], center=coor[i], model=mod, material=mat, color=color)
-            else : 
+            elif  avatar == "rigidPolygon": 
+                body = pre.rigidDisk(r=radii[i], center=coor[i], model=mod, material=mat, color=color)
+            else :
                 QMessageBox.information(self,"informations", f"les autres avatars ne sont pas encore implémentés")
                 break
-
             self.bodies.addAvatar(body)
             self.bodies_objects.append(body)
             self.bodies_list.append(body)
-            
             # Ajout pour sauvegarde et script
             self.avatar_creations.append({
                 'type': 'rigidDisk',
@@ -809,9 +809,7 @@ def generate_granulo_sample(self):
                 'color': color,
                 'is_Hollow': False,
                 '__from_loop': True # Marqueur interne
-                
             })
-
                 #granulo_dict
         granulo_dict = {
             'type' : 'granulo',
@@ -824,17 +822,9 @@ def generate_granulo_sample(self):
             'mod_name': mod.nom,
             'color': color,
             'avatar_type': avatar
-        }
-        if  avatar == "Box2D" :
-            granulo_dict['lx'] = lx
-            granulo_dict['ly'] = ly
-        elif avatar == "Disk2D" :
-            granulo_dict['r'] =  r,
-
+        }      
         self.granulo_generations.append(granulo_dict)
-
         msg = f"{nb_remaining} particules générées."
-
         # 5. Création des Murs (Optionnel)
         if self.gran_wall_create.isChecked():
             if container_params['type'] == 'box':
@@ -854,19 +844,15 @@ def generate_granulo_sample(self):
                                         model=mod, material=mat, color=wall_col)
                     if w_def['angle'] != 0:
                         w.rotate( psi=w_def['angle'], center=w_def['center'])
-                    
                     self.bodies.addAvatar(w)
                     self.bodies_objects.append(w)
                     self.bodies_list.append(w)
-                    
                     # Sauvegarde
                     self.avatar_creations.append({
                         'type': 'rigidJonc', 'axe1': w_def['axe1'], 'axe2': w_def['axe2'],
                         'center': w_def['center'], 'model': mod.nom, 'material': mat.nom, 'color': wall_col
                     })
-                
                 msg += "\n+ 4 Murs (Boîte) créés."
-            
             elif container_params['type'] in ['disk', 'drum', 'couette']:
                 msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
 
@@ -886,41 +872,87 @@ def generate_granulo_sample(self):
 
 def add_postpro_command(self):
     name = self.post_name.currentText()
-    step_txt = self.post_step.text()
-    
-    # Validation simple
-    if not step_txt.isdigit():
-        QMessageBox.warning(self, "Erreur", "Le 'Step' doit être un nombre entier.")
+    try:
+        step = int(self.post_step.text())
+        if step <= 0:
+            raise ValueError
+    except:
+        QMessageBox.warning(self, "Erreur", "Le step doit être un entier positif.")
         return
-        
-    step = int(step_txt)
-    
-    # 1. Ajout dans les données (pour la sauvegarde/script)
-    command_data = {'name': name, 'step': step}
-    self.postpro_creations.append(command_data)
-    
-    # 2. Ajout visuel dans l'arbre
-    item = QTreeWidgetItem([name, str(step)])
-    self.post_tree.addTopLevelItem(item)
 
-    # Feedback
-    self.statusBar().showMessage(f"Commande {name} ajoutée.")
+    rigid_set = None
+    if name in ["TORQUE EVOLUTION", "BODY TRACKING","NEW RIGID SETS"]:
+        if not self.post_avatar_selector.isEnabled():
+            QMessageBox.warning(self, "Erreur", "Sélectionnez un avatar ou groupe pour cette commande.")
+            return
+        data = self.post_avatar_selector.currentData()
+        if not data:
+            QMessageBox.warning(self, "Erreur", "Aucun avatar/groupe sélectionné.")
+            return
+
+        typ, value = data
+        if typ == "avatar":
+            rigid_set = [self.bodies_list[value]]  # pre attend une liste d'avatars
+        elif typ == "group":
+            indices = self.avatar_groups.get(value, [])
+            rigid_set = [self.bodies_list[i] for i in indices if i < len(self.bodies_list)]
+
+        if not rigid_set:
+            QMessageBox.warning(self, "Erreur", "Aucun avatar valide dans la sélection.")
+            return
+
+    # Stockage de la commande
+    cmd_dict = {
+        'name': name,
+        'step': step,
+        'rigid_set': rigid_set  # None ou liste d'objets avatar
+    }
+    self.postpro_commands.append(cmd_dict)
+
+    # Mise à jour de l'arbre
+    item_text = name
+    avatar_text = ""
+    if rigid_set:
+        if len(rigid_set) == 1:
+            avatar_text = "1 avatar"
+        else:
+            avatar_text = f"{len(rigid_set)} avatars"
+        if len(rigid_set) > 5:
+            avatar_text += " (groupe)"
+    tree_item = QTreeWidgetItem([item_text, str(step), avatar_text])
+    self.post_tree.addTopLevelItem(tree_item)
+
+    # Réinitialiser les champs
+    self.post_step.setText("1")
+    update_postpro_avatar_selector(self, name)
 
 def delete_postpro_command(self):
-    selected_item = self.post_tree.currentItem()
-    if not selected_item:
+    selected_items = self.post_tree.selectedItems()
+    if not selected_items:
+        QMessageBox.warning(self, "Sélection requise", "Sélectionnez une commande dans la liste pour la supprimer.")
         return
-        
-    # Trouver l'index pour supprimer de la liste de données
-    index = self.post_tree.indexOfTopLevelItem(selected_item)
-    
-    if index >= 0:
-        # Supprimer des données
-        del self.postpro_creations[index]
-        # Supprimer de l'affichage
-        self.post_tree.takeTopLevelItem(index)
-        self.statusBar().showMessage("Commande supprimée.")
 
+    # On prend le premier élément sélectionné (Qt permet la multi-sélection, mais on gère un par un)
+    item = selected_items[0]
+    index = self.post_tree.indexOfTopLevelItem(item)
+
+    # Sécurité absolue contre l'IndexError
+    if index < 0 or index >= len(self.postpro_commands):
+        QMessageBox.critical(self, "Erreur interne", "Index de commande invalide. Réessayez ou redémarrez.")
+        return
+
+    reply = QMessageBox.question(self, "Confirmer", 
+                                 f"Supprimer la commande '{self.postpro_commands[index]['name']}' ?",
+                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+    if reply != QMessageBox.StandardButton.Yes:
+        return
+    #Suppression sûre
+    del self.postpro_commands[index]
+
+    # Suppression dans l'arbre (plus fiable que takeTopLevelItem)
+    self.post_tree.takeTopLevelItem(index)
+
+    self.statusBar().showMessage("Commande post-pro supprimée", 3000)
 # ==============
 # CRUD
 # ================

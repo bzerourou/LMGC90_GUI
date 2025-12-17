@@ -534,3 +534,24 @@ def update_contactors_fields(self):
             params.setText("nb_vertices=4, vertices=[[-1.,-1.],[1.,-1.],[1.,1.],[-1.,1.]] ")
         elif shape == "PT2Dx" : 
             params.setText("")
+
+def update_postpro_avatar_selector(self, command_name):
+    """Active et remplit le sélecteur d'avatars seulement pour certaines commandes"""
+    needs_avatar = command_name in ["TORQUE EVOLUTION", "BODY TRACKING","NEW RIGID SETS"]
+
+    self.post_avatar_label.setVisible(needs_avatar)
+    self.post_avatar_selector.setVisible(needs_avatar)
+    self.post_avatar_selector.setEnabled(needs_avatar)
+
+    if needs_avatar:
+        self.post_avatar_selector.clear()
+        # Ajouter les avatars individuels
+        for i, body in enumerate(self.bodies_objects):
+            color = body.contactors[0].color if body.contactors else "????"
+            self.post_avatar_selector.addItem(f"Avatar {i} ({color})", ("avatar", i))
+        # Ajouter les groupes
+        for group_name in sorted(self.avatar_groups.keys()):
+            count = len(self.avatar_groups[group_name])
+            self.post_avatar_selector.addItem(f"GROUPE: {group_name} ({count} avatars)", ("group", group_name))
+    else:
+        self.post_avatar_selector.clear()
