@@ -12,7 +12,7 @@ from updates import (
     update_avatar_types, update_avatar_fields,
     update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict,
-    update_contactors_fields, update_postpro_avatar_selector
+    update_contactors_fields, update_postpro_avatar_selector, refresh_granulo_combos
 )
 
 # ========================================
@@ -1042,8 +1042,12 @@ def modify_selected(self):
                                                 "element": mod.element, "dimension": mod.dimension})
             self.mods_dict[mod.nom] = mod
         elif typ == "avatar":
-            self.delete_selected()  # on supprime l'ancien
-            self.create_avatar()     # on recrée avec les nouvelles valeurs
+            self.delete_selected()  # Supprime l'ancien
+            if self.tabs.currentWidget() == self.empty_tab:
+                self.create_empty_avatar()
+            else:
+                self.create_avatar()
+            refresh_granulo_combos(self)  # Mise à jour après recréation
             return
         elif typ == "contact":
             law = data
