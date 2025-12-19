@@ -44,7 +44,7 @@ class LMGC90GUI(QMainWindow):
         self.project_name = "Nouveau_Projet"
         self.project_dir = None  # Dossier du projet
         self.model_option_combos = {}   # ← à mettre dans __init__ ou _create_model_tab
-
+        self.msg = ""
         # ----modèle paramètres 
         self.ELEMENT_OPTIONS = {
         "Rxx2D": {}, 
@@ -143,7 +143,6 @@ class LMGC90GUI(QMainWindow):
         
         self.setGeometry(100, 100, 1000, 700)
         self.statusBar()
-
         # --- Menu ---
         menu = QMenuBar(self)
         self.setMenuBar(menu)
@@ -246,7 +245,6 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     # EMPTY AVATAR
     # ========================================   
-    
     def on_tab_changed(self, index):
         """Appelé quand on change d'onglet → rafraîchit les ComboBox si on arrive sur Granulométrie"""
         if hasattr(self, 'gran_tab') and self.tabs.widget(index) == self.gran_tab:
@@ -288,7 +286,6 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     # INTERACTION ARBRE
     # ========================================
-
     def activate_tab(self, item, column): 
         
         if item.parent() is None: 
@@ -478,7 +475,6 @@ class LMGC90GUI(QMainWindow):
                 else:
                     new_ops.append(op)  # au cas où
         self.operations = new_ops
-
 
 #######################################
 #--------fonction main

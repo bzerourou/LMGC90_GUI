@@ -59,4 +59,4 @@ This video is a short introduction to LMGC90_GUI
 -  0.2.3 : add `IQS_CLB_go` and `COUPLED_DOF` contact laws; 
 -  0.2.4 : add granulometry distribution and deposit in **Box2D** and **Disk2D** with *rigidDisk* avatar ;
 -  0.2.5 : add new menu _outils_ for LMGC90 _options_ (units), add new tab for postpro_command for only "_SOLVER INFORMATIONS_"; 
--  0.2.6 : add new bouton for generate DATBOX (postpro_commands), add new postpro_commands;
+-  0.2.6 : add new bouton for generate DATBOX (postpro_commands), add new postpro_commands, capability to store group of avatars generated with granulometry in named list

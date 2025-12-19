@@ -905,21 +905,45 @@ def generate_granulo_sample(self):
                         'center': w_def['center'], 'model': mod.nom, 'material': mat.nom, 'color': wall_col,
                         '__from_granulo': True
                     })
-                
-                #mise à jour
-                update_selections(self)
-                update_model_tree(self)
+            self.msg = f"{nb_remaining} particules générées avec le modèle '{avatar_type}'." 
+        # --- Stockage dans un groupe nommé (si demandé) ---
+        generated_indices = []
+        for i in range(len(self.bodies_objects) - nb_remaining, len(self.bodies_objects)):
+            generated_indices.append(i)
+
+        if self.gran_store_group.isChecked():
+            group_name = self.gran_group_name.text().strip()
+            if not group_name:
+                # Nom automatique si vide
+                base = "depot_granulo"
+                counter = 1
+                while f"{base}_{counter}" in self.avatar_groups:
+                    counter += 1
+                group_name = f"{base}_{counter}"
+
+            self.avatar_groups[group_name] = generated_indices
+            if group_name not in self.group_names:
+                self.group_names.append(group_name)
+                self.group_names.sort()
+
+            self.msg += f"\nDépôt stocké dans le groupe : <b>{group_name}</b> ({nb_remaining} avatars)"
+        else:
+            self.msg += f"\n{nb_remaining} particules générées (non stockées dans un groupe)."
+        
+        #mise à jour
+        update_selections(self)
+        update_model_tree(self)
                
-        msg = f"{nb_remaining} particules générées avec le modèle '{avatar_type}'."
+        
 
         if self.gran_wall_create.isChecked() and container_params['type'] == 'Box2D':
-            msg += "\n+ 4 murs créés."
+            self.msg += "\n+ 4 murs créés."
         elif container_params['type'] in ['disk', 'drum', 'couette']:
-            msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
+            self.msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
 
         
         self.statusBar().showMessage("Dépôt terminé.")
-        QMessageBox.information(self, "Succès", msg)
+        QMessageBox.information(self, "Succès", self.msg)
 
     except Exception as e:
         import traceback

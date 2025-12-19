@@ -468,6 +468,16 @@ def _create_granulo_tab(self):
     #gl_phy.addRow(self.gran_wall_create)
     grp_phy.setLayout(gl_phy)
     layout.addWidget(grp_phy)
+    # --- Option stockage dans groupe ---
+    self.gran_store_group = QCheckBox("Stocker le dépôt dans un groupe nommé")
+    self.gran_store_group.setChecked(True)  # Activé par défaut
+    hgroup = QHBoxLayout()
+    hgroup.addWidget(QLabel("Nom du groupe :"))
+    self.gran_group_name = QLineEdit("depot_granulo")
+    self.gran_group_name.setPlaceholderText("ex: particules_fines")
+    hgroup.addWidget(self.gran_group_name)
+    layout.addWidget(self.gran_store_group)
+    layout.addLayout(hgroup)
 
     # --- Bouton Action ---
     btn_gen = QPushButton("Générer le Dépôt")
