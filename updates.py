@@ -10,19 +10,37 @@ from PyQt6.QtCore import Qt
     text : str : chaîne à évaluer
 '''
 def _safe_eval_dict(self, text):
+  
     if not text.strip():
         return {}
-    #Autorise math, np, et les listes []
+
     import math
     import numpy as np
 
-    local = {"math": math, "np": np, "__builtins__": {}}
+    local = {
+        "math": math,
+        "np": np,
+        "__builtins__": {}
+    }
+
+    
+    # Ajout des variables dynamiques de l'utilisateur
+    local.update(self.dynamic_vars)
+
+    # Ajout des variables classiques de l'interface (r, color, etc.)
     try:
-        text.replace("_","-")
+        local['r'] = float(self.avatar_radius.text() or 0)
+    except: pass
+    try:
+        local['color'] = self.avatar_color.text() or "BLUEx"
+    except: pass
+    # ... ajoute les autres si tu veux
+
+    try:
         exec(f"props = dict({text})", {}, local)
         return local.get('props', {})
     except Exception as e:
-        raise ValueError(f"Paramètres invalides : {e}")
+        raise ValueError(f"Expression invalide : {e}\nVariables disponibles : {', '.join(local.keys())}")
 
 ''' Met à jour la barre de statut avec un message temporaire'''
 def update_status(self, msg):

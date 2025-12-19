@@ -96,4 +96,4 @@ def generate_datbox(self):
         self.statusBar().showMessage("Échec génération Datbox")
 
 def about(self):
-    QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.6 \n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")
+    QMessageBox.information(self, "À propos", "LMGC90_GUI v0.2.7 \n par Zerourou B, email : bachir.zerourou@yahoo.fr \n© 2025 - Open Source")

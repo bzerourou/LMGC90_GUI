@@ -32,7 +32,7 @@ from project import (
 from script_gen import (generate_python_script, execute_python_script
 )
 from visu import visu_lmgc, open_paraview, generate_datbox, about
-
+from dynamic_vars import DynamicVarsDialog
 class LMGC90GUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -89,7 +89,7 @@ class LMGC90GUI(QMainWindow):
         
         self._init_containers()
         self._init_ui()
-        self.setWindowTitle(f"LMGC90_GUI v0.2.6 - {self.project_name}")
+        self.setWindowTitle(f"LMGC90_GUI v0.2.7 - {self.project_name}")
         self.statusBar().showMessage("Prêt")
 
         update_selections(self)
@@ -139,6 +139,7 @@ class LMGC90GUI(QMainWindow):
         # ---stockage des groupes d'avatars créés par les boucles ===
         self.avatar_groups = {}    
         self.group_names = [] 
+        self.dynamic_vars = {}
     def _init_ui(self):
         
         self.setGeometry(100, 100, 1000, 700)
@@ -155,6 +156,7 @@ class LMGC90GUI(QMainWindow):
         tools_menu = menu.addMenu("Outils")
         tools_menu.addAction("Options ", lambda : open_options_dialog(self))
         menu.addMenu("Help").addAction("À propos", lambda: about(self))
+        tools_menu.addAction("Définir variables dynamiques", self.open_dynamic_vars_dialog)
         #racourci menu  
         file_menu.actions()[0].setShortcut("Ctrl+N")  # Nouveau
         file_menu.actions()[1].setShortcut("Ctrl+O")  # Ouvrir
@@ -283,6 +285,11 @@ class LMGC90GUI(QMainWindow):
             if w and w.layout() == row_layout:
                 w.deleteLater()
 
+    def open_dynamic_vars_dialog(self):
+        dialog = DynamicVarsDialog(self.dynamic_vars, self)
+        if dialog.exec():
+            self.dynamic_vars = dialog.get_vars()
+            self.statusBar().showMessage(f"{len(self.dynamic_vars)} variables dynamiques définies", 5000)
     # ========================================
     # INTERACTION ARBRE
     # ========================================
