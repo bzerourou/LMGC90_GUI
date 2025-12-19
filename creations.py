@@ -282,13 +282,11 @@ def create_avatar(self):
             #body_dict['theta'] = self.avatar_theta.text()
             body_dict['gen_type'] = self.avatar_gen.currentText()
             body_dict['r'] = self.avatar_radius.text()
-            #print(body_dict['gen_type'])
         elif  type ==  "rigidPolygon" and self.avatar_gen.currentText() == "full":
             body_dict['vertices'] = vertices.tolist()
             #body_dict['theta'] = self.avatar_theta.text()
             body_dict['gen_type'] = self.avatar_gen.currentText()
             body_dict['r'] = self.avatar_radius.text()
-            #print(body_dict['gen_type'])
         elif type == "rigidOvoidPolygon":
             body_dict['ra'] = self.avatar_r_ovoid.text().split(',')[0].split('=')[1].strip()
             body_dict['rb'] = self.avatar_r_ovoid.text().split(',')[1].split('=')[1].strip()
@@ -369,9 +367,7 @@ def dof_force(self):
         
         if selected_text.startswith("GROUPE:"):
             group_name = selected_text.split("GROUPE: ", 1)[1].split(" (", 1)[0]
-            #print(group_name)
             indices = self.avatar_groups.get(group_name, [])
-            #print(indices)
             if not indices:
                 raise ValueError(f"Groupe '{group_name}' vide ou inexistant")
             for idx in indices: 
@@ -589,7 +585,6 @@ def create_loop(self):
         for center in centers:
             av_type = model_av['type']
             props = {k: v for k, v in model_av.items() if k not in ['type', 'center', 'material', 'model', 'color']}
-            #print(props)
             props['center'] = center
 
             if av_type == "rigidDisk":
@@ -815,7 +810,6 @@ def generate_granulo_sample(self):
                 kwargs['r'] = radii[i]
                 if model_av.get('is_Hollow'):
                     kwargs['is_Hollow'] = True
-                #print(**kwargs)
                 body = pre.rigidDisk(r= kwargs['r'], center=kwargs['center'], model=mod, material=mat, color=color)
 
             elif avatar_type == "rigidPolygon":

@@ -1,12 +1,39 @@
-# LMGC90_GUI (Graphical User Interface for LMGC90).
+# LMGC90_GUI — Graphical User Interface for LMGC90
 
-![Capture d'écran](docs/inter_LMGC90_GUI6.jpg)
+![LMGC90_GUI Screenshot](docs/inter_LMGC90_GUI6.jpg)
 
-This application is a PyQt6 graphical user interface intended for those who want to develop numerical models with pre-processor module (**pre**)of LMGC90 DEM code.
+**LMGC90_GUI** is a modern, user-friendly graphical interface built with **PyQt6** for the pre-processor module (`pre`) of the open-source Discrete Element Method (DEM) code **[LMGC90](https://git.lmgc.univ-montp2.fr/lmgc90/lmgc90)**.
 
-All versions are only for feasibility study, it will be completely rewritten in the future.
+It allows you to visually create, edit, and manage complex 2D (and partially 3D) mechanical models without writing Python code manually — while still offering full flexibility for advanced users.
 
-For use, you need to download PyQt6 and, of course, install LMGC90 on your machine.
+All versions are intended for research and prototyping. A full rewrite is planned in the future.
+
+## Features
+
+- **Materials**: RIGID, ELAS, ELAS_DILA, VISCO_ELAS, ELAS_PLAS, THERMO_ELAS, PORO_ELAS
+- **Models**:
+  - 2D: Rxx2D, T3xxx, Q4xxx, T6xxx, Q8xxx, Q9xxx, BARxx
+  - 3D: Rxx3D, H8xxx, SHB8x, H20xx, SHB6x, TE10x, DKTxx
+- **Rigid bodies** (avatars): disks, polygons (regular or custom), ovoids, joncs, clusters, walls (rough/fine/smooth/granular), spheres (3D), and fully customizable **empty avatars** with multiple contactors
+- **Contact laws**: IQS_CLB, IQS_CLB_g0, COUPLED_DOF
+- **Visibility tables** for detection control
+- **Boundary conditions** (imposeDrivenDof, translate, rotate, etc.) on individual bodies or **named groups**
+- **Parametric generation**:
+  - Loops (circle, grid, line, spiral, manual)
+  - Granulometry with random size distribution and deposition in Box2D or Disk2D
+  - Option to store generated particles in a **named group**
+- **Post-processing commands** (SOLVER INFORMATIONS, TORQUE EVOLUTION, BODY TRACKING, etc.) with optional rigid set selection
+- **Dynamic variables**: define custom variables (e.g., `thickness=0.02`, `scale=1.5`) usable in parameter fields
+- **Direct generation** of `.datbox` file (ready for LMGC90 solver)
+- **Python script generation** for full reproducibility
+- Project save/load in `.lmgc90` JSON format
+
+## Requirements
+- Python 3.8+
+- PyQt6
+- pylmgc90 (installed with LMGC90)
+
+No additional packages needed.
 
 ## Installation
 
@@ -16,48 +43,37 @@ cd LMGC90_GUI
 python main.py
 ```
 
-## Features of LMGC90_GUI :
+## Quick Start & Examples
+Two example projects are included to help you get started.
+1. ### Pendulum (pendulum.lmgc90)
+A classic pendulum mechanism using COUPLED_DOF joints.
+**How to load and run**:
 
-In this first version,it is completely independant of the pylmgc90 library attributs (*lists* and *dicts*), you can create :  
-- materials (RIGID, ELAS, ELAS_DILA, THERMO_ELAS, ELAS_PLAS, VISCO_ELAS, PORO_ELAS)
-            <br>Options : density, young, nu, dilatation, T_ref_meca, conductivity, specific_capacity,
-- models:  **2D** : Rxx2D, T3xxx, Q4xxx, T6xxx, Q8xxx, Q9xxx, BARxx.
-           <br>**3D** : Rxx3D, H8xxx, SHB8x, H20xx, TE10x, BARxx.
-           <br>Options : kinematic, formulation, mass_storage, anisotropy, external_model 
-- avatars : **rigidDisk**, **rigidJonc**, **rigidPolygon**, **rigidOvoidPolygon**, **rigidDiscreteDisk**, **rigidCluster**, **roughWall**, **fineWall**, **smoothWall**, **granuloRoughWall**
-- contact : Coulomb friction contact laws with  __'IQS_CLB'__, __IQS_CLB_g0__, and __'COUPLED_DOF__ type. 
-- boundary conditions for avatar with :  **translate**, **rotate**, **imposeDrivenDof** and **imposeInitValue** functions.
-- parametric __cirular__, __grid__, __Linear__, __spiral__ and __manual__ pattern for add group of avatars ;
-- granulometry : __granulo_random__ distribution, _Box2D_ and _Disk2D_ deposit for _rigidDisk_ avatar;
-- postpro : __SOLVER INFORMATIONS__; 
+1. Launch *LMGC90_GUI* → *File* → *Open* → select *pendulum.lmgc90*
+2. Go to Tools → *Generate Datbox*
+3. The file *DATBOX* is created in the project folder
 
-The interface is easy to use and it can save and open project with json formated file with extension (.lmgc90), and can generate and execute model script.
+2. ### Slider-Crank Mechanism (slider_crank.lmgc90)
+A complete slider-crank (bielle-manivelle) with three rigid bodies connected by revolute and prismatic joints.
+How to load:
+1. *Fil*e → *Open* → select *slider_crank.lmgc90*
+2. Generate *Datbox* (*Generate Datbox*)
 
-Since 0.1.9 version, you can edit and remove *models*, *materials*, *avatars*, *contacts* and *visibilities* elements.
+## Changelog (Highlights)
 
+- **0.2.7**: Dynamic variables dialog (Tools → Define dynamic variables)
+- **0.2.6**: Direct .datbox generation + post-processing commands + granulometry groups
+- **0.2.5**: Units preferences + basic post-processing
+- **0.2.4**: Granulometry with deposition (Box2D/Disk2D)
+- **0.2.3**: COUPLED_DOF and IQS_CLB_g0 laws
+- **0.2.2**: Custom contactors in empty avatar tab
+- **0.2.0**: Stable version with empty avatars and advanced contactors
+- **0.1.9**: Parametric loops + named groups
 
-This video is a short introduction to LMGC90_GUI
-[Intro LMGC90_GUI](https://www.youtube.com/watch?v=Rn-ewPCuRuw)
-<br>LMGC90_GUI v0.1.6
-[LMGC90_GUI v0.1.6](https://www.youtube.com/watch?v=BLUeqLHGNXc&feature=youtu.be)
+## License
+Open source — free to use, modify, and distribute.
 
-
-### List of version : 
--  0.1.0  : first version with `rigidDisk` avatar; 
--  0.1.1  : add `rigidJonc` avatar;
--  0.1.2 : add DOF function `imposeDrivenValue`;
--  0.1.3 : add `rigidPolygon` avatar and fix `rigidPolygon` generation type in QComboBox for `regular` and `full` values, numpy and math function can be used in QEditLine ;
--  0.1.4 : add rigidOvoidPolygon and fix some bugs;
--  0.1.5 : add `rigidDiscretDisk`, `roughWall`, `fineWall`, `smoothWall`, and `GranuloRoughWall` avatars;
--  0.1.6 : add parametric addition of avatars (circular, line, grid and spiral); 
--  0.1.7 : generate parametric avatars in loops, fix some bugs  ;
--  0.1.8 : add CRUD possibility for material, model, avatar, law and rule, fix some bugs; 
--  0.1.9 : add `manual` parametric add avatars, capability to store group of avatars in named list, fix some bugs;
--  0.2.0 : add `rigidCluster`, and new tab for `empty avatar`, add `'xKSID'`, `'JONCx'` and `'POLYG'` for visibility table, fix some bugs, **[stable version]** ;
--  0.2.1 : add `BARxx`, `T3xxx`, `T6xxx`, `T3xxx `, `Q4xxx`, `Q8xxx`, `Q9xxx`, `H8xxx`, `SHB8x`, `H20xx`, `SHB6x`, `TE10x`, and `DKTxx` models, add `PT2Dx`,`PT2DL`,`ALpxx`, `ASpxx`,`CLxxx`,`CSpxx` contactors ;
--  0.2.2 : Possibility to add new contactors for avatar in **emptyAvatar tab** ;
--  0.2.3 : add `IQS_CLB_go` and `COUPLED_DOF` contact laws; 
--  0.2.4 : add granulometry distribution and deposit in **Box2D** and **Disk2D** with *rigidDisk* avatar ;
--  0.2.5 : add new menu _outils_ for LMGC90 _options_ (units), add new tab for postpro_command for only "_SOLVER INFORMATIONS_"; 
--  0.2.6 : add new bouton for generate DATBOX (postpro_commands), add new postpro_commands, capability to store group of avatars generated with granulometry in named list
--  0.2.7 : add new menu *définir variables dynamiques* for dynamics variables; 
+## Author
+Zerourou Bachir
+Email: bachir.zerourou@yahoo.fr
+© 2025

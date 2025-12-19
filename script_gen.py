@@ -312,7 +312,6 @@ def generate_python_script(self):
                             f.write(f"# [IGNORE]: nom de groupe manquant pour l'opération {action}\n")
                         # Nom sécurisé pour variable Python
                         container_var = group_containers.get(group_name, "bodies")
-                        #print(container_var)
                         f.write(f"# {action} sur le groupe '{group_name}'\n")
                         f.write(f"{container_var}.{action}( {params_str})\n")
 

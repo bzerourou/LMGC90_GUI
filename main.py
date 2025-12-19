@@ -306,7 +306,6 @@ class LMGC90GUI(QMainWindow):
         # essai de récupération de l'index
         if parent_text == "Matériaux":
             mat = self.material_objects[idx]
-            #print(mat)
             if not mat: return
             self.tabs.setCurrentWidget(self.mat_tab)
             self.mat_name.setText(mat.nom)
@@ -334,7 +333,6 @@ class LMGC90GUI(QMainWindow):
             if idx < 0 or idx >= len(self.avatar_creations):
                 return
             av = self.avatar_creations[idx]
-            print(av['type'])
             self.tabs.setCurrentWidget(self.av_tab)
             # --- Mise à jour des champs ---
             self.avatar_type.blockSignals(True)

@@ -48,7 +48,6 @@ def open_project(self):
     file, _ = QFileDialog.getOpenFileName(self, "Ouvrir projet", "", "Projet LMGC90 (*.lmgc90)")
     if not file:
         return
-    #•print(file)
     # Recréer matériaux, modèles, avatars, etc.
     try:
         with open(file, 'r', encoding='utf-8') as f:
@@ -407,14 +406,10 @@ def _deserialize_state(self, state):
     #------ Lois
     for law in state.get('contact_laws', []):
         if not all(k in law for k in ['name', 'law']): continue
-        print(law)
         if 'fric' in law: 
             l = pre.tact_behav(name=law['name'], law=law['law'], fric=law['fric'])
-            print("a fric ")
         else: 
             l = pre.tact_behav(name=law['name'], law=law['law'])
-            print("na pas fric")
-
         self.contact_laws.addBehav(l); self.contact_laws_objects.append(l)
         self.contact_creations.append(law)
 
