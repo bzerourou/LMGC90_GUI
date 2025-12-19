@@ -8,8 +8,8 @@ from updates import (
     update_material_fields, update_model_options_fields, update_model_elements,
     update_avatar_types, update_avatar_fields, update_polygon_fields,
     update_loop_fields, update_dof_options, update_contact_law,
-    update_advanced_fields, update_granulo_fields,
-    model_dimension_changed, update_postpro_avatar_selector
+    update_advanced_fields, update_granulo_fields, 
+    model_dimension_changed, update_postpro_avatar_selector,
 )
 
 
@@ -457,7 +457,7 @@ def _create_granulo_tab(self):
     self.gran_mod = QComboBox()
     self.gran_color = QLineEdit("BLUEx")
     self.avatar = QComboBox()
-    self.avatar.addItems(["rigidDisk"]) #, "rigidPolygon", "rigidOvoidPolygon", "rigidDiscreteDisk", "rigidCluster"])
+    #self.avatar.addItems(["rigidDisk"]) #, "rigidPolygon", "rigidOvoidPolygon", "rigidDiscreteDisk", "rigidCluster"])
     self.gran_wall_create = QCheckBox("Créer les parois (murs) autour")
     self.gran_wall_create.setChecked(False)
 
@@ -488,7 +488,8 @@ def _create_granulo_tab(self):
     
     self.tabs.addTab(tab, "Granulométrie")
     self.gran_tab = tab
-
+   
     # Connexions
     self.gran_shape_type.currentTextChanged.connect(lambda: update_granulo_fields(self))
     update_granulo_fields(self) # Init
+    

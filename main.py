@@ -23,7 +23,8 @@ from updates import (
     update_avatar_fields,
     update_selections, refresh_interface_units,
     update_model_tree, 
-    update_contactors_fields
+    update_contactors_fields,
+    refresh_granulo_combos
 )
 from project import (
     new_project, open_project, save_project, save_project_as, open_options_dialog
@@ -220,11 +221,10 @@ class LMGC90GUI(QMainWindow):
         rl.addWidget(paraview_btn)
         render_tab.setLayout(rl)
         render_tabs.addTab(render_tab, "Rendu")
-
         splitter.setSizes([400, 200])
+        self.tabs.currentChanged.connect(lambda index :self.on_tab_changed(index))
+        refresh_granulo_combos(self)
 
-    
-    
     #=== GRANULO
     def refresh_granulo_combos(self):
         """Met à jour les listes déroulantes quand on clique sur l'onglet"""
@@ -246,6 +246,12 @@ class LMGC90GUI(QMainWindow):
     # ========================================
     # EMPTY AVATAR
     # ========================================   
+    
+    def on_tab_changed(self, index):
+        """Appelé quand on change d'onglet → rafraîchit les ComboBox si on arrive sur Granulométrie"""
+        if hasattr(self, 'gran_tab') and self.tabs.widget(index) == self.gran_tab:
+            refresh_granulo_combos(self)
+    
     def add_contactor_row(self):
         row = QHBoxLayout()
         shape = QComboBox()

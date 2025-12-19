@@ -62,6 +62,7 @@ def create_material(self):
 
         update_selections(self)
         update_model_tree(self)
+        
 
     except Exception as e:
         QMessageBox.critical(self, "Erreur Matériau", f"{e}")
@@ -115,6 +116,7 @@ def create_model(self):
         self.model_creations.append(model_dict)
         self.mods_dict[name] = mod
         update_selections(self); update_model_tree(self)
+        
     except Exception as e:
         QMessageBox.critical(self, "Erreur", f"Modèle : {e}")
 
@@ -313,7 +315,10 @@ def create_avatar(self):
             ValueError("Rigide non connue!")
         
         self.avatar_creations.append(body_dict)
-        
+
+        self.avatar_creations[-1]['__from_loop'] = False
+        self.avatar_creations[-1]['__from_granulo'] = False
+                
         # to do : ajouter dans un groupe si demandé
         new_index = len(self.bodies_list)-1
         added_to_manual = False
@@ -338,7 +343,8 @@ def create_avatar(self):
                 added_to_manual = True
                 break  # un seul groupe manuel actif à la fois
         # mise à jour UI
-        update_selections(self); update_model_tree(self)
+        update_selections(self)
+        update_model_tree(self)
     
         # message visuel si demandé si ajout manuel
         if added_to_manual:
@@ -743,10 +749,17 @@ def generate_granulo_sample(self):
         
         seed_txt = self.gran_seed.text().strip()
         seed = int(seed_txt) if seed_txt else None
-
-        mat = self.material_objects[self.gran_mat.currentIndex()]
-        mod = self.model_objects[self.gran_mod.currentIndex()]
-        color = self.gran_color.text()
+        # Récupération du modèle d'avatar sélectionné
+        avatar_idx = self.avatar.currentData()
+        if avatar_idx is None or avatar_idx < 0 or avatar_idx >= len(self.avatar_creations):
+            QMessageBox.warning(self, "Erreur", "Aucun avatar modèle valide sélectionné.\nCréez un avatar dans l'onglet Avatar ou Avatar vide.")
+            return
+        model_av = self.avatar_creations[avatar_idx]
+        avatar_type = model_av['type']
+        
+        mat = self.mats_dict[model_av['material']]
+        mod = self.mods_dict[model_av['model']]
+        color  = model_av.get('color', 'BLUEx')
 
         self.statusBar().showMessage("Génération de la distribution et calcul du placement...")
         QApplication.processEvents()
@@ -787,47 +800,86 @@ def generate_granulo_sample(self):
         coor = np.reshape(coor,(nb_remaining,2))
         body = None
 
-        avatar = self.avatar.currentText()
         for i in range(nb_remaining):
-            if avatar == "rigidDisk" :
-                body = pre.rigidDisk(r=radii[i], center=coor[i], model=mod, material=mat, color=color)
-            elif  avatar == "rigidPolygon": 
-                body = pre.rigidDisk(r=radii[i], center=coor[i], model=mod, material=mat, color=color)
-            else :
-                QMessageBox.information(self,"informations", f"les autres avatars ne sont pas encore implémentés")
-                break
+            center = coor[i].tolist()
+            color = self.gran_color.text() or color
+            # Construction des kwargs communs
+            kwargs = {
+                'center': center,
+                'model': mod,
+                'material': mat,
+                'color': color
+            }
+            # Création selon le type d'avatar modèle
+            if avatar_type == "rigidDisk":
+                kwargs['r'] = radii[i]
+                if model_av.get('is_Hollow'):
+                    kwargs['is_Hollow'] = True
+                #print(**kwargs)
+                body = pre.rigidDisk(r= kwargs['r'], center=kwargs['center'], model=mod, material=mat, color=color)
+
+            elif avatar_type == "rigidPolygon":
+                kwargs['radius'] = model_av.get('r')
+                kwargs['generation_type'] = model_av.get('gen_type', 'regular')
+                if kwargs['generation_type'] == "regular":
+                    kwargs['nb_vertices'] = model_av.get('nb_vertices')
+                else:
+                    kwargs['vertices'] = np.array(model_av.get('vertices', []))
+                body = pre.rigidPolygon(**kwargs)
+
+            elif avatar_type == "rigidOvoidPolygon":
+                kwargs['ra'] = model_av.get('ra')
+                kwargs['rb'] = model_av.get('rb')
+                kwargs['nb_vertices'] = model_av.get('nb_vertices')
+                body = pre.rigidOvoidPolygon(**kwargs)
+
+            elif avatar_type == "rigidJonc":
+                kwargs['axe1'] = model_av.get('axe1')
+                kwargs['axe2'] = model_av.get('axe2')
+                body = pre.rigidJonc(**kwargs)
+
+            elif avatar_type == "emptyAvatar":
+                # Avatar vide → reconstruction complète
+                body = pre.avatar(dimension=2)
+                body.addBulk(pre.rigid2d())
+                body.addNode(pre.node(coor=np.array(center), number=1))
+                body.defineGroups()
+                body.defineModel(model=mod)
+                body.defineMaterial(material=mat)
+
+                # Recopie des contacteurs
+                for cont in model_av.get('contactors', []):
+                    cont_kwargs = cont.get('params', {}).copy()
+                    cont_kwargs.update({
+                        'shape': cont['shape'],
+                        'color': cont.get('color', color)
+                    })
+                    body.addContactors(**cont_kwargs)
+
+                body.computeRigidProperties()
+
+            else:
+                QMessageBox.information(self, "Non supporté", f"Le type d'avatar '{avatar_type}' n'est pas encore supporté dans la granulométrie.")
+                continue
+
             self.bodies.addAvatar(body)
             self.bodies_objects.append(body)
             self.bodies_list.append(body)
-            # Ajout pour sauvegarde et script
-            self.avatar_creations.append({
-                'type': 'rigidDisk',
-                'r': float(radii[i]),
-                'center': coor[i].tolist(),
-                'model': mod.nom,
-                'material': mat.nom,
-                'color': color,
-                'is_Hollow': False,
-                '__from_loop': True # Marqueur interne
-            })
-                #granulo_dict
-        granulo_dict = {
-            'type' : 'granulo',
-            'nb': nb,
-            'rmin' : rmin,
-            'rmax' : rmax,
-            'seed': seed,
-            'container_params': container_params,
-            'mat_name': mat.nom,
-            'mod_name': mod.nom,
-            'color': color,
-            'avatar_type': avatar
-        }      
-        self.granulo_generations.append(granulo_dict)
-        msg = f"{nb_remaining} particules générées."
+            
+            # Sauvegarde pour rechargement + marqueurs
+            granulo_dict = model_av.copy()
+            granulo_dict['center'] = center
+            granulo_dict['color'] = color
+            granulo_dict['__from_granulo'] = True
+            granulo_dict['__from_loop'] = True
+            # Mise à jour spécifique pour rigidDisk (rayon variable)
+            if avatar_type == "rigidDisk":
+                granulo_dict['r'] = radii[i]
+            self.avatar_creations.append(granulo_dict)
+
         # 5. Création des Murs (Optionnel)
         if self.gran_wall_create.isChecked():
-            if container_params['type'] == 'box':
+            if container_params['type'] == 'Box2D':
                 lx, ly = container_params['lx'], container_params['ly']
                 wall_col = "WALLx"
                 
@@ -850,21 +902,29 @@ def generate_granulo_sample(self):
                     # Sauvegarde
                     self.avatar_creations.append({
                         'type': 'rigidJonc', 'axe1': w_def['axe1'], 'axe2': w_def['axe2'],
-                        'center': w_def['center'], 'model': mod.nom, 'material': mat.nom, 'color': wall_col
+                        'center': w_def['center'], 'model': mod.nom, 'material': mat.nom, 'color': wall_col,
+                        '__from_granulo': True
                     })
-                msg += "\n+ 4 Murs (Boîte) créés."
-            elif container_params['type'] in ['disk', 'drum', 'couette']:
-                msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
+                
+                #mise à jour
+                update_selections(self)
+                update_model_tree(self)
+               
+        msg = f"{nb_remaining} particules générées avec le modèle '{avatar_type}'."
 
-        update_selections(self)
-        update_model_tree(self)
+        if self.gran_wall_create.isChecked() and container_params['type'] == 'Box2D':
+            msg += "\n+ 4 murs créés."
+        elif container_params['type'] in ['disk', 'drum', 'couette']:
+            msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
+
+        
         self.statusBar().showMessage("Dépôt terminé.")
         QMessageBox.information(self, "Succès", msg)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        QMessageBox.critical(self, "Erreur Granulo", f"{e}")
+        QMessageBox.critical(self, "Erreur Granulométrie", f"{e}")
 
 # =======================================
 # PostPro Commabds 

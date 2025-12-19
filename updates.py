@@ -427,6 +427,7 @@ def update_selections(self):
         self.loop_avatar_type.clear()
         self.loop_avatar_type.addItems([a.get('type', 'Inconnu') for a in self.avatar_creations])
         self.loop_avatar_type.blockSignals(False)
+
         # empty avatar
         self.adv_material.blockSignals(True)
         self.adv_material.clear()
@@ -437,12 +438,6 @@ def update_selections(self):
         self.adv_model.clear()
         self.adv_model.addItems([m.nom for m in self.model_objects])
         self.adv_model.blockSignals(False)
-        #granulométrie 
-        self.gran_mat.blockSignals(True)
-        self.gran_mat.clear()
-        self.gran_mat.addItems([m.nom for m in self.material_objects])
-        self.gran_mod.addItems([m.nom for m in self.model_objects])
-        self.gran_mat.blockSignals(False)
 
 # ========================================
 # INTERACTION ARBRE
@@ -555,3 +550,68 @@ def update_postpro_avatar_selector(self, command_name):
             self.post_avatar_selector.addItem(f"GROUPE: {group_name} ({count} avatars)", ("group", group_name))
     else:
         self.post_avatar_selector.clear()
+
+def refresh_granulo_combos(self):
+    if not hasattr(self, 'gran_tab'):
+        return
+
+    # Matériaux
+    cur_mat = self.gran_mat.currentText() if hasattr(self, 'gran_mat') else None
+    self.gran_mat.blockSignals(True)
+    self.gran_mat.clear()
+    self.gran_mat.addItems([m.nom for m in self.material_objects])
+    if cur_mat:
+        self.gran_mat.setCurrentText(cur_mat)
+    self.gran_mat.blockSignals(False)
+
+    # Modèles
+    cur_mod = self.gran_mod.currentText() if hasattr(self, 'gran_mod') else None
+    self.gran_mod.blockSignals(True)
+    self.gran_mod.clear()
+    self.gran_mod.addItems([m.nom for m in self.model_objects])
+    if cur_mod:
+        self.gran_mod.setCurrentText(cur_mod)
+    self.gran_mod.blockSignals(False)
+    refresh_granulo_avatar_combo(self)
+
+def refresh_granulo_avatar_combo(self):
+  
+    """Met à jour le ComboBox du type d'avatar dans l'onglet Granulométrie avec les avatars manuels"""
+    if not hasattr(self, 'avatar') or self.avatar is None:
+        return
+
+    current_data = self.avatar.currentData()  # On garde l'index sélectionné
+
+    self.avatar.blockSignals(True)
+    self.avatar.clear()
+
+    manual_avatars = []
+    for idx, avatar_dict in enumerate(self.avatar_creations):  # ← renommé 'av' en 'avatar_dict'
+        if avatar_dict.get('__from_loop', False) or avatar_dict.get('__from_granulo', False):
+            continue
+
+        desc = avatar_dict['type']
+        if avatar_dict.get('color'):
+            desc += f" — {avatar_dict['color']}"
+        center = avatar_dict.get('center', [])
+        if center:
+            center_str = ', '.join(f"{x:.3g}" for x in center)
+            desc += f" — ({center_str})"
+
+        manual_avatars.append((desc, idx))
+
+    if not manual_avatars:
+        self.avatar.addItem("Aucun avatar manuel créé", -1)
+    else:
+        for desc, idx in manual_avatars:
+            self.avatar.addItem(desc, idx)
+
+    # Restaurer la sélection si possible
+    if current_data is not None and current_data >= 0 and current_data < len(self.avatar_creations):
+        av_dict = self.avatar_creations[current_data]
+        if not av_dict.get('__from_loop', False) and not av_dict.get('__from_granulo', False):
+            self.avatar.setCurrentIndex(self.avatar.findData(current_data))
+
+    self.avatar.blockSignals(False)
+
+   
