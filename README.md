@@ -2,7 +2,7 @@
 
 ![LMGC90_GUI Screenshot](docs/inter_LMGC90_GUI6.jpg)
 
-**LMGC90_GUI** is a modern, user-friendly graphical interface built with **PyQt6** for the pre-processor module (`pre`) of the open-source Discrete Element Method (DEM) code **[LMGC90](https://git.lmgc.univ-montp2.fr/lmgc90/lmgc90)**.
+**LMGC90_GUI** is a modern, user-friendly graphical interface built with **PyQt6** for the pre-processor module (`pre`) of the open-source Discrete Element Method (DEM) code **[LMGC90](https://git-xen.lmgc.univ-montp2.fr/lmgc90/lmgc90_user/-/wikis/home)** and **[LMGC90 documentation](https://lmgc90.pages-git-xen.lmgc.univ-montp2.fr/lmgc90_dev/index.html)**
 
 It allows you to visually create, edit, and manage complex 2D (and partially 3D) mechanical models without writing Python code manually — while still offering full flexibility for advanced users.
 
@@ -14,7 +14,7 @@ All versions are intended for research and prototyping. A full rewrite is planne
 - **Models**:
   - 2D: Rxx2D, T3xxx, Q4xxx, T6xxx, Q8xxx, Q9xxx, BARxx
   - 3D: Rxx3D, H8xxx, SHB8x, H20xx, SHB6x, TE10x, DKTxx
-- **Rigid bodies** (avatars): disks, polygons (regular or custom), ovoids, joncs, clusters, walls (rough/fine/smooth/granular), spheres (3D), and fully customizable **empty avatars** with multiple contactors
+- **Rigid bodies** (avatars): disks, polygons (regular or full), ovoids, joncs, clusters, walls (rough/fine/smooth/granular), spheres (3D not implemented), and fully customizable **empty avatars** with multiple contactors
 - **Contact laws**: IQS_CLB, IQS_CLB_g0, COUPLED_DOF
 - **Visibility tables** for detection control
 - **Boundary conditions** (imposeDrivenDof, translate, rotate, etc.) on individual bodies or **named groups**
@@ -22,9 +22,13 @@ All versions are intended for research and prototyping. A full rewrite is planne
   - Loops (circle, grid, line, spiral, manual)
   - Granulometry with random size distribution and deposition in Box2D or Disk2D
   - Option to store generated particles in a **named group**
+- **Granulmetry** : 
+  - *granulo_Random* distrinution 
+  - deposit in (Box2D, Disk2D, Drum2D and Couette2D) 
+  - Option to store granolo in **named group**
 - **Post-processing commands** (SOLVER INFORMATIONS, TORQUE EVOLUTION, BODY TRACKING, etc.) with optional rigid set selection
 - **Dynamic variables**: define custom variables (e.g., `thickness=0.02`, `scale=1.5`) usable in parameter fields
-- **Direct generation** of `.datbox` file (ready for LMGC90 solver)
+- **Direct generation** of `.Datbox` file (ready for LMGC90 solver)
 - **Python script generation** for full reproducibility
 - Project save/load in `.lmgc90` JSON format
 
@@ -33,7 +37,6 @@ All versions are intended for research and prototyping. A full rewrite is planne
 - PyQt6
 - pylmgc90 (installed with LMGC90)
 
-No additional packages needed.
 
 ## Installation
 
@@ -62,7 +65,7 @@ How to load:
 ## Changelog (Highlights)
 
 - **0.2.7**: Dynamic variables dialog (Tools → Define dynamic variables)
-- **0.2.6**: Direct .datbox generation + post-processing commands + granulometry groups
+- **0.2.6**: Direct .Datbox generation + post-processing commands + granulometry groups
 - **0.2.5**: Units preferences + basic post-processing
 - **0.2.4**: Granulometry with deposition (Box2D/Disk2D)
 - **0.2.3**: COUPLED_DOF and IQS_CLB_g0 laws
