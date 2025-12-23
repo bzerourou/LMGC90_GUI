@@ -284,6 +284,18 @@ def generate_python_script(self):
                 elif "Disk2D" in shape:
                     f.write(f"r = {params['r']}\n")
                     f.write("nb_remaining, coor = pre.depositInDisk2D(radii, r)\n")
+
+                elif "Couette2D" in shape : 
+                    f.write(f"rint = {params['rint']}\n")
+                    f.write(f"rext = {params['rext']}\n")
+                    f.write("nb_remaining, coor = pre.depositInCouette2D(radii, rint, rext)\n")
+
+                elif "Drum2D" in shape : 
+                    f.write(f"r = {params['r']}\n")
+                    f.write("nb_remaining, coor = pre.depositInDrum2D(radii, r)\n")
+                    
+
+                
                 mat_var = f"mats['{gen['mat_name']}']" 
                 mod_var = f"mods['{gen['mod_name']}']"
                 
@@ -293,8 +305,40 @@ def generate_python_script(self):
                 f.write("for i in range(nb_remaining):\n")
                 
                 if gen['avatar_type'] == "rigidDisk":
-                    f.write(f"    body = pre.rigidDisk(r=radii[i], center=coor[i], model={mod_var}, material={mat_var}, color='{gen['color']}')\n")
-                f.write("    bodies.addAvatar(body)\n")
+                    f.write(f"    body = pre.rigidDisk(r=radii[i], center=coor[i], model=mods['{mod_var}'], material=mats['{mod_var}'], color='{gen['color']}')\n")
+            
+                elif gen['avatar_type'] == "rigidPolygon":
+                    # On suppose que les paramètres sont stockés dans gen (ou on les récupère via l'index)
+                    # Pour simplifier, on suppose que tu as sauvegardé les params nécessaires dans granulo_generations
+                    gen_params = gen.get('model_params', {})
+                    f.write(f"    body = pre.rigidPolygon(center=center, model=mods['{mod_var}'], material=mats['{mod_var}'], color='{color}',\n")
+                    f.write(f"                               radius={gen_params.get('radius', 0.1)} * (r / {gen.get('ref_radius', 0.1)}),\n")
+                    if gen_params.get('gen_type') == "regular":
+                        f.write(f"                               generation_type='regular', nb_vertices={gen_params.get('nb_vertices')})\n")
+                    else:
+                        f.write(f"                               generation_type='{gen_params.get('gen_type')}', vertices=np.array({gen_params.get('vertices')}) * (r / {gen.get('ref_radius', 0.1)}))\n")
+
+                elif gen['avatar_type'] == "rigidOvoidPolygon":
+                    gen_params = gen.get('model_params', {})
+                    scale = gen.get('ref_radius', 0.1)
+                    f.write(f"    body = pre.rigidOvoidPolygon(center=center, model=mods['{mod_var}'], material=mats['{mod_var}'], color='{color}',\n")
+                    f.write(f"                                 ra={gen_params.get('ra', 1.0)} ,\n")
+                    f.write(f"                                 rb={gen_params.get('rb', 0.5)} ,\n")
+                    f.write(f"                                 nb_vertices={gen_params.get('nb_vertices')})\n")
+
+                elif gen['avatar_type'] == "rigidJonc":
+                    gen_params = gen.get('model_params', {})
+                    scale = gen.get('ref_radius', 0.1)
+                    f.write(f"    body = pre.rigidJonc(center=center, model=mods['{mod_var}'], material=mats['{mod_var}'], color='{color}',\n")
+                    f.write(f"                         axe1={gen_params.get('axe1', 1.0)} ,\n")
+                    f.write(f"                         axe2={gen_params.get('axe2', 0.1)} )\n")
+
+                elif gen['avatar_type'] == "emptyAvatar":
+                    f.write(f"    # Avatar vide complexe — reconstruction manuelle recommandée\n")
+                    f.write(f"    # body = pre.avatar(dimension=2)\n")
+                    f.write(f"    # ... (contacteurs à recopier manuellement)\n")
+                    f.write(f"    # body.computeRigidProperties()\n")
+                    f.write(f"    # bodies.addAvatar(body)\n")
             
             # === Opérations DOF (individuelles + groupes) ===
             f.write("# === Conditions aux limites (DOF) ===\n")

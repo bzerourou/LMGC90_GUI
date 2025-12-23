@@ -1,10 +1,12 @@
 # Post-traitement
 
-Définition des sorties pour LMGC90.
+Définition des sorties pour LMGC90 qui vont à extraire et analyser vos calculs.
 
 ## Commandes disponibles
-- SOLVER INFORMATIONS
-- TORQUE EVOLUTION (sur avatar/groupe)
+### 1.Vérifier la qualité numérique 
+- SOLVER INFORMATIONS : pour s'assurer de la convergence
+- VIOLATION EVOLUTION : mesure "l'erreur" d'interpénétration moyenne
+- TORQUE EVOLUTION (sur avatar/groupe) : 
 - BODY TRACKING (suivi de corps)
 - KINETIC ENERGY, etc.
 

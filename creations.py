@@ -798,6 +798,13 @@ def generate_granulo_sample(self):
         for i in range(nb_remaining):
             center = coor[i].tolist()
             color = self.gran_color.text() or color
+            #Sauvegarde pour rechargement + marqueurs
+            granulo_dict = model_av.copy()
+            granulo_dict['center'] = center
+            granulo_dict['color'] = color
+            granulo_dict['__from_granulo'] = True
+            granulo_dict['__from_loop'] = True
+            # Mise à jour spécifique pour rigidDisk (rayon variable)
             # Construction des kwargs communs
             kwargs = {
                 'center': center,
@@ -811,26 +818,36 @@ def generate_granulo_sample(self):
                 if model_av.get('is_Hollow'):
                     kwargs['is_Hollow'] = True
                 body = pre.rigidDisk(r= kwargs['r'], center=kwargs['center'], model=mod, material=mat, color=color)
-
+                granulo_dict['r'] = kwargs['r']
+            
             elif avatar_type == "rigidPolygon":
                 kwargs['radius'] = model_av.get('r')
                 kwargs['generation_type'] = model_av.get('gen_type', 'regular')
                 if kwargs['generation_type'] == "regular":
                     kwargs['nb_vertices'] = model_av.get('nb_vertices')
+                    kwargs['radius'] = model_av['r'] 
+                    kwargs['nb_vertices'] = model_av['nb_vertices']
+                    kwargs['generation_type'] = 'regular'
+                
                 else:
                     kwargs['vertices'] = np.array(model_av.get('vertices', []))
                 body = pre.rigidPolygon(**kwargs)
+
 
             elif avatar_type == "rigidOvoidPolygon":
                 kwargs['ra'] = model_av.get('ra')
                 kwargs['rb'] = model_av.get('rb')
                 kwargs['nb_vertices'] = model_av.get('nb_vertices')
                 body = pre.rigidOvoidPolygon(**kwargs)
+                granulo_dict['ra'] = kwargs['ra']
+                granulo_dict['rb'] = kwargs['rb']
 
             elif avatar_type == "rigidJonc":
                 kwargs['axe1'] = model_av.get('axe1')
                 kwargs['axe2'] = model_av.get('axe2')
                 body = pre.rigidJonc(**kwargs)
+                granulo_dict['axe1'] = kwargs['axe1']
+                granulo_dict['axe2'] = kwargs['axe2']
 
             elif avatar_type == "emptyAvatar":
                 # Avatar vide → reconstruction complète
@@ -854,23 +871,13 @@ def generate_granulo_sample(self):
 
             else:
                 QMessageBox.information(self, "Non supporté", f"Le type d'avatar '{avatar_type}' n'est pas encore supporté dans la granulométrie.")
-                continue
+                return
 
             self.bodies.addAvatar(body)
             self.bodies_objects.append(body)
             self.bodies_list.append(body)
-            
-            # Sauvegarde pour rechargement + marqueurs
-            granulo_dict = model_av.copy()
-            granulo_dict['center'] = center
-            granulo_dict['color'] = color
-            granulo_dict['__from_granulo'] = True
-            granulo_dict['__from_loop'] = True
-            # Mise à jour spécifique pour rigidDisk (rayon variable)
-            if avatar_type == "rigidDisk":
-                granulo_dict['r'] = radii[i]
             self.avatar_creations.append(granulo_dict)
-
+          
         # 5. Création des Murs (Optionnel)
         if self.gran_wall_create.isChecked():
             if container_params['type'] == 'Box2D':
@@ -927,15 +934,12 @@ def generate_granulo_sample(self):
         #mise à jour
         update_selections(self)
         update_model_tree(self)
-               
-        
 
         if self.gran_wall_create.isChecked() and container_params['type'] == 'Box2D':
             self.msg += "\n+ 4 murs créés."
         elif container_params['type'] in ['disk', 'drum', 'couette']:
             self.msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
 
-        
         self.statusBar().showMessage("Dépôt terminé.")
         QMessageBox.information(self, "Succès", self.msg)
 
