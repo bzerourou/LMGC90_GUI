@@ -59,7 +59,7 @@ def _create_model_tab(self):
     self.model_element = QComboBox()
     self.model_element.currentTextChanged.connect(lambda : update_model_options_fields(self))
     self.model_dimension = QComboBox(); self.model_dimension.addItems(["2", "3"])
-    self.model_dimension.currentTextChanged.connect(lambda: model_dimension_changed(self))
+    self.model_dimension.currentTextChanged.connect(lambda dim: model_dimension_changed(self, dim))
     self.model_options = QLineEdit("")
     # Zone des options (scrollable)
     self.model_options_group = QGroupBox("Options du modèle")

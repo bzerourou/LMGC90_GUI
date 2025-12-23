@@ -180,11 +180,11 @@ def update_dof_options(self, action) :
 
 def model_dimension_changed(self, dim_text) :
     self.dim = int(dim_text)              # garde la dimension globale
-    self.update_avatar_types(dim_text)    # remplissage du ComboBox des avatars
+    update_avatar_types(self, dim_text)    # remplissage du ComboBox des avatars
     # ré-initialise le texte du centre selon la dimension
     default_center = "0.0,0.0" if self.dim == 2 else "0.0,0.0,0.0"
     self.avatar_center.setText(default_center)
-    self.update_model_elements()
+    update_model_elements(self)
 
 ''' Met à jour les champs affichés dans l'onglet Avatar selon le type de génération de polygone
     gen_type : str : type de génération sélectionné'''
