@@ -1,12 +1,14 @@
 # LMGC90_GUI — Graphical User Interface for LMGC90
 
-![LMGC90_GUI Screenshot](docs/inter_LMGC90_GUI6.jpg)
+![LMGC90_GUI Screenshot](docs/captures/inter_LMGC90_GUI6.jpg)
 
 **LMGC90_GUI** is a modern, user-friendly graphical interface built with **PyQt6** for the pre-processor module (`pre`) of the open-source Discrete Element Method (DEM) code **[LMGC90](https://git-xen.lmgc.univ-montp2.fr/lmgc90/lmgc90_user/-/wikis/home)** and **[LMGC90 documentation](https://lmgc90.pages-git-xen.lmgc.univ-montp2.fr/lmgc90_dev/index.html)**
 
 It allows you to visually create, edit, and manage complex 2D (and partially 3D) mechanical models without writing Python code manually — while still offering full flexibility for advanced users.
 
 All versions are intended for research and prototyping. A full rewrite is planned in the future.
+
+[French documentation of LMGC90_GUI](docs/overview.md)
 
 ## Features
 
