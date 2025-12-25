@@ -9,23 +9,26 @@ from PyQt6.QtCore import Qt
 ''' Evaluer en toute sécurité une chaîne de caractères en dictionnaire 
     text : str : chaîne à évaluer
 '''
-def _safe_eval_dict(self, text):
+def _safe_eval_dict(self, text, body=None):
   
     if not text.strip():
         return {}
 
     import math
     import numpy as np
+    import random
 
     local = {
         "math": math,
         "np": np,
+        "random" : random,
         "__builtins__": {}
     }
 
     
     # Ajout des variables dynamiques de l'utilisateur
-    local.update(self.dynamic_vars)
+    if hasattr(self, 'dynamic_vars'):
+        local.update(self.dynamic_vars)
 
     # Ajout des variables classiques de l'interface (r, color, etc.)
     try:
@@ -34,7 +37,29 @@ def _safe_eval_dict(self, text):
     try:
         local['color'] = self.avatar_color.text() or "BLUEx"
     except: pass
+    try:
+        local['l'] = float(self.wall_length.text() or 0)
+    except: pass
+    try:
+        local['h'] = float(self.wall_height.text() or 0)
+    except: pass
+    try:
+        local['ra'] = float(self.wall_height.text() or 0)
+    except: pass
+    try:
+        local['rb'] = float(self.wall_height.text() or 0)
+    except: pass
+    try:
+        local['axe1'] = float(self.wall_height.text() or 0)
+    except: pass
+    try:
+        local['axe2'] = float(self.wall_height.text() or 0)
+    except: pass
+
     # ... ajoute les autres si tu veux
+    if body is not None: 
+        local['body'] = body
+
 
     try:
         exec(f"props = dict({text})", {}, local)

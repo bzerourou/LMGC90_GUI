@@ -126,9 +126,9 @@ def create_avatar(self):
         return
     try:
         center = [float(x.strip()) for x in self.avatar_center.text().split(',')]
-        #vertices = [float(x) for x in self.avatar_vertices.text().split(",")]
+        #vertices = [float(x) for x in self.avatar_vertices.t ext().split(",")]
         if len(center) != self.dim: raise ValueError(f"Attendu {self.dim} coordonnées")
-        props = _safe_eval_dict(self,self.avatar_properties.text())
+        props = _safe_eval_dict(self,self.avatar_properties.text(), )
         mat = self.material_objects[self.avatar_material.currentIndex()]
         mod = self.model_objects[self.avatar_model.currentIndex()]
         type = self.avatar_type.currentText()
@@ -469,7 +469,11 @@ def create_empty_avatar(self):
             color_c = row.itemAt(3).widget().text().strip() or color
             params_text = row.itemAt(5).widget().text().strip()
 
-            kwargs = _safe_eval_dict(self, params_text)
+            try : 
+                kwargs = _safe_eval_dict(self, params_text, body=body)
+            except ValueError as ve:
+                QMessageBox.warning(self, "Erreur paramètre", str(ve))
+                return
             if shape in  ["DISKx", "xKSID"]:
                 body.addContactors(shape=shape, color=color_c, byrd=float(kwargs.get('byrd')), shift=kwargs.get('shift'))
             
