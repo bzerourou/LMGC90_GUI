@@ -361,9 +361,7 @@ def dof_force(self):
 
         selected_text = self.dof_avatar_name.currentText()
         action = self.dof_avatar_force.currentText()
-        params = _safe_eval_dict(self,self.dof_options.text())
-        if not isinstance(params, dict):
-            raise ValueError("Paramètres invalides")
+       
         
         if selected_text.startswith("GROUPE:"):
             group_name = selected_text.split("GROUPE: ", 1)[1].split(" (", 1)[0]
@@ -372,6 +370,9 @@ def dof_force(self):
                 raise ValueError(f"Groupe '{group_name}' vide ou inexistant")
             for idx in indices: 
                 body = self.bodies_list[idx]
+                params = _safe_eval_dict(self,self.dof_options.text(), body=body)
+                if not isinstance(params, dict):
+                    raise ValueError("Paramètres invalides")
                 getattr(body, action)(**params)
             self.operations.append({'target' : 'group', 'group_name': group_name, 'type': action, 'params': params})
             QMessageBox.information(self, "Succès", f"Action '{action}' appliquée au groupe '{group_name}' ({len(indices)} avatars)")
@@ -379,7 +380,10 @@ def dof_force(self):
             #avatar individuel
             idx = self.dof_avatar_name.currentIndex()
             body = self.bodies_objects[idx]
-            getattr(body, action)(**params)  
+            params = _safe_eval_dict(self, self.dof_options.text(), body=body) 
+            if not isinstance(params, dict):
+                raise ValueError("Paramètres invalides") 
+            getattr(body, action)(**params)
             self.operations.append({'target':'avatar', 'body_index': idx, 'type': action, 'params': params})
             QMessageBox.information(self, "Succès", f"Action '{action}' appliquée à l'avatar {idx}")    
         update_model_tree(self)
