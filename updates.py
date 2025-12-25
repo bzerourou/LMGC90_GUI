@@ -482,6 +482,7 @@ def update_selections(self):
         self.adv_model.addItems([m.nom for m in self.model_objects])
         self.adv_model.blockSignals(False)
 
+
 # ========================================
 # INTERACTION ARBRE
 # ========================================
@@ -554,6 +555,44 @@ def update_model_tree(self):
         vis_node.addChild(item)
 
     self.tree.addTopLevelItem(root); root.setExpanded(True)
+    #Granulométrie
+    gran_node = QTreeWidgetItem(root, ["Granulométrie", "", f"{len(self.granulo_generations)}"])
+    for i, gen in enumerate(self.granulo_generations):
+        # Construction du texte descriptif
+        nb = gen.get('nb', '?')
+        rmin = gen.get('rmin', '?')
+        rmax = gen.get('rmax', '?')
+        desc = f"{nb} parts. [{rmin} - {rmax}]"
+        
+        # Détails (Type d'avatar et Forme du conteneur)
+        shape = gen.get('container_params', {}).get('type', 'Inconnu')
+        av_type = gen.get('avatar_type', 'Inconnu')
+        infos = f"Avatar: {av_type} | Conteneur: {shape}"
+        
+        item = QTreeWidgetItem([desc, "Génération", infos])
+        # On stocke l'index pour pouvoir recharger les infos au clic
+        item.setData(0, Qt.ItemDataRole.UserRole, ("granulo", i))
+        gran_node.addChild(item)
+    self.tree.addTopLevelItem(root); root.setExpanded(True)
+    # Post_traitements
+    post_node = QTreeWidgetItem(root, ["Post-processing", "", f"{len(self.postpro_creations)}"])
+    for i, cmd in enumerate(self.postpro_creations):
+        name = cmd.get('name', 'Commande')
+        step = str(cmd.get('step', 1))
+        
+        # Gestion de l'affichage du set rigide
+        rigid_set = cmd.get('rigid_set')
+        if rigid_set:
+            info_set = "Cible spécifique"
+        else:
+            info_set = "Global"
+
+        item = QTreeWidgetItem([name, "PostPro", f"Freq={step} | {info_set}"])
+        item.setData(0, Qt.ItemDataRole.UserRole, ("postpro", i))
+        post_node.addChild(item)
+
+    self.tree.addTopLevelItem(root)
+    root.setExpanded(True)
 
 
 def update_contactors_fields(self):

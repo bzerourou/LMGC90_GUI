@@ -372,44 +372,34 @@ class LMGC90GUI(QMainWindow):
                 self.avatar_radius.setText(av['r'])
                 self.avatar_nb_vertices.setText(av['nb_disk'])
             elif av['type'] == "emptyAvatar":
-                    
                 # === onglet avatar vide ===
                 self.tabs.setCurrentWidget(self.empty_tab)
-
                 # Dimension
                 self.adv_dim.setCurrentText(str(av['dimension']))
-
                 # Centre
                 self.adv_center.setText(",".join(map(str, av['center'])))
-
                 # Couleur globale
                 self.adv_color.setText(av.get('color', 'BLUEx'))
-
                 # Matériau & Modèle
                 self.adv_material.setCurrentText(av['material'])
                 self.adv_model.setCurrentText(av['model'])
-
                 # === Vider les anciens contacteurs ===
                 while self.contactors_layout.count():
                     child = self.contactors_layout.takeAt(0)
                     if child.widget():
                         child.widget().deleteLater()
-
                 # === Recréer chaque contacteur ===
                 for cont in av.get('contactors', []):
                     self.add_contactor_row()  # ajoute une ligne vide
                     # Récupérer la dernière ligne ajoutée
                     last_widget = self.contactors_layout.itemAt(self.contactors_layout.count() - 1).widget()
                     row = last_widget.layout()
-
                     # Shape
                     shape_combo = row.itemAt(1).widget()
                     shape_combo.setCurrentText(cont['shape'])
-
                     # Couleur
                     color_edit = row.itemAt(3).widget()
                     color_edit.setText(cont.get('color', av.get('color', 'BLUEx')))
-
                     # Paramètres (ex: r=0.3, axe1=1.0, etc.)
                     params_edit = row.itemAt(5).widget()
                     params_str = ", ".join(f"{k}={v}" for k, v in cont.get('params', {}).items())
@@ -419,6 +409,43 @@ class LMGC90GUI(QMainWindow):
                 pass
             self.current_selected = ("avatar", idx)
 
+        elif parent_text == "Granulométrie":
+            if not data: return
+            idx = data[1]
+            if idx < len(self.granulo_generations):
+                gen = self.granulo_generations[idx]
+                
+                # 1. Aller à l'onglet
+                self.tabs.setCurrentWidget(self.gran_tab)
+                
+                # 2. Remplir les champs (Optionnel mais pratique pour voir l'historique)
+                self.gran_nb.setText(str(gen.get('nb', '')))
+                self.gran_rmin.setText(str(gen.get('rmin', '')))
+                self.gran_rmax.setText(str(gen.get('rmax', '')))
+                if gen.get('seed') is not None:
+                    self.gran_seed.setText(str(gen.get('seed')))
+                
+                # Restaurer le type de conteneur
+                params = gen.get('container_params', {})
+                shape_type = params.get('type', 'Box2D')
+                self.gran_shape_type.setCurrentText(shape_type)
+                
+                # Restaurer les dimensions du conteneur
+                # (Attention : il faut que update_granulo_fields soit appelé pour afficher les bons champs)
+                from updates import update_granulo_fields
+                update_granulo_fields(self) # Force l'affichage des bons QLineEdit
+                
+                if shape_type == "Box2D":
+                    self.gran_lx.setText(str(params.get('lx', '')))
+                    self.gran_ly.setText(str(params.get('ly', '')))
+                elif shape_type in ["Disk2D", "Drum2D"]:
+                    self.gran_r.setText(str(params.get('r', '')))
+                elif shape_type == "Couette2D":
+                    self.gran_rint.setText(str(params.get('rint', '')))
+                    self.gran_rext.setText(str(params.get('rext', '')))
+
+                self.current_selected = ("granulo", idx)
+        
         elif parent_text == "Lois de contact":
             law = next((l for l in self.contact_laws_objects if l.nom == name), None)
             if not law: return
@@ -458,6 +485,27 @@ class LMGC90GUI(QMainWindow):
             self.vis_alert.setText(str(rule['alert']))
             # Important : on garde la référence pour Modifier/Supprimer
             self.current_selected = ("visibility", idx)
+        elif parent_text == "Post-processing":
+            if not data: return
+            idx = data[1]
+            if idx < len(self.postpro_creations):
+                cmd = self.postpro_creations[idx]
+                
+                # 1. Aller à l'onglet
+                self.tabs.setCurrentWidget(self.postpro_tab)
+                
+                # 2. Remplir les champs
+                self.post_name.setCurrentText(cmd.get('name', ''))
+                self.post_step.setText(str(cmd.get('step', '1')))
+                
+                # Sélectionner la ligne correspondante dans le tableau de l'onglet postpro (optionnel)
+                # self.post_tree est le QTreeWidget à l'intérieur de l'onglet Postpro
+                if idx < self.post_tree.topLevelItemCount():
+                    item_in_tab = self.post_tree.topLevelItem(idx)
+                    self.post_tree.setCurrentItem(item_in_tab)
+
+                self.current_selected = ("postpro", idx)
+        
 
     # ========================================
     # CORRECTION ANCIENNES OPERATIONS   

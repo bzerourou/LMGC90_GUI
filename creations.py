@@ -939,15 +939,16 @@ def generate_granulo_sample(self):
         else:
             self.msg += f"\n{nb_remaining} particules générées (non stockées dans un groupe)."
         
-        #mise à jour
-        update_selections(self)
-        update_model_tree(self)
+    
 
         if self.gran_wall_create.isChecked() and container_params['type'] == 'Box2D':
             self.msg += "\n+ 4 murs créés."
         elif container_params['type'] in ['disk', 'drum', 'couette']:
             self.msg += "\n(Info: La création automatique de murs circulaires n'est pas supportée, ajoutez un xKSID ou Polygone manuellement)."
-
+        
+        #mise à jour
+        update_selections(self)
+        update_model_tree(self)
         self.statusBar().showMessage("Dépôt terminé.")
         QMessageBox.information(self, "Succès", self.msg)
 
@@ -1015,6 +1016,9 @@ def add_postpro_command(self):
     # Réinitialiser les champs
     self.post_step.setText("1")
     update_postpro_avatar_selector(self, name)
+    update_selections(self)
+    update_model_tree(self)
+
 
 def delete_postpro_command(self):
     selected_items = self.post_tree.selectedItems()
