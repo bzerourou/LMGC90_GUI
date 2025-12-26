@@ -1076,11 +1076,11 @@ def modify_selected(self):
                                                 "element": mod.element, "dimension": mod.dimension})
             self.mods_dict[mod.nom] = mod
         elif typ == "avatar":
-            self.delete_selected()  # Supprime l'ancien
+            delete_selected(self)  # Supprime l'ancien
             if self.tabs.currentWidget() == self.empty_tab:
                 self.create_empty_avatar()
             else:
-                self.create_avatar()
+                create_avatar(self)
             refresh_granulo_combos(self)  # Mise à jour après recréation
             return
         elif typ == "contact":
@@ -1091,7 +1091,7 @@ def modify_selected(self):
             idx = self.contact_laws_objects.index(law)
             self.contact_creations[idx].update({"name": law.nom, "law": law.law, "fric": law.fric})
         elif typ == "visibility":
-            self.delete_selected()
+            delete_selected(self)
             self.add_visibility_rule()
             return
 
@@ -1111,12 +1111,12 @@ def delete_selected(self):
         return
 
     if typ == "material":
-        self.materials.remove(obj)
+        self.materials.pop(obj.nom)
         self.material_objects.remove(obj)
         self.material_creations = [m for m in self.material_creations if m['name'] != obj.nom]
         self.mats_dict.pop(obj.nom, None)
     elif typ == "model":
-        self.models.remove(obj)
+        self.models.pop(obj.nom)
         self.model_objects.remove(obj)
         self.model_creations = [m for m in self.model_creations if m['name'] != obj.nom]
         self.mods_dict.pop(obj.nom, None)

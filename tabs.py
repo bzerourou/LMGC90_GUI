@@ -392,6 +392,7 @@ def _create_postpro_tab(self):
     self.tabs.addTab(tab, "Postpro")
     self.postpro_tab = tab
 
+    
     # Connexion pour activer/désactiver le sélecteur d'avatars
     self.post_name.currentTextChanged.connect(lambda text: update_postpro_avatar_selector(self, text))
     update_postpro_avatar_selector(self, self.post_name.currentText())

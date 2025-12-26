@@ -8,7 +8,7 @@ import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMenuBar, QToolBar, QPushButton, QDockWidget,
     QTreeWidget, QHBoxLayout, QSplitter, QTabWidget, QLineEdit, QComboBox,
-    QLabel, QWidget, QVBoxLayout
+    QLabel, QWidget, QVBoxLayout, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from pylmgc90 import pre
@@ -294,29 +294,33 @@ class LMGC90GUI(QMainWindow):
     # INTERACTION ARBRE
     # ========================================
     def activate_tab(self, item, column): 
-        
-        if item.parent() is None: 
+        if item.parent() is None:
             return
+    
         parent_text = item.parent().text(0)
-        name = item.text(0).split("-")[0]
+        data = item.data(0, Qt.ItemDataRole.UserRole)
         
-        data= item.data(0, Qt.ItemDataRole.UserRole)
-        type, idx = data if data else (None, None)
+        if not data:
+            return
+        
+        item_type, idx = data
 
-        # essai de récupération de l'index
-        if parent_text == "Matériaux":
+        # === Matériaux ===
+        if item_type == "material":
             mat = self.material_objects[idx]
-            if not mat: return
+            if not mat:
+                return
             self.tabs.setCurrentWidget(self.mat_tab)
             self.mat_name.setText(mat.nom)
             self.mat_type.setCurrentText(mat.materialType)
             self.mat_density.setText(str(mat.density))
-            #self.mat_props.setText(str({k: v for k, v in mat.__dict__.items() if k not in ['nom', 'materialType', 'density']}))
             self.current_selected = ("material", mat)
-        # essai avec chaine de cara
-        elif parent_text == "Modèles":
-            mod = next((m for m in self.model_objects if m.nom == name), None)
-            if not mod: return
+
+        # === Modèles ===
+        elif item_type == "model":
+            mod = self.model_objects[idx]
+            if not mod:
+                return
             self.tabs.setCurrentWidget(self.mod_tab)
             self.model_name.setText(mod.nom)
             self.model_physics.setCurrentText(mod.physics)
@@ -324,188 +328,269 @@ class LMGC90GUI(QMainWindow):
             self.model_dimension.setCurrentText(str(mod.dimension))
             self.current_selected = ("model", mod)
 
-        elif parent_text == "Avatars":
-            data = item.data(0, Qt.ItemDataRole.UserRole)
-            if not data or data[0] != "avatar":
-                return
-            idx = data[1]  # ← C’est l’indice exact, garanti correct !
-            
+        # === Avatars ===
+        elif item_type == "avatar":
             if idx < 0 or idx >= len(self.avatar_creations):
                 return
             av = self.avatar_creations[idx]
-            self.tabs.setCurrentWidget(self.av_tab)
-            # --- Mise à jour des champs ---
-            self.avatar_type.blockSignals(True)
-            self.avatar_type.setCurrentText(av['type'])
-            self.avatar_type.blockSignals(False)
-            update_avatar_fields(self, av['type'])
-            self.avatar_center.setText(",".join(map(str, av['center'])))
-            self.avatar_material.setCurrentText(av['material'])
-            self.avatar_model.setCurrentText(av['model'])
-            self.avatar_color.setText(av['color'])
-            # --- Champs spécifiques selon le type ---
-            if av['type'] in ["rigidDisk", "rigidDiscreteDisk"]:
-                self.avatar_radius.setText(av.get('r', '0.1'))
-                self.avatar_hallowed.setChecked(av.get('is_Hollow', False))
-            elif av['type'] == "rigidJonc":
-                self.avatar_axis.setText(f"axe1 = {av['axe1']}, axe2 = {av['axe2']}")
-            elif av['type'] == "rigidPolygon":
-                self.avatar_gen.setCurrentText(av['gen_type'])
-                self.avatar_radius.setText(av['r'])
-                if av['gen_type'] == "regular":
-                    self.avatar_nb_vertices.setText(av['nb_vertices'])
-                else:
-                    self.avatar_vertices.setText(str(av['vertices']))
-            elif av['type'] == "rigidOvoidPolygon":
-                self.avatar_r_ovoid.setText(f"ra = {av['ra']}, rb = {av['rb']}")
-                self.avatar_nb_vertices.setText(av['nb_vertices'])
-            elif av['type'] in ["roughWall", "fineWall", "smoothWall", "granuloRoughWall"]:
-                self.wall_length.setText(av['l'])
-                if av['type'] == "granuloRoughWall":
-                    self.wall_height.setText(f"rmin = {av['rmin']}, rmax = {av['rmax']}")
-                elif av['type'] == "smoothWall":
-                    self.wall_height.setText(av['h'])
-                else:
-                    self.wall_height.setText(av['r'])
-                self.avatar_nb_vertices.setText(av.get('nb_vertex', av.get('nb_polyg', '10')))
-            elif av['type'] == "rigidCluster":
-                self.avatar_radius.setText(av['r'])
-                self.avatar_nb_vertices.setText(av['nb_disk'])
-            elif av['type'] == "emptyAvatar":
-                # === onglet avatar vide ===
-                self.tabs.setCurrentWidget(self.empty_tab)
-                # Dimension
-                self.adv_dim.setCurrentText(str(av['dimension']))
-                # Centre
-                self.adv_center.setText(",".join(map(str, av['center'])))
-                # Couleur globale
-                self.adv_color.setText(av.get('color', 'BLUEx'))
-                # Matériau & Modèle
-                self.adv_material.setCurrentText(av['material'])
-                self.adv_model.setCurrentText(av['model'])
-                # === Vider les anciens contacteurs ===
-                while self.contactors_layout.count():
-                    child = self.contactors_layout.takeAt(0)
-                    if child.widget():
-                        child.widget().deleteLater()
-                # === Recréer chaque contacteur ===
-                for cont in av.get('contactors', []):
-                    self.add_contactor_row()  # ajoute une ligne vide
-                    # Récupérer la dernière ligne ajoutée
-                    last_widget = self.contactors_layout.itemAt(self.contactors_layout.count() - 1).widget()
-                    row = last_widget.layout()
-                    # Shape
-                    shape_combo = row.itemAt(1).widget()
-                    shape_combo.setCurrentText(cont['shape'])
-                    # Couleur
-                    color_edit = row.itemAt(3).widget()
-                    color_edit.setText(cont.get('color', av.get('color', 'BLUEx')))
-                    # Paramètres (ex: r=0.3, axe1=1.0, etc.)
-                    params_edit = row.itemAt(5).widget()
-                    params_str = ", ".join(f"{k}={v}" for k, v in cont.get('params', {}).items())
-                    params_edit.setText(params_str)
-
-                self.current_selected = ("avatar", idx)
-                pass
+            
+            if av['type'] == "emptyAvatar":
+                self._activate_empty_avatar_tab(av, idx)
+            else:
+                self._activate_avatar_tab(av, idx)
+            
             self.current_selected = ("avatar", idx)
 
-        elif parent_text == "Granulométrie":
-            if not data: return
-            idx = data[1]
-            if idx < len(self.granulo_generations):
-                gen = self.granulo_generations[idx]
-                
-                # 1. Aller à l'onglet
-                self.tabs.setCurrentWidget(self.gran_tab)
-                
-                # 2. Remplir les champs (Optionnel mais pratique pour voir l'historique)
-                self.gran_nb.setText(str(gen.get('nb', '')))
-                self.gran_rmin.setText(str(gen.get('rmin', '')))
-                self.gran_rmax.setText(str(gen.get('rmax', '')))
-                if gen.get('seed') is not None:
-                    self.gran_seed.setText(str(gen.get('seed')))
-                
-                # Restaurer le type de conteneur
-                params = gen.get('container_params', {})
-                shape_type = params.get('type', 'Box2D')
-                self.gran_shape_type.setCurrentText(shape_type)
-                
-                # Restaurer les dimensions du conteneur
-                # (Attention : il faut que update_granulo_fields soit appelé pour afficher les bons champs)
-                from updates import update_granulo_fields
-                update_granulo_fields(self) # Force l'affichage des bons QLineEdit
-                
-                if shape_type == "Box2D":
-                    self.gran_lx.setText(str(params.get('lx', '')))
-                    self.gran_ly.setText(str(params.get('ly', '')))
-                elif shape_type in ["Disk2D", "Drum2D"]:
-                    self.gran_r.setText(str(params.get('r', '')))
-                elif shape_type == "Couette2D":
-                    self.gran_rint.setText(str(params.get('rint', '')))
-                    self.gran_rext.setText(str(params.get('rext', '')))
+        # === Groupes ===
+        elif item_type == "group":
+            group_name = idx  # idx est en fait le nom du groupe ici
+            indices = self.avatar_groups.get(group_name, [])
+            QMessageBox.information(
+                self, f"Groupe: {group_name}",
+                f"Ce groupe contient {len(indices)} avatar(s).\n\n"
+                f"Indices: {indices[:10]}{'...' if len(indices) > 10 else ''}"
+            )
 
-                self.current_selected = ("granulo", idx)
-        
-        elif parent_text == "Lois de contact":
-            law = next((l for l in self.contact_laws_objects if l.nom == name), None)
-            if not law: return
+        # === Boucles ===
+        elif item_type == "loop":
+            if idx < 0 or idx >= len(self.loop_creations):
+                return
+            loop = self.loop_creations[idx]
+            self.tabs.setCurrentWidget(self.tabs.widget(4))  # Onglet Boucles
+            
+            self.loop_type.setCurrentText(loop.get('type', 'Cercle'))
+            self.loop_count.setText(str(loop.get('count', 10)))
+            self.loop_radius.setText(str(loop.get('radius', 2.0)))
+            self.loop_step.setText(str(loop.get('step', 1.0)))
+            self.loop_offset_x.setText(str(loop.get('offset_x', 0.0)))
+            self.loop_offset_y.setText(str(loop.get('offset_y', 0.0)))
+            self.loop_spiral_factor.setText(str(loop.get('spiral_factor', 0.1)))
+            
+            if loop.get('stored_in_group'):
+                self.loop_store_group.setChecked(True)
+                self.loop_group_name.setText(loop['stored_in_group'])
+            
+            self.current_selected = ("loop", idx)
+
+        # === Granulométrie (NOUVEAU) ===
+        elif item_type == "granulo":
+            if idx < 0 or idx >= len(self.granulo_generations):
+                return
+            gen = self.granulo_generations[idx]
+            self.tabs.setCurrentWidget(self.gran_tab)
+            
+            # Remplir les champs
+            self.gran_nb.setText(str(gen.get('nb', 200)))
+            self.gran_rmin.setText(str(gen.get('rmin', 0.05)))
+            self.gran_rmax.setText(str(gen.get('rmax', 0.15)))
+            
+            seed = gen.get('seed')
+            self.gran_seed.setText(str(seed) if seed is not None else "")
+            
+            self.gran_shape_type.setCurrentText(gen.get('shape', 'Box2D'))
+            
+            # Paramètres du conteneur
+            params = gen.get('container_params', {})
+            if 'lx' in params:
+                self.gran_lx.setText(str(params['lx']))
+            if 'ly' in params:
+                self.gran_ly.setText(str(params['ly']))
+            if 'r' in params:
+                self.gran_r.setText(str(params['r']))
+            if 'rint' in params:
+                self.gran_rint.setText(str(params['rint']))
+            if 'rext' in params:
+                self.gran_rext.setText(str(params['rext']))
+            
+            self.gran_color.setText(gen.get('color', 'BLUEx'))
+            
+            if gen.get('group_name'):
+                self.gran_store_group.setChecked(True)
+                self.gran_group_name.setText(gen['group_name'])
+            
+            self.current_selected = ("granulo", idx)
+
+        # === Lois de contact ===
+        elif item_type == "contact":
+            law = self.contact_laws_objects[idx]
+            if not law:
+                return
             self.tabs.setCurrentWidget(self.contact_tab)
             self.contact_name.setText(law.nom)
             self.contact_type.setCurrentText(law.law)
-            if hasattr(law, 'fric') :
+            if hasattr(law, 'fric'):
                 self.contact_properties.setText(f"fric={law.fric}")
-            else : self.contact_properties.setText("")
+            else:
+                self.contact_properties.setText("")
             self.current_selected = ("contact", law)
-        
-        elif parent_text == "Tables de visibilité":
-            data = item.data(0, Qt.ItemDataRole.UserRole)
-            if not data:
-                return
-            typ, idx = data
-            if typ != "visibility":
+
+        # === Visibilité ===
+        elif item_type == "visibility":
+            if idx < 0 or idx >= len(self.visibility_creations):
                 return
             rule = self.visibility_creations[idx]
-            # Aller à l'onglet Visibilité
             self.tabs.setCurrentWidget(self.vis_tab)
-
-            # Remplir tous les champs
+            
             self.vis_corps_candidat.setCurrentText(rule['CorpsCandidat'])
             self.vis_candidat.setCurrentText(rule['candidat'])
             self.candidat_color.setText(rule['colorCandidat'])
-
             self.vis_corps_antagoniste.setCurrentText(rule['CorpsAntagoniste'])
             self.vis_antagoniste.setCurrentText(rule['antagoniste'])
             self.antagoniste_color.setText(rule['colorAntagoniste'])
-
-            # Trouver et sélectionner la bonne loi
+            
             for i, law in enumerate(self.contact_laws_objects):
                 if law.nom == rule['behav']:
                     self.behav.setCurrentIndex(i)
                     break
+            
             self.vis_alert.setText(str(rule['alert']))
-            # Important : on garde la référence pour Modifier/Supprimer
             self.current_selected = ("visibility", idx)
-        elif parent_text == "Post-processing":
-            if not data: return
-            idx = data[1]
-            if idx < len(self.postpro_creations):
-                cmd = self.postpro_creations[idx]
-                
-                # 1. Aller à l'onglet
-                self.tabs.setCurrentWidget(self.postpro_tab)
-                
-                # 2. Remplir les champs
-                self.post_name.setCurrentText(cmd.get('name', ''))
-                self.post_step.setText(str(cmd.get('step', '1')))
-                
-                # Sélectionner la ligne correspondante dans le tableau de l'onglet postpro (optionnel)
-                # self.post_tree est le QTreeWidget à l'intérieur de l'onglet Postpro
-                if idx < self.post_tree.topLevelItemCount():
-                    item_in_tab = self.post_tree.topLevelItem(idx)
-                    self.post_tree.setCurrentItem(item_in_tab)
 
-                self.current_selected = ("postpro", idx)
+        # === Post-Processing ===
+        elif item_type == "postpro":
+            if idx < 0 or idx >= len(self.postpro_creations):
+                return
+            cmd = self.postpro_creations[idx]
+            self.tabs.setCurrentWidget(self.postpro_tab)
+            
+            self.post_name.setCurrentText(cmd.get('name', ''))
+            self.post_step.setText(str(cmd.get('step', 1)))
+            
+            # Sélection de l'avatar/groupe si applicable
+            rigid_set = cmd.get('rigid_set')
+            if rigid_set and hasattr(self, 'post_avatar_selector'):
+                # Chercher l'index correspondant dans le sélecteur
+                for i in range(self.post_avatar_selector.count()):
+                    data = self.post_avatar_selector.itemData(i)
+                    if data and data[0] == "avatar" and isinstance(rigid_set, list):
+                        if len(rigid_set) == 1:
+                            # Chercher l'index de cet avatar
+                            for j, body in enumerate(self.bodies_list):
+                                if body == rigid_set[0]:
+                                    if data[1] == j:
+                                        self.post_avatar_selector.setCurrentIndex(i)
+                                        break
+            
+            self.current_selected = ("postpro", idx)
+
+        # === Opérations DOF ===
+        elif item_type == "operation":
+            if idx < 0 or idx >= len(self.operations):
+                return
+            op = self.operations[idx]
+            self.tabs.setCurrentWidget(self.tabs.widget(6))  # Onglet DOF
+            
+            # Sélectionner l'avatar ou groupe
+            if op.get('target') == 'group':
+                group_name = op.get('group_name', '')
+                for i in range(self.dof_avatar_name.count()):
+                    if f"GROUPE: {group_name}" in self.dof_avatar_name.itemText(i):
+                        self.dof_avatar_name.setCurrentIndex(i)
+                        break
+            else:
+                body_idx = op.get('body_index', 0)
+                if body_idx < self.dof_avatar_name.count():
+                    self.dof_avatar_name.setCurrentIndex(body_idx)
+            
+            self.dof_avatar_force.setCurrentText(op.get('type', 'translate'))
+            
+            # Restaurer les paramètres
+            if 'params_text' in op:
+                self.dof_options.setText(op['params_text'])
+            elif 'params' in op:
+                params_str = ", ".join(f"{k}={v}" for k, v in op['params'].items())
+                self.dof_options.setText(params_str)
+            
+            self.current_selected = ("operation", idx)
         
+        
+    def _activate_avatar_tab(self, av, idx):
+        """Active l'onglet avatar standard avec les données."""
+        self.tabs.setCurrentWidget(self.av_tab)
+        
+        self.avatar_type.blockSignals(True)
+        self.avatar_type.setCurrentText(av['type'])
+        self.avatar_type.blockSignals(False)
+        
+        update_avatar_fields(self, av['type'])
+        
+        self.avatar_center.setText(",".join(map(str, av['center'])))
+        self.avatar_material.setCurrentText(av['material'])
+        self.avatar_model.setCurrentText(av['model'])
+        self.avatar_color.setText(av['color'])
+        
+        # Champs spécifiques selon le type
+        if av['type'] in ["rigidDisk", "rigidDiscreteDisk"]:
+            self.avatar_radius.setText(str(av.get('r', '0.1')))
+            if av['type'] == "rigidDisk":
+                self.avatar_hallowed.setChecked(av.get('is_Hollow', False))
+        
+        elif av['type'] == "rigidJonc":
+            self.avatar_axis.setText(f"axe1 = {av['axe1']}, axe2 = {av['axe2']}")
+        
+        elif av['type'] == "rigidPolygon":
+            self.avatar_gen.setCurrentText(av.get('gen_type', 'regular'))
+            self.avatar_radius.setText(str(av.get('r', '0.1')))
+            if av.get('gen_type') == "regular":
+                self.avatar_nb_vertices.setText(str(av.get('nb_vertices', '5')))
+            else:
+                self.avatar_vertices.setText(str(av.get('vertices', '[]')))
+        
+        elif av['type'] == "rigidOvoidPolygon":
+            self.avatar_r_ovoid.setText(f"ra = {av['ra']}, rb = {av['rb']}")
+            self.avatar_nb_vertices.setText(str(av.get('nb_vertices', '5')))
+        
+        elif av['type'] == "rigidCluster":
+            self.avatar_radius.setText(str(av.get('r', '0.1')))
+            self.avatar_nb_vertices.setText(str(av.get('nb_disk', '5')))
+        
+        elif av['type'] in ["roughWall", "fineWall"]:
+            self.wall_length.setText(str(av.get('l', '2.0')))
+            self.wall_height.setText(str(av.get('r', '0.1')))
+            self.avatar_nb_vertices.setText(str(av.get('nb_vertex', '10')))
+        
+        elif av['type'] == "smoothWall":
+            self.wall_length.setText(str(av.get('l', '2.0')))
+            self.wall_height.setText(str(av.get('h', '0.1')))
+            self.avatar_nb_vertices.setText(str(av.get('nb_polyg', '10')))
+        
+        elif av['type'] == "granuloRoughWall":
+            self.wall_length.setText(str(av.get('l', '2.0')))
+            self.wall_height.setText(f"rmin = {av['rmin']}, rmax = {av['rmax']}")
+            self.avatar_nb_vertices.setText(str(av.get('nb_vertex', '10')))
+
+
+    def _activate_empty_avatar_tab(self, av, idx):
+        """Active l'onglet avatar vide avec les données."""
+        self.tabs.setCurrentWidget(self.empty_tab)
+        
+        self.adv_dim.setCurrentText(str(av.get('dimension', 2)))
+        self.adv_center.setText(",".join(map(str, av['center'])))
+        self.adv_color.setText(av.get('color', 'BLUEx'))
+        self.adv_material.setCurrentText(av['material'])
+        self.adv_model.setCurrentText(av['model'])
+        
+        # Vider les anciens contacteurs
+        while self.contactors_layout.count():
+            child = self.contactors_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        # Recréer chaque contacteur
+        for cont in av.get('contactors', []):
+            self.add_contactor_row()
+            last_widget = self.contactors_layout.itemAt(
+                self.contactors_layout.count() - 1
+            ).widget()
+            row = last_widget.layout()
+            
+            # Shape
+            row.itemAt(1).widget().setCurrentText(cont['shape'])
+            # Couleur
+            row.itemAt(3).widget().setText(cont.get('color', av.get('color', 'BLUEx')))
+            # Paramètres
+            params_str = ", ".join(f"{k}={v}" for k, v in cont.get('params', {}).items())
+            row.itemAt(5).widget().setText(params_str) 
 
     # ========================================
     # CORRECTION ANCIENNES OPERATIONS   

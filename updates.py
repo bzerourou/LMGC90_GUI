@@ -491,7 +491,7 @@ def update_model_tree(self):
     self.tree.clear()
     root = QTreeWidgetItem(["Modèle LMGC90", "", ""])
 
-        # Matériaux
+    # === Matériaux ===
     mat_node = QTreeWidgetItem(root, ["Matériaux", "", f"{len(self.material_objects)}"])
     for i, mat in enumerate(self.material_objects):
         ma = self.material_creations[i]
@@ -500,99 +500,134 @@ def update_model_tree(self):
         item.setData(0, Qt.ItemDataRole.UserRole, ("material", i))
         mat_node.addChild(item)
 
-    # Modèles
+    # === Modèles ===
     mod_node = QTreeWidgetItem(root, ["Modèles", "", f"{len(self.model_objects)}"])
     for i, mod in enumerate(self.model_objects):
         item = QTreeWidgetItem([mod.nom, "Modèle", f"{mod.element} dim={mod.dimension}"])
         item.setData(0, Qt.ItemDataRole.UserRole, ("model", i))
         mod_node.addChild(item)
 
-    # Avatars (le plus critique)
+    # === Avatars ===
     av_node = QTreeWidgetItem(root, ["Avatars", "", f"{len(self.bodies_objects)}"])
     for i, body in enumerate(self.bodies_objects):
-        # il faut gérer l'erreur
         av = self.avatar_creations[i]
-        color = body.contactors[0].color if body.contactors else "?????"
-        name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
-        if av.get('type')=='emptyAvatar' : 
-            # Affichage spécial pour avatars avancés
+        if av.get('type') == 'emptyAvatar':
             cont_types = [c['shape'] for c in av.get('contactors', [])]
-            name = f" Avatar vide  ({', '.join(cont_types)}) — {av['color']}"
-        else : 
-            color = body.contactors[0].color if body.contactors else "?????" 
-            name = f"{av['type']} — {color} — ({', '.join(map(str, av['center']))})"
-        item = QTreeWidgetItem([name, "Avatar", str(i)])
+            name = f"Avatar vide ({', '.join(cont_types)}) — {av.get('color', '???')}"
+        else:
+            color = body.contactors[0].color if body.contactors else "?????"
+            center_str = ', '.join(f"{x:.2f}" for x in av['center'])
+            name = f"{av['type']} — {color} — ({center_str})"
+        
+        # Marqueur pour les avatars générés
+        suffix = ""
+        if av.get('__from_granulo'):
+            suffix = " [G]"
+        elif av.get('__from_loop'):
+            suffix = " [L]"
+        
+        item = QTreeWidgetItem([name + suffix, "Avatar", str(i)])
         item.setData(0, Qt.ItemDataRole.UserRole, ("avatar", i))
         av_node.addChild(item)
 
-    # affichage des groupes d'avatars
+    # === Groupes d'avatars ===
     if self.avatar_groups:
         grp_node = QTreeWidgetItem(root, ["Groupes d'avatars", "", f"{len(self.avatar_groups)}"])
-        # Tri alphabétique des noms de groupes
         for name in sorted(self.avatar_groups.keys()):
             count = len(self.avatar_groups[name])
-            QTreeWidgetItem(grp_node, [f"{name} ({count} avatars)", "Groupe", ""])
+            item = QTreeWidgetItem([f"{name}", "Groupe", f"{count} avatars"])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("group", name))
+            grp_node.addChild(item)
 
-    self.tree.addTopLevelItem(root)
-    root.setExpanded(True)
-    
-    # Lois de contact
+    # === Boucles ===
+    if self.loop_creations:
+        loop_node = QTreeWidgetItem(root, ["Boucles", "", f"{len(self.loop_creations)}"])
+        for i, loop in enumerate(self.loop_creations):
+            loop_type = loop.get('type', 'Inconnu')
+            count = loop.get('count', 0)
+            group = loop.get('stored_in_group', 'N/A')
+            item = QTreeWidgetItem([f"{loop_type}", "Boucle", f"{count} → {group}"])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("loop", i))
+            loop_node.addChild(item)
+
+    # === Granulométrie (NOUVEAU) ===
+    if self.granulo_generations:
+        gran_node = QTreeWidgetItem(root, ["Dépôts Granulo", "", f"{len(self.granulo_generations)}"])
+        for i, gen in enumerate(self.granulo_generations):
+            nb = gen.get('nb', 0)
+            rmin = gen.get('rmin', 0)
+            rmax = gen.get('rmax', 0)
+            shape = gen.get('shape', 'Inconnu')
+            group_name = gen.get('group_name', 'N/A')
+            avatar_type = gen.get('avatar_type', 'rigidDisk')
+            
+            name = f"{shape} — {nb} particules"
+            details = f"r=[{rmin:.3f}, {rmax:.3f}] → {group_name}"
+            
+            item = QTreeWidgetItem([name, avatar_type, details])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("granulo", i))
+            gran_node.addChild(item)
+
+    # === Lois de contact ===
     law_node = QTreeWidgetItem(root, ["Lois de contact", "", f"{len(self.contact_laws_objects)}"])
     for i, law in enumerate(self.contact_laws_objects):
-        if hasattr(law, 'fric'):
-            info = f"fric={law.fric}"
-        else : info = ""
+        info = f"fric={law.fric}" if hasattr(law, 'fric') else ""
         item = QTreeWidgetItem([law.nom, "Loi", info])
         item.setData(0, Qt.ItemDataRole.UserRole, ("contact", i))
         law_node.addChild(item)
 
-    # Visibilités
+    # === Tables de visibilité ===
     vis_node = QTreeWidgetItem(root, ["Tables de visibilité", "", f"{len(self.visibilities_table_objects)}"])
     for i, st in enumerate(self.visibilities_table_objects):
-        txt = f"{st.candidat}({st.colorCandidat}) ↔ {st.antagoniste} → {st.behav}"
-        item = QTreeWidgetItem([txt, "Visibilité", ""])
+        txt = f"{st.candidat}({st.colorCandidat}) ↔ {st.antagoniste}"
+        item = QTreeWidgetItem([txt, "Visibilité", f"→ {st.behav}"])
         item.setData(0, Qt.ItemDataRole.UserRole, ("visibility", i))
         vis_node.addChild(item)
 
-    self.tree.addTopLevelItem(root); root.setExpanded(True)
-    #Granulométrie
-    gran_node = QTreeWidgetItem(root, ["Granulométrie", "", f"{len(self.granulo_generations)}"])
-    for i, gen in enumerate(self.granulo_generations):
-        # Construction du texte descriptif
-        nb = gen.get('nb', '?')
-        rmin = gen.get('rmin', '?')
-        rmax = gen.get('rmax', '?')
-        desc = f"{nb} parts. [{rmin} - {rmax}]"
-        
-        # Détails (Type d'avatar et Forme du conteneur)
-        shape = gen.get('container_params', {}).get('type', 'Inconnu')
-        av_type = gen.get('avatar_type', 'Inconnu')
-        infos = f"Avatar: {av_type} | Conteneur: {shape}"
-        
-        item = QTreeWidgetItem([desc, "Génération", infos])
-        # On stocke l'index pour pouvoir recharger les infos au clic
-        item.setData(0, Qt.ItemDataRole.UserRole, ("granulo", i))
-        gran_node.addChild(item)
-    self.tree.addTopLevelItem(root); root.setExpanded(True)
-    # Post_traitements
-    post_node = QTreeWidgetItem(root, ["Post-processing", "", f"{len(self.postpro_creations)}"])
-    for i, cmd in enumerate(self.postpro_creations):
-        name = cmd.get('name', 'Commande')
-        step = str(cmd.get('step', 1))
-        
-        # Gestion de l'affichage du set rigide
-        rigid_set = cmd.get('rigid_set')
-        if rigid_set:
-            info_set = "Cible spécifique"
-        else:
-            info_set = "Global"
+    # === Post-Processing ===
+    if self.postpro_creations:
+        post_node = QTreeWidgetItem(root, ["Post-Processing", "", f"{len(self.postpro_creations)}"])
+        for i, cmd in enumerate(self.postpro_creations):
+            name = cmd.get('name', 'Commande')
+            step = cmd.get('step', 1)
+            rigid_set = cmd.get('rigid_set')
+            
+            # Détails sur les avatars concernés
+            if rigid_set:
+                if isinstance(rigid_set, list):
+                    avatar_info = f"{len(rigid_set)} avatar(s)"
+                else:
+                    avatar_info = "1 avatar"
+            else:
+                avatar_info = "Global"
+            
+            item = QTreeWidgetItem([name, f"step={step}", avatar_info])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("postpro", i))
+            post_node.addChild(item)
 
-        item = QTreeWidgetItem([name, "PostPro", f"Freq={step} | {info_set}"])
-        item.setData(0, Qt.ItemDataRole.UserRole, ("postpro", i))
-        post_node.addChild(item)
+    # === Opérations DOF ===
+    if self.operations:
+        ops_node = QTreeWidgetItem(root, ["Opérations DOF", "", f"{len(self.operations)}"])
+        for i, op in enumerate(self.operations):
+            action = op.get('type', 'Inconnu')
+            if op.get('target') == 'group':
+                target = f"Groupe: {op.get('group_name', '?')}"
+            else:
+                target = f"Avatar #{op.get('body_index', '?')}"
+            
+            item = QTreeWidgetItem([action, target, ""])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("operation", i))
+            ops_node.addChild(item)
 
+    # === Finalisation ===
     self.tree.addTopLevelItem(root)
     root.setExpanded(True)
+    
+    # Expansion automatique des sections avec contenu
+    for i in range(root.childCount()):
+        child = root.child(i)
+        if child.childCount() > 0 and child.childCount() <= 10:
+            child.setExpanded(True)
 
 
 def update_contactors_fields(self):
