@@ -89,7 +89,7 @@ def save_project_as(self):
             return
         self.project_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in name.strip())
 
-    self.setWindowTitle(f"LMGC90_GUI v0.2.0 - {self.project_name}")
+    self.setWindowTitle(f"LMGC90_GUI v0.2.7 - {self.project_name}")
     do_save(self)
     update_status(self, f"Projet enregistré dans : {dir_path}")
 
@@ -428,10 +428,24 @@ def _deserialize_state(self, state):
     # Opérations
     self.operations = state.get('operations', [])
     for op in self.operations:
-        idx = op['body_index']
-        if 0 <= idx < len(self.bodies_list):
-            body = self.bodies_list[idx]
-            getattr(body, op['type'])(**op['params'])
+        op_type = op.get('type')  # ex: imposeInitDisp, imposeInitVel, etc.
+        params = op.get('params', {})
+        
+        if op.get('target') == 'group' and 'group_name' in op:
+            # Cas : opération sur un groupe
+            group_name = op['group_name']
+            indices = self.avatar_groups.get(group_name, [])
+            for idx in indices:
+                if 0 <= idx < len(self.bodies_list):
+                    body = self.bodies_list[idx]
+                    getattr(body, op_type)(**params)
+    
+                elif 'body_index' in op:
+                    # Cas : opération sur un avatar individuel (ancien ou nouveau format)
+                    idx = op['body_index']
+                    if isinstance(idx, int) and 0 <= idx < len(self.bodies_list):
+                        body = self.bodies_list[idx]
+                        getattr(body, op_type)(**params)
     
     # to do (rechergerles les groupes d'avatars)
     self.avatar_groups = state.get('avatar_groups', {})

@@ -214,7 +214,7 @@ class LMGC90GUI(QMainWindow):
         splitter.addWidget(render_tabs)
         render_tab = QWidget()
         rl = QVBoxLayout()
-        lmgc_vis_btn = QPushButton("LMGC visualisation")
+        lmgc_vis_btn = QPushButton("LMGC90 visualisation")
         lmgc_vis_btn.clicked.connect(lambda: visu_lmgc(self))
         rl.addWidget(lmgc_vis_btn)
         paraview_btn = QPushButton("ParaView")
@@ -600,18 +600,12 @@ class LMGC90GUI(QMainWindow):
         """Supprime les anciennes opérations corrompues et les convertit si possible"""
         new_ops = []
         for op in self.operations:
-            # On garde seulement les opérations valides
             if isinstance(op, dict):
-                if 'target' in op and op['target'] == 'group' and 'group_name' in op:
+                if op.get('target') == 'group' and 'group_name' in op:
                     new_ops.append(op)
                 elif 'body_index' in op and isinstance(op['body_index'], int):
                     new_ops.append(op)
-                # Ancien format "GROUPE: nom" → on ignore (ou on peut tenter de réparer)
-                elif isinstance(op.get('body_index'), str) and op['body_index'].startswith("GROUPE:"):
-                    # Optionnel : extraire le nom si tu veux sauver
-                    pass  # on ignore
-                else:
-                    new_ops.append(op)  # au cas où
+                # Ignore les anciens formats string comme "GROUPE: xxx"
         self.operations = new_ops
 
 #######################################
