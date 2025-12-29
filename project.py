@@ -366,7 +366,6 @@ def _deserialize_state(self, state):
                 self.avatar_creations.append(new_av)
     
     #------Granulométrie 
-    
     for granulo in state.get('granulo_generations', []): 
         #création de la granulométrie 
         nb = granulo.get('nb')

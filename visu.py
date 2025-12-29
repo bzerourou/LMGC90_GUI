@@ -67,14 +67,29 @@ def generate_datbox(self):
         sees_container = self.visibilities_table
 
         # --- Post-pro : si tu as des commandes ---
-        if hasattr(self, 'postpro_commands') and self.postpro_creations:
-            # postpro_commands est une liste de dicts { 'name': str, 'step': int }
+        if hasattr(self, 'postpro_creations'):
             for cmd in self.postpro_creations:
-                if cmd['rigid_set'] is None: 
-                    self.postpro_commands.addCommand(pre.postpro_command(cmd['name'], freq=cmd['step'], rigid_set=cmd['rigid_set']))
-                else : 
-                    self.postpro_commands.addCommand(pre.postpro_command(cmd['name'], freq=cmd['step']))
-
+                rigid_set = None
+                
+                # Reconstruction du rigid_set à partir de target_info
+                target = cmd.get('target_info')
+                if target:
+                    typ = target['type']
+                    val = target['value']
+                    
+                    if typ == 'avatar':
+                        if 0 <= val < len(self.bodies_list):
+                            rigid_set = [self.bodies_list[val]]
+                    
+                    elif typ == 'group':
+                        indices = self.avatar_groups.get(val, [])
+                        rigid_set = [self.bodies_list[i] for i in indices if i < len(self.bodies_list)]
+                
+                # Création de la commande réelle
+                if rigid_set:
+                    self.postpro_commands.addCommand(pre.postpro_command(name=cmd['name'], step=cmd['step'], rigid_set=rigid_set))
+                else:
+                    self.postpro_commands.addCommand(pre.postpro_command(name=cmd['name'], step=cmd['step']))
         # --- Écriture du fichier ---
         datbox_path = os.path.join(self.project_dir, "DATBOX")
         pre.writeDatbox(

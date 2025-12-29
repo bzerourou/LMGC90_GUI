@@ -561,10 +561,10 @@ def update_model_tree(self):
             group_name = gen.get('group_name', 'N/A')
             avatar_type = gen.get('avatar_type', 'rigidDisk')
             
-            name = f"{shape} — {nb} particules"
+            name = f"{av['type']} — {color} — ({center_str})"
             details = f"r=[{rmin:.3f}, {rmax:.3f}] → {group_name}"
             
-            item = QTreeWidgetItem([name, avatar_type, details])
+            item = QTreeWidgetItem([name, "Avatar", str(i)])
             item.setData(0, Qt.ItemDataRole.UserRole, ("granulo", i))
             gran_node.addChild(item)
 

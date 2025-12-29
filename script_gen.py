@@ -8,10 +8,13 @@ import os
 import subprocess
 from PyQt6.QtWidgets import QMessageBox, QFileDialog, QApplication
 
+from project import save_project_as
+
 
 def _write_avatar_creation(self, f, i, av, container_name="bodies"):
+    av_type = av.get('type', '').strip().lower()
     #avatar vide
-    if av['type'] == 'emptyAvatar':
+    if av_type == 'emptyavatar':
         _write_empty_avatar_creation(self, f, i, av, container_name)
         return
 
@@ -107,7 +110,7 @@ def _format_value_for_python(self, value):
 def generate_python_script(self):
     if not self.project_dir:
         QMessageBox.warning(self, "Attention", "Enregistrez d'abord le projet")
-        return self.save_project_as()
+        return save_project_as(self)
 
     path = os.path.join(self.project_dir, f"{self.project_name}.py")
     try:
@@ -180,6 +183,8 @@ def generate_python_script(self):
 
             for i, av in enumerate(self.avatar_creations):
                 if i in used_indices:
+                    continue
+                if av.get('__from_loop'):  # déjà ajouté via boucle auto
                     continue
                 _write_avatar_creation(self,f, i, av , "bodies")
 
@@ -268,77 +273,67 @@ def generate_python_script(self):
                     _write_avatar_creation(self, f, av, safe_name)
             
             # ===== Granulométrie 
-            f.write("#=== Granulométrie =========\n")
-            for gen in self.granulo_generations:
-                f.write(f"nb = {gen['nb']}\n")
-                f.write(f"rmin = {gen['rmin']}\n")
-                f.write(f"rmax = {gen['rmax']}\n")
-                f.write(f"seed = {gen['seed'] if gen['seed'] is not None else 'None'}\n")
-                f.write(f"radii = pre.granulo_Random(nb, rmin, rmax, seed)\n")
-                shape = gen['shape']
-                params = gen['container_params']
+            f.write("# === Granulométries générées ===\n")
+            for granulo_idx, granulo in enumerate(self.granulo_generations):
+                f.write(f"# Granulométrie n°{granulo_idx + 1}\n")
+                
+                # Distribution des rayons
+                nb = granulo.get('nb', 200)
+                rmin = granulo.get('rmin', 0.05)
+                rmax = granulo.get('rmax', 0.15)
+                seed = granulo.get('seed')
+                seed_str = f", seed={seed}" if seed else ""
+                f.write(f"radii = pre.granulo_Random({nb}, {rmin}, {rmax}{seed_str})\n")
+                
+                # Dépôt (container)
+                params = granulo.get('container_params', {})
+                shape = params.get('type', 'Box2D')  # Par défaut Box2D
                 if "Box2D" in shape:
-                    f.write(f"lx = {params['lx']}\n")
-                    f.write(f"ly = {params['ly']}\n")
-                    f.write(f"nb_remaining, coor = pre.depositInBox2D(radii, lx, ly)\n")
+                    lx = params.get('lx', 4.0)
+                    ly = params.get('ly', 4.0)
+                    f.write(f"nb_remaining, coor = pre.depositInBox2D(radii, {lx}, {ly})\n")
                 elif "Disk2D" in shape:
-                    f.write(f"r = {params['r']}\n")
-                    f.write("nb_remaining, coor = pre.depositInDisk2D(radii, r)\n")
-
-                elif "Couette2D" in shape : 
-                    f.write(f"rint = {params['rint']}\n")
-                    f.write(f"rext = {params['rext']}\n")
-                    f.write("nb_remaining, coor = pre.depositInCouette2D(radii, rint, rext)\n")
-
-                elif "Drum2D" in shape : 
-                    f.write(f"r = {params['r']}\n")
-                    f.write("nb_remaining, coor = pre.depositInDrum2D(radii, r)\n")
-                    
-
+                    r = params.get('r', 2.0)
+                    f.write(f"nb_remaining, coor = pre.depositInDisk2D(radii, {r})\n")
+                elif "Couette2D" in shape:
+                    rint = params.get('rint', 2.0)
+                    rext = params.get('rext', 4.0)
+                    f.write(f"nb_remaining, coor = pre.depositInCouette2D(radii, {rint}, {rext})\n")
+                elif "Drum2D" in shape:
+                    r = params.get('r', 2.0)
+                    f.write(f"nb_remaining, coor = pre.depositInDrum2D(radii, {r})\n")
+                else:
+                    f.write(f"# Shape inconnu '{shape}' - Fallback à Box2D\n")
+                    f.write("nb_remaining, coor = pre.depositInBox2D(radii, 4.0, 4.0)\n")
                 
-                mat_var = f"mats['{gen['mat_name']}']" 
-                mod_var = f"mods['{gen['mod_name']}']"
+                # Reshape coor
+                f.write("nb_remaining = np.shape(coor)[0] // 2\n")
+                f.write("coor = np.reshape(coor, (nb_remaining, 2))\n\n")
                 
-                f.write("\n# Création des avatars du lot\n")
-                f.write("nb_remaining = np.shape(coor)[0]//2\n")
-                f.write("coor = np.reshape(coor, (nb_remaining, 2))\n")
+                # Propriétés physiques
+                mod = granulo.get('model', 'rigid')  # Valeur par défaut si manquant
+                mat = granulo.get('material', 'TDURx')
+                color = granulo.get('color', 'BLUEx')
+                avatar_type = granulo.get('avatar_type', 'rigidDisk')  # Par défaut rigidDisk
+                
+                # Gestion du groupe (si stocké dans un groupe)
+                group_name = granulo.get('stored_in_group')
+                if group_name:
+                    safe_name = group_name.replace(" ", "_").replace("-", "_")
+                    container_name = safe_name
+                    f.write(f"# Ajout au groupe '{group_name}'\n")
+                else:
+                    container_name = "bodies"
+                
+                # Boucle pour créer et ajouter les avatars
                 f.write("for i in range(nb_remaining):\n")
+                f.write(f"    body = pre.{avatar_type}(r=radii[i], center=coor[i], model=mods['{mod}'], material=mats['{mat}'], color='{color}')\n")
+                f.write(f"    {container_name}.addAvatar(body)\n")
+                f.write("    bodies_list.append(body)\n")
+                f.write(f"bodies.__iadd__({container_name})\n")
+            f.write(f"\n")
                 
-                if gen['avatar_type'] == "rigidDisk":
-                    f.write(f"    body = pre.rigidDisk(r=radii[i], center=coor[i], model=mods['{mod_var}'], material=mats['{mod_var}'], color='{gen['color']}')\n")
-            
-                elif gen['avatar_type'] == "rigidPolygon":
-                    # On suppose que les paramètres sont stockés dans gen (ou on les récupère via l'index)
-                    # Pour simplifier, on suppose que tu as sauvegardé les params nécessaires dans granulo_generations
-                    gen_params = gen.get('model_params', {})
-                    f.write(f"    body = pre.rigidPolygon(center=center, model=mods['{mod_var}'], material=mats['{mod_var}'], color='{color}',\n")
-                    f.write(f"                               radius={gen_params.get('radius', 0.1)} * (r / {gen.get('ref_radius', 0.1)}),\n")
-                    if gen_params.get('gen_type') == "regular":
-                        f.write(f"                               generation_type='regular', nb_vertices={gen_params.get('nb_vertices')})\n")
-                    else:
-                        f.write(f"                               generation_type='{gen_params.get('gen_type')}', vertices=np.array({gen_params.get('vertices')}) * (r / {gen.get('ref_radius', 0.1)}))\n")
-
-                elif gen['avatar_type'] == "rigidOvoidPolygon":
-                    gen_params = gen.get('model_params', {})
-                    scale = gen.get('ref_radius', 0.1)
-                    f.write(f"    body = pre.rigidOvoidPolygon(center=center, model=mods['{mod_var}'], material=mats['{mod_var}'], color='{color}',\n")
-                    f.write(f"                                 ra={gen_params.get('ra', 1.0)} ,\n")
-                    f.write(f"                                 rb={gen_params.get('rb', 0.5)} ,\n")
-                    f.write(f"                                 nb_vertices={gen_params.get('nb_vertices')})\n")
-
-                elif gen['avatar_type'] == "rigidJonc":
-                    gen_params = gen.get('model_params', {})
-                    scale = gen.get('ref_radius', 0.1)
-                    f.write(f"    body = pre.rigidJonc(center=center, model=mods['{mod_var}'], material=mats['{mod_var}'], color='{color}',\n")
-                    f.write(f"                         axe1={gen_params.get('axe1', 1.0)} ,\n")
-                    f.write(f"                         axe2={gen_params.get('axe2', 0.1)} )\n")
-
-                elif gen['avatar_type'] == "emptyAvatar":
-                    f.write(f"    # Avatar vide complexe — reconstruction manuelle recommandée\n")
-                    f.write(f"    # body = pre.avatar(dimension=2)\n")
-                    f.write(f"    # ... (contacteurs à recopier manuellement)\n")
-                    f.write(f"    # body.computeRigidProperties()\n")
-                    f.write(f"    # bodies.addAvatar(body)\n")
+                # gestion pour groupes
             
             # === Opérations DOF (individuelles + groupes) ===
             f.write("# === Conditions aux limites (DOF) ===\n")
@@ -364,8 +359,6 @@ def generate_python_script(self):
                         idx = op.get('body_index', -1)
                         f.write(f"# {action} sur avatar individuel #{idx}\n")
                         f.write(f"bodies[{idx}].{action}({params_str})\n")
-                        
-                        
             f.write("\n")
 
             # === Lois de contact ===
@@ -385,16 +378,34 @@ def generate_python_script(self):
                 f.write(f"see_tables.addSeeTable(sv)\n")
             f.write("\n")
 
-            # ==== Postpro_commands
-            # Exemple de ce que devra faire votre générateur plus tard :
+            # === Postpro ===
             f.write("\n# --- PostPro ---\n")
             f.write("post = pre.postpro_commands()\n")
             for cmd in self.postpro_creations:
-                if cmd['rigid_set'] is not None:
-                    f.write(f"post.addCommand(pre.postpro_command(name='{cmd['name']}', step={cmd['step']}, rigid_set={cmd['rigid_set']} ))\n" )
-                else : 
-                    f.write(f"post.addCommand(pre.postpro_command(name='{cmd['name']}', step={cmd['step']}))\n" )
+                target = cmd.get('target_info')  # Utilise .get() pour éviter KeyError si clé manquante
+                name = cmd['name']
+                step = cmd['step']
+                
+                if target and isinstance(target, dict) and 'type' in target and 'value' in target:  # ← Check renforcé
+                    typ = target['type']
+                    val = target['value']
 
+                    print(typ, val)
+                    
+                    if typ == 'avatar':
+                        # Utilise bodies[index]
+                        rs_code = f"[bodies[{val}]]"
+                    elif typ == 'group':
+                        # Utilise la variable du groupe si elle existe
+                        safe_name = val.replace(" ", "_").replace("-", "_")
+                        rs_code = safe_name  # C'est une liste d'avatars en Python
+                    
+                    f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}, rigid_set={rs_code}))\n")
+                else:
+                    # Pas de target, ou target incomplet/invalide : traite comme global
+                    f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}))\n")
+                    if target:  # Optionnel : log un warning si target existe mais incomplet
+                        print(f"Warning: Commande postpro '{name}' a un target_info incomplet : {target}. Traité comme global.")
             # === Écriture finale ===
             f.write("# Écriture du fichier .datbox\n")
             f.write("pre.writeDatbox(post = post, dim=2, mats=materials, mods=models, bodies=bodies, tacts=tacts, sees=see_tables)\n")
@@ -419,6 +430,7 @@ def _get_avatar_function(self, av):
         "smoothWall": "smoothWall",
         "granuloRoughWall": "granuloRoughWall",
     }
+    av_type = av.get('type', '').strip().lower()
     return mapping.get(av['type'], "rigidDisk")
 
 def _get_avatar_params(self, av):
