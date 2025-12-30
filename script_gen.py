@@ -268,9 +268,10 @@ def generate_python_script(self):
                     if idx >= len(self.avatar_creations):
                         continue
                     av = self.avatar_creations[idx]
-                    if av.get('__from_loop'):  # déjà ajouté via boucle auto
+                    print(av)
+                    if av.get('__from_granulo', True):  # déjà ajouté via boucle auto
                         continue
-                    _write_avatar_creation(self, f, av, safe_name)
+                    _write_avatar_creation(self=self, f=f, av=av, i=idx,container_name=safe_name)
             
             # ===== Granulométrie 
             f.write("# === Granulométries générées ===\n")
@@ -352,7 +353,9 @@ def generate_python_script(self):
                         # Nom sécurisé pour variable Python
                         container_var = group_containers.get(group_name, "bodies")
                         f.write(f"# {action} sur le groupe '{group_name}'\n")
-                        f.write(f"{container_var}.{action}( {params_str})\n")
+                        f.write(f"for avatar in {container_var}:\n")
+                        f.write(f"    avatar.{action}( {params_str})\n")
+                       
 
                 else:
                         # Avatar individuel

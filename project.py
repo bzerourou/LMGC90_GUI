@@ -401,6 +401,8 @@ def _deserialize_state(self, state):
                         'is_Hollow': False,
                         '__from_loop': True # Marqueur interne
                     })
+        # enregistrer la génération
+        self.granulo_generations.append(granulo)
 
     #------ Lois
     for law in state.get('contact_laws', []):
