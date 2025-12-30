@@ -668,6 +668,51 @@ def update_postpro_avatar_selector(self, command_name):
     else:
         self.post_avatar_selector.clear()
 
+def refresh_postpro_tree(self):
+    """Recrée complètement l'arbre des commandes post-pro à partir de self.postpro_creations"""
+    if not hasattr(self, 'post_tree'):
+        return
+
+    self.post_tree.blockSignals(True)  # évite des signaux intempestifs
+    self.post_tree.clear()
+
+    for idx, cmd in enumerate(self.postpro_creations):
+        name = cmd.get('name', 'Inconnu')
+        step = cmd.get('step', 1)
+
+        target_info = cmd.get('target_info')
+        if target_info:
+            t_type = target_info.get('type')
+            t_value = target_info.get('value')
+
+            if t_type == 'avatar' :
+                target_text = f"Avatar {t_value}"
+
+            elif t_type == 'group':
+                count = len(self.avatar_groups.get(t_value, []))
+                target_text = f"GROUPE: {t_value} ({count} avatars)"
+
+            elif t_type == 'granulo_group' and isinstance(t_value, int):
+                if 0 <= t_value < len(self.granulo_generations):
+                    granulo = self.granulo_generations[t_value]
+                    gname = granulo.get('group_name', f'granulo_{t_value}')
+                    count = len(granulo.get('avatar_indices', []))
+                    target_text = f"GRANULO: {gname} ({count} particules)"
+                else:
+                    target_text = "GRANULO: invalide"
+
+            else:
+                target_text = "Cible inconnue"
+        else:
+            target_text = "Global"
+
+        item = QTreeWidgetItem([name, f"step={step}", target_text])
+        item.setData(0, Qt.ItemDataRole.UserRole, ("postpro", idx))  # pour delete/modify
+        self.post_tree.addTopLevelItem(item)
+
+    self.post_tree.blockSignals(False)
+
+
 def refresh_granulo_combos(self):
     if not hasattr(self, 'gran_tab'):
         return

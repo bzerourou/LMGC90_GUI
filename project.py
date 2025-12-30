@@ -7,7 +7,7 @@ import os
 from PyQt6.QtWidgets import QInputDialog, QFileDialog, QMessageBox, QLineEdit, QComboBox
 
 from updates import (
-    update_selections, update_model_tree, update_status
+    update_selections, update_model_tree, update_status, refresh_postpro_tree
 )
 
 from preferences import PreferencesDialog
@@ -463,9 +463,59 @@ def _deserialize_state(self, state):
         #réactiver la boucle si pas encore terminée
         if loop.get('created_count', 0) < loop.get('count', 0) :
             loop['active'] = True
-                            
+
+    # ====== Post-pro commands ======
+    self.postpro_creations = []
+    self.postpro_commands.clear()  # Vide les commandes pylmgc90 existantes
+
+    for cmd in state.get('postpro_creations', []):
+        name = cmd.get('name')
+        step = cmd.get('step', 1)
+        target_info = cmd.get('target_info')  # Peut être None, dict avatar, ou dict group
+
+        rigid_set = None
+
+        if target_info:
+            t_type = target_info.get('type')
+            t_value = target_info.get('value')
+
+            if t_type == 'avatar' and isinstance(t_value, int):
+                # Avatar individuel
+                if 0 <= t_value < len(self.bodies_list):
+                    rigid_set = [self.bodies_list[t_value]]
+
+            elif t_type == 'group':
+                # Groupe manuel (stocké dans avatar_groups)
+                indices = self.avatar_groups.get(t_value, [])
+                rigid_set = [self.bodies_list[i] for i in indices if 0 <= i < len(self.bodies_list)]
+
+            elif t_type == 'granulo_group':
+                # === NOUVEAU : Groupe issu d'une granulométrie ===
+                # t_value = index de la granulo dans self.granulo_generations
+                if isinstance(t_value, int) and 0 <= t_value < len(self.granulo_generations):
+                    granulo = self.granulo_generations[t_value]
+                    indices = granulo.get('avatar_indices', [])
+                    rigid_set = [self.bodies_list[i] for i in indices if 0 <= i < len(self.bodies_list)]
+
+        # Création de la commande pylmgc90
+        if name and step:
+            post_cmd = pre.postpro_command(name=name, step=step)
+            if rigid_set:
+                post_cmd = pre.postpro_command(name=name, step=step, rigid_set=rigid_set)
+            self.postpro_commands.addCommand(post_cmd)
+
+        # Sauvegarde dans l'historique UI (postpro_creations)
+        saved_cmd = {
+            'name': name,
+            'step': step,
+            'target_info': target_info  # on garde tel quel pour resauvegarde
+        }
+        self.postpro_creations.append(saved_cmd)
+
+    # Mise à jour de l'arbre postpro             
     update_selections(self)
     update_model_tree(self)
+    refresh_postpro_tree(self) 
 
 def open_options_dialog(self):
     """Ouvre la fenêtre de Préférences (Onglets verticaux)"""

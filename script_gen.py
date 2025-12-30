@@ -385,30 +385,52 @@ def generate_python_script(self):
             f.write("\n# --- PostPro ---\n")
             f.write("post = pre.postpro_commands()\n")
             for cmd in self.postpro_creations:
-                target = cmd.get('target_info')  # Utilise .get() pour éviter KeyError si clé manquante
-                name = cmd['name']
-                step = cmd['step']
-                
-                if target and isinstance(target, dict) and 'type' in target and 'value' in target:  # ← Check renforcé
-                    typ = target['type']
-                    val = target['value']
+                name = cmd.get('name')
+                step = cmd.get('step', 1)
+                target_info = cmd.get('target_info')
 
-                    print(typ, val)
-                    
-                    if typ == 'avatar':
-                        # Utilise bodies[index]
-                        rs_code = f"[bodies[{val}]]"
-                    elif typ == 'group':
-                        # Utilise la variable du groupe si elle existe
-                        safe_name = val.replace(" ", "_").replace("-", "_")
-                        rs_code = safe_name  # C'est une liste d'avatars en Python
-                    
-                    f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}, rigid_set={rs_code}))\n")
-                else:
-                    # Pas de target, ou target incomplet/invalide : traite comme global
-                    f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}))\n")
-                    if target:  # Optionnel : log un warning si target existe mais incomplet
-                        print(f"Warning: Commande postpro '{name}' a un target_info incomplet : {target}. Traité comme global.")
+                rigid_set_code = None  # Chaîne de code Python pour le rigid_set
+
+                if target_info:
+                    t_type = target_info.get('type')
+                    t_value = target_info.get('value')
+
+                    if t_type == 'avatar' and isinstance(t_value, int):
+                        # Avatar individuel → bodies_list[index]
+                        rigid_set_code = f"[bodies_list[{t_value}]]"
+
+                    elif t_type == 'group':
+                        # Groupe manuel → container nommé
+                        safe_name = t_value.replace(" ", "_").replace("-", "_")
+                        rigid_set_code = safe_name  # car on a créé "safe_name = pre.avatars()" plus tôt
+
+                    elif t_type == 'granulo_group' and isinstance(t_value, int):
+                        # Groupe de granulométrie
+                        if 0 <= t_value < len(self.granulo_generations):
+                            granulo = self.granulo_generations[t_value]
+                            group_name = granulo.get('group_name')
+                            if group_name:
+                                safe_name = group_name.replace(" ", "_").replace("-", "_")
+                                # On vérifie si on a déjà créé ce container dans la section granulo
+                                # (on l'a fait si group_name existe)
+                                rigid_set_code = safe_name
+                            else:
+                                # Cas rare : granulo sans nom de groupe → on utilise les indices directement
+                                indices = granulo.get('avatar_indices', [])
+                                if indices:
+                                    rigid_set_code = "[" + ", ".join(f"bodies_list[{i}]" for i in indices) + "]"
+                                else:
+                                    rigid_set_code = "None  # Aucune particule"
+                        else:
+                            rigid_set_code = "None  # Granulo invalide"
+
+            # Écriture de la commande
+            if rigid_set_code:
+                f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}, rigid_set={rigid_set_code}))\n")
+            else:
+                f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}))\n")
+            f.write("\n")
+            
             # === Écriture finale ===
             f.write("# Écriture du fichier .datbox\n")
             f.write("pre.writeDatbox(post = post, dim=2, mats=materials, mods=models, bodies=bodies, tacts=tacts, sees=see_tables)\n")

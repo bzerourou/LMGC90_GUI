@@ -12,7 +12,7 @@ from updates import (
     update_avatar_types, update_avatar_fields,
     update_granulo_fields, update_selections,
     update_model_tree, update_status, _safe_eval_dict,
-    update_contactors_fields, update_postpro_avatar_selector, refresh_granulo_combos
+    update_contactors_fields, update_postpro_avatar_selector, refresh_granulo_combos, refresh_postpro_tree
 )
 
 # ========================================
@@ -1011,7 +1011,7 @@ def add_postpro_command(self):
             return
 
         typ, value = data
-        cmd_dict['target_info'] = {'type' : typ, 'value ':value}
+        cmd_dict['target_info'] = {'type' : typ, 'value':value}
         if typ == "avatar":
             rigid_set = [self.bodies_list[value]]  # pre attend une liste d'avatars
             display_info = f"Avatar #{value}"
@@ -1043,6 +1043,7 @@ def add_postpro_command(self):
     # Réinitialiser les champs
     self.post_step.setText("1")
     update_postpro_avatar_selector(self, name)
+    refresh_postpro_tree(self)
     update_selections(self)
     update_model_tree(self)
 
@@ -1058,20 +1059,24 @@ def delete_postpro_command(self):
     index = self.post_tree.indexOfTopLevelItem(item)
 
     # Sécurité absolue contre l'IndexError
-    if index < 0 or index >= len(self.postpro_commands):
+    if index < 0 or index >= len(self.postpro_creations):
         QMessageBox.critical(self, "Erreur interne", "Index de commande invalide. Réessayez ou redémarrez.")
         return
 
     reply = QMessageBox.question(self, "Confirmer", 
-                                 f"Supprimer la commande '{self.postpro_commands[index]['name']}' ?",
+                                 f"Supprimer la commande '{self.postpro_creations[index]['name']}' ?",
                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
     if reply != QMessageBox.StandardButton.Yes:
         return
     #Suppression sûre
     del self.postpro_commands[index]
+    del self.postpro_creations[index]
 
     # Suppression dans l'arbre (plus fiable que takeTopLevelItem)
     self.post_tree.takeTopLevelItem(index)
+
+    refresh_postpro_tree(self)   # au lieu de refaire manuellement l'arbre
+    update_model_tree(self)
 
     self.statusBar().showMessage("Commande post-pro supprimée", 3000)
 # ==============
