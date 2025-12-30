@@ -423,12 +423,13 @@ def generate_python_script(self):
                                     rigid_set_code = "None  # Aucune particule"
                         else:
                             rigid_set_code = "None  # Granulo invalide"
+                
+                elif rigid_set_code:    
+                    f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}, rigid_set={rigid_set_code}))\n")
+                            
+                else:
+                    f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}))\n")
 
-            # Écriture de la commande
-            if rigid_set_code:
-                f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}, rigid_set={rigid_set_code}))\n")
-            else:
-                f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}))\n")
             f.write("\n")
             
             # === Écriture finale ===

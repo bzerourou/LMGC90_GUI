@@ -7,7 +7,7 @@ import os
 from PyQt6.QtWidgets import QInputDialog, QFileDialog, QMessageBox, QLineEdit, QComboBox
 
 from updates import (
-    update_selections, update_model_tree, update_status, refresh_postpro_tree
+    update_selections, update_model_tree, update_status, refresh_postpro_tree, refresh_interface_units
 )
 
 from preferences import PreferencesDialog
@@ -528,7 +528,7 @@ def open_options_dialog(self):
         self.app_settings = dialog.get_paths_data()
         
         # 2. Mise à jour de l'interface (Unité des labels)
-        self.refresh_interface_units()
+        refresh_interface_units(self)
         
         # 3. Confirmation
         path_msg = ""

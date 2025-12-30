@@ -584,6 +584,20 @@ def update_model_tree(self):
         item.setData(0, Qt.ItemDataRole.UserRole, ("visibility", i))
         vis_node.addChild(item)
 
+    # === Opérations DOF ===
+    if self.operations:
+        ops_node = QTreeWidgetItem(root, ["Opérations DOF", "", f"{len(self.operations)}"])
+        for i, op in enumerate(self.operations):
+            action = op.get('type', 'Inconnu')
+            if op.get('target') == 'group':
+                target = f"Groupe: {op.get('group_name', '?')}"
+            else:
+                target = f"Avatar #{op.get('body_index', '?')}"
+            
+            item = QTreeWidgetItem([action, target, ""])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("operation", i))
+            ops_node.addChild(item)
+    
     # === Post-Processing ===
     if self.postpro_creations:
         post_node = QTreeWidgetItem(root, ["Post-Processing", "", f"{len(self.postpro_creations)}"])
@@ -605,19 +619,7 @@ def update_model_tree(self):
             item.setData(0, Qt.ItemDataRole.UserRole, ("postpro", i))
             post_node.addChild(item)
 
-    # === Opérations DOF ===
-    if self.operations:
-        ops_node = QTreeWidgetItem(root, ["Opérations DOF", "", f"{len(self.operations)}"])
-        for i, op in enumerate(self.operations):
-            action = op.get('type', 'Inconnu')
-            if op.get('target') == 'group':
-                target = f"Groupe: {op.get('group_name', '?')}"
-            else:
-                target = f"Avatar #{op.get('body_index', '?')}"
-            
-            item = QTreeWidgetItem([action, target, ""])
-            item.setData(0, Qt.ItemDataRole.UserRole, ("operation", i))
-            ops_node.addChild(item)
+    
 
     # === Finalisation ===
     self.tree.addTopLevelItem(root)
