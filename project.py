@@ -40,7 +40,7 @@ def new_project(self):
     self._init_containers()
     update_selections(self)
     update_model_tree(self)
-    self.setWindowTitle(f"LMGC90_GUI v0.2.7 - {self.project_name}")
+    self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
     update_status(self, "Nouveau projet créé")
     QMessageBox.information(self, "Succès", "Nouveau projet vide")
 
@@ -58,7 +58,7 @@ def open_project(self):
         _deserialize_state(self, state)
     
 
-        self.setWindowTitle(f"LMGC90_GUI v0.2.7 - {self.project_name}")
+        self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
         update_status(self, f"Projet chargé : {self.project_name}")
         update_model_tree(self)
         update_selections(self)
@@ -89,7 +89,7 @@ def save_project_as(self):
             return
         self.project_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in name.strip())
 
-    self.setWindowTitle(f"LMGC90_GUI v0.2.7 - {self.project_name}")
+    self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
     do_save(self)
     update_status(self, f"Projet enregistré dans : {dir_path}")
 

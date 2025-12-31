@@ -89,7 +89,7 @@ class LMGC90GUI(QMainWindow):
         
         self._init_containers()
         self._init_ui()
-        self.setWindowTitle(f"LMGC90_GUI v0.2.7 - {self.project_name}")
+        self.setWindowTitle(f"LMGC90_GUI v0.2.5 - {self.project_name}")
         self.statusBar().showMessage("Prêt")
 
         update_selections(self)
