@@ -523,7 +523,7 @@ class LMGC90GUI(QMainWindow):
         if av['type'] in ["rigidDisk", "rigidDiscreteDisk"]:
             self.avatar_radius.setText(str(av.get('r', '0.1')))
             if av['type'] == "rigidDisk":
-                self.avatar_hallowed.setChecked(av.get('is_Hollow', False))
+                self.avatar_hollow .setChecked(av.get('is_Hollow', False))
         
         elif av['type'] == "rigidJonc":
             self.avatar_axis.setText(f"axe1 = {av['axe1']}, axe2 = {av['axe2']}")

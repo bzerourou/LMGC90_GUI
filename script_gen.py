@@ -334,8 +334,6 @@ def generate_python_script(self):
                 f.write(f"bodies.__iadd__({container_name})\n")
             f.write(f"\n")
                 
-                # gestion pour groupes
-            
             # === Opérations DOF (individuelles + groupes) ===
             f.write("# === Conditions aux limites (DOF) ===\n")
             for op in self.operations:
@@ -424,7 +422,7 @@ def generate_python_script(self):
                         else:
                             rigid_set_code = "None  # Granulo invalide"
                 
-                elif rigid_set_code:    
+                     
                     f.write(f"post.addCommand(pre.postpro_command(name='{name}', step={step}, rigid_set={rigid_set_code}))\n")
                             
                 else:

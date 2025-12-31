@@ -24,7 +24,7 @@ def create_material(self):
         if not name:
             raise ValueError("Nom vide")
         if len(name)>5: 
-            raise ValueError("Nom à 5 caractères")
+            raise ValueError("Nom à 5 caractères maximum")
         mat_type = self.mat_type.currentText()
         density_text = self.mat_density.text().strip()
         props = _safe_eval_dict(self,self.mat_props.text())
@@ -122,7 +122,7 @@ def create_model(self):
 
 def create_avatar(self):
     if not self.material_objects or not self.model_objects:
-        QMessageBox.critical(self, "Erreur", "Créez un matériau et un modèle")
+        QMessageBox.information(self, "Erreur", "Créez un matériau et un modèle")
         return
     try:
         center = [float(x.strip()) for x in self.avatar_center.text().split(',')]
@@ -135,7 +135,7 @@ def create_avatar(self):
         if mod.element != "Rxx2D" :
             raise ValueError("élément finit non adapté pour un rigid avatar")
 
-        is_hollow = self.avatar_hallowed.isChecked()
+        is_hollow = self.avatar_hollow .isChecked()
         if type == "rigidDisk" :
             if is_hollow :
                 
@@ -271,7 +271,7 @@ def create_avatar(self):
         }
         if type == "rigidDisk":
             body_dict['r']= self.avatar_radius.text()
-            body_dict['is_Hollow'] = self.avatar_hallowed.isChecked()
+            body_dict['is_Hollow'] = self.avatar_hollow .isChecked()
         elif type == "rigidDiscreteDisk":
             body_dict['r']= self.avatar_radius.text()
         elif type ==  "rigidJonc" :
@@ -310,7 +310,7 @@ def create_avatar(self):
             body_dict['rmax'] = self.wall_height.text().split(',')[1].split('=')[1].strip()
             body_dict['nb_vertex'] = self.avatar_nb_vertices.text()
         else : 
-            ValueError("Rigide non connue!")
+            ValueError("Type de rigide inconnu!")
         
         self.avatar_creations.append(body_dict)
 
@@ -354,37 +354,44 @@ def create_avatar(self):
         QMessageBox.critical(self, "Erreur", f"Avatar : {e}")
 
 def dof_force(self):
+    
     if not self.bodies_objects:
-        QMessageBox.critical(self, "Erreur", "Aucun avatar")
+        QMessageBox.information(self, "Erreur", "Aucun avatar")
         return
     try:
-
         selected_text = self.dof_avatar_name.currentText()
         action = self.dof_avatar_force.currentText()
        
-        
         if selected_text.startswith("GROUPE:"):
-            group_name = selected_text.split("GROUPE: ", 1)[1].split(" (", 1)[0]
-            print(group_name)
+            group_name = selected_text.split("GROUPE: ", 1)[1].split(" (",1)[0]
             indices = self.avatar_groups.get(group_name, [])
-            if not indices:
-                raise ValueError(f"Groupe '{group_name}' vide ou inexistant")
-            for idx in indices: 
-                body = self.bodies_list[idx]
-                params = _safe_eval_dict(self,self.dof_options.text(), body=body)
-                if not isinstance(params, dict):
-                    raise ValueError("Paramètres invalides")
-                getattr(body, action)(**params)
-            self.operations.append({'target' : 'group', 'group_name': group_name, 'type': action, 'params': params})
-            QMessageBox.information(self, "Succès", f"Action '{action}' appliquée au groupe '{group_name}' ({len(indices)} avatars)")
+        elif selected_text.startswith("GRANULO:"):
+            group_name = selected_text.split("GRANULO: ", 1)[1].split(" (",1)[0]
+            indices = []
+            for granulo in self.granulo_generations:
+                if granulo.get('stored_in_group') == group_name:
+                    indices = self.avatar_groups.get(group_name, [])
+                    break
         else:
-            #avatar individuel
-            idx = self.dof_avatar_name.currentIndex()
-            body = self.bodies_objects[idx]
-            params = _safe_eval_dict(self, self.dof_options.text(), body=body) 
+            # avatar individuel
+            idx = int(selected_text.split()[-1])
+            indices = [idx]
+
+        # Appliquer le DOF seulement sur les indices valides
+        valid_indices = [idx for idx in indices if 0 <= idx < len(self.bodies_list)]
+
+        for idx in valid_indices:
+            body = self.bodies_list[idx]
+            params = _safe_eval_dict(self, self.dof_options.text(), body=body)
             if not isinstance(params, dict):
-                raise ValueError("Paramètres invalides") 
+                QMessageBox.warning(self, "Paramètres", f"Paramètres invalides pour avatar {idx}")
+                continue
             getattr(body, action)(**params)
+            
+        if group_name:
+            self.operations.append({'target' : 'group', 'group_name': group_name, 'type': action, 'params': params})
+            QMessageBox.information(self, "Succès", f"Action '{action}' appliquée au groupe {group_name} (avatar {idx})")
+        else:   
             self.operations.append({'target':'avatar', 'body_index': idx, 'type': action, 'params': params})
             QMessageBox.information(self, "Succès", f"Action '{action}' appliquée à l'avatar {idx}")    
         update_model_tree(self)
@@ -414,7 +421,7 @@ def create_contact_law(self):
 
 def add_visibility_rule(self):
     if not self.contact_laws_objects:
-        QMessageBox.critical(self, "Erreur", "Créez une loi")
+        QMessageBox.information(self, "Erreur", "Créez une loi")
         return
     try:
         law = self.contact_laws_objects[self.behav.currentIndex()]
@@ -489,7 +496,7 @@ def create_empty_avatar(self):
             elif shape in ["PT2Dx"]:
                 body.addContactors(shape=shape, color=color_c, shift=kwargs.get('shift'))
             
-            else : raise ValueError(f"Contacteur {shape} non géré pour avatar vide")
+            else : raise ValueError(f"Contacteur {shape} non géré pour un avatar vide")
 
         # CLÉ : calcul des propriétés rigides
         body.computeRigidProperties()
@@ -540,7 +547,7 @@ def create_empty_avatar(self):
 
 def create_loop(self):
     if not self.avatar_creations:
-        QMessageBox.critical(self, "Erreur", "Créez d'abord un avatar modèle")
+        QMessageBox.information(self, "Erreur", "Créez d'abord un avatar modèle")
         return
 
     try:

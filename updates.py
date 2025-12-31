@@ -92,7 +92,7 @@ def update_avatar_fields(self, avatar_type):
         
         # Liste des widgets à gérer
         widgets = [
-            self.avatar_hallowed,
+            self.avatar_hollow ,
         self.avatar_radius_label, self.avatar_radius,
         self.avatar_center_label, self.avatar_center,
         self.avatar_axis_label, self.avatar_axis,
@@ -121,9 +121,9 @@ def update_avatar_fields(self, avatar_type):
             self.avatar_center.setText("0.0,0.0" if self.model_dimension.currentText() == "2" else "0.0,0.0,0.0")
             self.avatar_color.setText("BLUEx")
             if avatar_type == "rigidDisk":
-                self.avatar_hallowed.setVisible(True)
+                self.avatar_hollow .setVisible(True)
             else:
-                self.avatar_hallowed.setVisible(False)
+                self.avatar_hollow .setVisible(False)
                 
             if avatar_type == "rigidCluster":
                 self.avatar_nb_vertices_label.setVisible(True)

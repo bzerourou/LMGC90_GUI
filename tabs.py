@@ -96,7 +96,7 @@ def _create_avatar_tab(self):
                             "roughWall", "fineWall", "smoothWall", "granuloRoughWall"]
     self.avatar_types_3d = ["rigidSphere"]
     self.avatar_type = QComboBox()
-    self.avatar_hallowed = QCheckBox("Avatar disque  creux (pour les disques)")
+    self.avatar_hollow  = QCheckBox("Avatar disque  creux (pour les disques)")
     self.avatar_radius_label = QLabel("Rayon");self.avatar_radius = QLineEdit("0.1")
     self.avatar_axis_label = QLabel("Axes :");self.avatar_axis = QLineEdit(("axe1 = 2.0, axe2 = 0.05"))
     self.avatar_vertices_label = QLabel("Vertices : ")
@@ -121,7 +121,7 @@ def _create_avatar_tab(self):
 
     self.avatar_properties = QLineEdit("")
 
-    for w in [QLabel("Type:"), self.avatar_type, self.avatar_hallowed,self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis, self.avatar_r_ovoid_label,self.avatar_r_ovoid,self.wall_length_label, self.wall_length,
+    for w in [QLabel("Type:"), self.avatar_type, self.avatar_hollow ,self.avatar_radius_label, self.avatar_radius,self.avatar_axis_label,self.avatar_axis, self.avatar_r_ovoid_label,self.avatar_r_ovoid,self.wall_length_label, self.wall_length,
                 self.wall_height_label, self.wall_height,
                 self.avatar_gen_type, self.avatar_gen, self.avatar_nb_vertices_label, self.avatar_nb_vertices, self.avatar_vertices_label, self.avatar_vertices, self.avatar_center_label, self.avatar_center, QLabel("Mat:"), self.avatar_material,
                 QLabel("Mod:"), self.avatar_model, QLabel("Couleur:"), self.avatar_color,
