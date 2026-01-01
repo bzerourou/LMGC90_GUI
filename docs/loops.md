@@ -1,9 +1,9 @@
 # Boucles Paramétriques
 
-Génération massive d’avatars identiques.
+En sorte, c'est comme une répétion d’avatars identiques sous différentes formes.
 
 ## Types de boucles
-
+Vous avez plusieurs formes : 
 - Cercle
 - Grille
 - Ligne
@@ -11,11 +11,14 @@ Génération massive d’avatars identiques.
 - Manuel (création progressive)
 
 ## Paramètres
-- Avatar modèle à répéter
-- Nombre
-- Rayon / pas / offsets
-- Option : stocker dans un groupe nommé
+Il vous suffit seulement de remplir les champs pour chaque forme :  
+- Avatar modèle à répéter : rigidDisk, etc.
+- Nombre 
+- Rayon pour la forme circle / pas gille et ligne  / offsets (X et Y)
+- Option : stocker dans une liste nommée : 
+
+![](captures/boucle_disk_ligne.JPG)
 
 ## Utilisation
-Idéal pour murs, empilements réguliers, tests de convergence
+Idéal pour générer des murs, empilements réguliers d'avatars,
 

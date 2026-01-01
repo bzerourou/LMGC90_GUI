@@ -5,10 +5,10 @@ Le modèle définit la physique et la discrétisation des corps avec des éléme
 ## Interface
 - Onglet **Modèle**
 - Champs :
-  - Nom : qui est une suite de cinq caractères
-  - Physique : (seulement 'MECAx' qui n'est implémenter jsqu'à maintenant)
+  - Nom : qui est une suite maximum de cinq caractères
+  - Physique : (seulement 'MECAx' qui est implémenté)
   - Élément : (type de formulation)
-  - Dimension : (2 ou 3)
+  - Dimension : (seulement en 2D)
   - Options : (kinematic, formulation, etc.) qui dépend de l'élément choisit
 
 ## Éléments disponibles
@@ -28,9 +28,11 @@ Le modèle définit la physique et la discrétisation des corps avec des éléme
 - external_model
 
 ## Exemple
-Création d’un modèle rigide 2D, 
+Dans l'onglet 'Modèle' choisissez : 
 1. Nom : `rigid`
 2. Élément : `Rxx2D`
 3. Dimension : `2`
 4. Cliquez ensuise sur le bouton *Créer*
+
+![modele](captures/modele_rigid.JPG)
 
